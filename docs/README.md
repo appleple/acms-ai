@@ -2,6 +2,14 @@
 
 a-blog cms の AI機能を拡張するアプリです。
 
+## ダウンロード
+
+最新版の拡張アプリは以下からダウンロードできます。
+
+- [AI.zip をダウンロード（最新版）](https://github.com/appleple/acms-ai/raw/main/build/AI.zip)
+
+バージョンを指定してダウンロードしたい場合や過去のバージョンは [build/](../build/) ディレクトリ、または [Releases](https://github.com/appleple/acms-ai/releases) を参照してください。
+
 ## 動作環境
 
 - a-blog cms: Ver. 3.2.x (3.3+ not tested yet)
