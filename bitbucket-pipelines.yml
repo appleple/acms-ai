@@ -1,0 +1,14 @@
+image: php:8.3
+
+pipelines:
+  default:
+    - step:
+        name: PHP CodeSniffer
+        caches:
+          - composer
+        script:
+          - apt-get update && apt-get install -y unzip git
+          - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+          - export COMPOSER_ALLOW_SUPERUSER=1
+          - composer install --no-progress --prefer-dist
+          - composer lint

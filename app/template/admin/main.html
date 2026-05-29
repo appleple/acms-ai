@@ -1,0 +1,172 @@
+<header>
+  <div>@include("/admin/topicpath.html")</div>
+  <div>
+    <h1 class="acms-admin-admin-title js-dialog-title">AI機能</h1>
+  </div>
+</header>
+
+<!-- BEGIN_MODULE Admin_Config -->
+<section>
+  <!-- BEGIN_IF [{notice_mess}/nem/] -->
+  <div role="alert" class="acms-admin-alert acms-admin-alert-icon acms-admin-alert-info">
+    <span class="acms-admin-icon acms-admin-icon-news acms-admin-alert-icon-before" aria-hidden="true"></span>
+    <button type="button" class="js-acms-alert-close acms-admin-alert-icon-after" aria-label="アラートを閉じる">×</button>
+    <!--T-->設定を保存しました<!--/T-->
+  </div>
+  <!-- END_IF -->
+  <!-- BEGIN_MODULE Admin_Errors -->
+  <div role="alert" class="acms-admin-alert acms-admin-alert-danger acms-admin-alert-icon">
+    <span class="acms-admin-icon acms-admin-icon-news acms-admin-alert-icon-before" aria-hidden="true"></span>
+    <button type="button" class="js-acms-alert-close acms-admin-alert-icon-after" aria-label="アラートを閉じる">×</button>
+    {error}
+  </div>
+  <!-- END_MODULE Admin_Errors -->
+
+  <form action="" method="post" class="acms-admin-form">
+    <div class="js-acms_fix_marker acms_fix_bg">
+      <div class="acms_fix_bg_index">
+        <input
+          type="submit"
+          name="ACMS_POST_Config"
+          value="<!--T-->保存<!--/T-->"
+          class="acms-admin-btn-admin acms-admin-btn-admin-primary acms-admin-btn-admin-save js-saving-splash"
+        />
+      </div>
+    </div>
+
+    <h2 class="acms-admin-admin-title2"><!-- T -->認証<!-- /T --></h2>
+
+    <table class="acms-admin-table-admin-edit">
+      <tr>
+        <th>
+          <!-- T -->Organization ID<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="ChatGPT API で取得する Organization ID を入力してください。"></i>
+        </th>
+        <td>
+          <input
+            type="text"
+            name="ai_organization_id"
+            value="{ai_organization_id}"
+            class="acms-admin-form-width-full"
+            placeholder="org-xxxxxxxxxxxxxxxxxxxxxxxx"
+          />
+          <input type="hidden" name="config[]" value="ai_organization_id" />
+        </td>
+      </tr>
+      <tr>
+        <th>
+          <!-- T -->Project ID<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="ChatGPT API で取得する Project ID を入力してください。"></i>
+        </th>
+        <td>
+          <input
+            type="text"
+            name="ai_project_id"
+            value="{ai_project_id}"
+            class="acms-admin-form-width-full"
+            placeholder="proj-xxxxxxxxxxxxxxxxxxxxxxxx"
+          />
+          <input type="hidden" name="config[]" value="ai_project_id" />
+        </td>
+      </tr>
+      <tr>
+        <th>
+          <!-- T -->API KEY<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="ChatGPT API で取得する API KEY を入力してください。"></i>
+        </th>
+        <td>
+          <input
+            type="text"
+            name="ai_api_key"
+            value="{ai_api_key}"
+            class="acms-admin-form-width-full"
+            placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
+          />
+          <input type="hidden" name="config[]" value="ai_api_key" />
+        </td>
+      </tr>
+
+      <tr>
+        <th>
+          <!-- T -->モデル<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="gpt-5.4, gpt-5.4-pro, gpt-5.4-mini, gpt-5.4-nanoが対応しています。"></i>
+        </th>
+        <td>
+          <!-- BEGIN_MODULE AI_Admin -->
+          <!-- BEGIN_IF [{ai_organization_id}/em/_or_/{ai_project_id}/em/_or_/{ai_api_key}/em] -->
+          <p>Organization ID, Project ID, API KEY を保存してください。</p>
+          <!-- ELSE -->
+          <!-- BEGIN_IF [{authorized}/eq/false] -->
+          <p>認証に失敗または、API KEY に使用できるモデルがない可能性があります。</p>
+          <!-- ELSE -->
+          <select name="ai_model" class="acms-admin-form-width-full">
+            <option value="">---</option>
+            <!-- BEGIN model:loop -->
+            <option
+              value="{model}"
+              <!-- BEGIN_IF [{model}/eq/{model_cur}] -->selected<!-- END_IF -->>
+              {model}
+            </option>
+            <!-- END model:loop -->
+          </select>
+          <input type="hidden" name="config[]" value="ai_model" />
+          <!-- END_IF -->
+          <!-- END_IF -->
+          <!-- END_MODULE AI_Admin -->
+        </td>
+      </tr>
+    </table>
+
+    <h2 class="acms-admin-admin-title2"><!-- T -->プロンプト設定<!-- /T --></h2>
+    <table class="acms-admin-table-admin-edit">
+      <tbody>
+        <tr>
+          <th class="acms-admin-float-left">タイトル</th>
+          <td>
+            <div class="acms-admin-form-checkbox">
+              <input
+                type="checkbox"
+                name="ai_title_valid[]"
+                {ai_title_valid:checked#on}
+                id="input-checkbox-ai_title_valid-on"
+                value="on" />
+              <label for="input-checkbox-ai_title_valid-on"><i class="acms-admin-ico-checkbox"></i>有効</label>
+              <p class="acms-admin-text-helper acms-admin-margin-top-mini">
+                有効にすることで、以下のテキストエリアに入力したプロンプトをもとに、記事タイトルの候補をAIが生成します。
+              </p>
+            </div>
+            <input type="hidden" name="config[]" value="ai_title_valid" />
+          </td>
+        </tr>
+        <tr>
+          <th></th>
+          <td>
+            <textarea name="ai_title_prompt" class="acms-admin-form-width-full">{ai_title_prompt}</textarea>
+            <input type="hidden" name="config[]" value="ai_title_prompt" />
+          </td>
+        </tr>
+        <tr>
+          <th><!-- T -->タグ<!-- /T --></th>
+          <td>
+            <div class="acms-admin-form-checkbox">
+              <input type="checkbox" name="ai_tag_valid[]" {ai_tag_valid:checked#on} id="input-checkbox-ai_tag_valid-on" value="on" />
+              <label for="input-checkbox-ai_tag_valid-on"><i class="acms-admin-ico-checkbox"></i>有効</label>
+              <p class="acms-admin-text-helper acms-admin-margin-top-mini">
+                有効にすることで、以下のテキストエリアに入力したプロンプトをもとに、記事タグの候補をAIが生成します。
+              </p>
+            </div>
+            <input type="hidden" name="config[]" value="ai_tag_valid" />
+          </td>
+        </tr>
+        <tr>
+          <th></th>
+          <td>
+            <textarea name="ai_tag_prompt" class="acms-admin-form-width-full">{ai_tag_prompt}</textarea>
+            <input type="hidden" name="config[]" value="ai_tag_prompt" />
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </form>
+</section>
+<!-- END_MODULE Admin_Config -->

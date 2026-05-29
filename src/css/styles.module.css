@@ -1,0 +1,643 @@
+/* Design Tokens */
+:root {
+  /* Primary */
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-primary-light: #eff6ff;
+  --color-primary-border: #93c5fd;
+  --color-primary-shadow: rgba(59, 130, 246, 0.3);
+
+  /* Text */
+  --color-text-darkest: #111827;
+  --color-text-dark: #1f2937;
+  --color-text-body: #374151;
+  --color-text-muted: #6b7280;
+  --color-text-placeholder: #9ca3af;
+  --color-text-general: #333;
+  --color-white: #fff;
+
+  /* Background */
+  --color-bg-white: #ffffff;
+  --color-bg-light: #f9fafb;
+  --color-bg-lighter: #f3f4f6;
+  --color-bg-input: #f9f9f9;
+
+  /* Border */
+  --color-border: #e5e7eb;
+  --color-border-medium: #d1d5db;
+  --color-border-light: #efefef;
+  --color-border-input: rgba(0, 0, 0, 0.2);
+
+  /* Feature-specific */
+  --color-pink-accent: #E28799;
+  --color-label-bg: rgb(162, 162, 179);
+  --color-focus-blue: #1861d8;
+  --color-focus-bg: #f2f2f5;
+}
+
+/* Components */
+.AutoResizeTextarea {
+  width: 100%;
+  resize: none;
+}
+
+/* Chat Modal - Split layout (Chat + Canvas) */
+.chatModalTitle {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+
+.chatModalDialog {
+  width: 100%;
+  max-width: 900px;
+}
+
+.chatModalBodyOuter {
+  padding: 0 !important;
+}
+
+.chatCanvasLayout {
+  display: flex;
+  height: 60vh;
+  min-height: 400px;
+  max-height: 600px;
+  background-color: var(--color-bg-lighter);
+}
+
+/* 左側: チャットエリア */
+.chatContainer {
+  width: 40%;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-bg-white);
+  border-right: 1px solid var(--color-border);
+  overflow: hidden;
+  height: 100%;
+}
+
+.chatContainerFull {
+  width: 100%;
+  border-right: none;
+}
+
+.chatResizeHandle {
+  flex-shrink: 0;
+  width: 6px;
+  background-color: var(--color-border);
+  cursor: col-resize;
+  transition: background-color 0.15s;
+}
+
+.chatResizeHandle:hover {
+  background-color: var(--color-primary-border);
+}
+
+.chatMessages {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  padding: 1.5rem 1rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-sizing: border-box;
+}
+
+.chatMessageUser,
+.chatMessageAssistant {
+  display: flex;
+}
+
+.chatMessageUser {
+  justify-content: flex-end;
+}
+
+.chatMessageAssistant {
+  justify-content: flex-start;
+}
+
+.chatMessageBubble {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  max-width: 80%;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.chatMessageUser .chatMessageBubble {
+  background-color: var(--color-primary);
+  color: var(--color-white);
+  align-self: flex-end;
+  border-bottom-right-radius: 0;
+}
+
+.chatMessageAssistant .chatMessageBubble {
+  background-color: var(--color-bg-lighter);
+  color: var(--color-text-dark);
+  align-self: flex-start;
+  border-bottom-left-radius: 0;
+}
+
+.chatInitialBlock {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--color-primary-border);
+  border-radius: 0.5rem;
+  background: var(--color-primary-light);
+}
+
+.chatInitialBlock .chatInitialHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.3rem 0.4rem 0.3rem 0.75rem;
+  background: #dbeafe;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #1d4ed8;
+  border-bottom: 1px solid var(--color-primary-border);
+  gap: 0.4rem;
+  border-radius: calc(0.5rem - 1px) calc(0.5rem - 1px) 0 0;
+}
+
+.chatInitialBlock .chatInitialHeader.chatBlockHeaderCollapsed {
+  border-bottom: none;
+  border-radius: calc(0.5rem - 1px);
+}
+
+.chatInitialBlock .chatInitialContent {
+  margin: 0.75rem 1rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--color-text-dark);
+  font-size: 0.875rem;
+}
+
+.chatCorrectionBlock {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--color-border-medium);
+  border-radius: 0.5rem;
+  background: var(--color-bg-white);
+}
+
+.chatCorrectionBlock .chatCorrectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.3rem 0.4rem 0.3rem 0.75rem;
+  background: var(--color-bg-lighter);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-text-body);
+  border-bottom: 1px solid var(--color-border);
+  gap: 0.4rem;
+  border-radius: calc(0.5rem - 1px) calc(0.5rem - 1px) 0 0;
+}
+
+.chatCorrectionBlock .chatCorrectionHeader.chatBlockHeaderCollapsed {
+  border-bottom: none;
+  border-radius: calc(0.5rem - 1px);
+}
+
+.chatCorrectionBlock .chatCorrectionContent {
+  margin: 0.75rem 1rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--color-text-dark);
+  font-size: 0.875rem;
+}
+
+.chatBlockHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  flex-shrink: 0;
+}
+
+.chatIconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  background: none;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  line-height: 1;
+}
+
+.chatIconButton:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--color-text-dark);
+}
+
+.chatIconButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.chatIconButtonWrapper {
+  position: relative;
+}
+
+.chatActionTooltip {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.25rem;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.chatAccordionToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  background: none;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  color: inherit;
+  line-height: 1;
+}
+
+.chatAccordionToggle:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.accordionArrow {
+  font-size: 1.1rem !important;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+  transform: rotate(0deg);
+  display: block !important;
+}
+
+.accordionArrowCollapsed {
+  transform: rotate(-90deg);
+}
+
+
+.chatCorrectionBtn {
+  padding: 0.75rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: bold;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border-medium);
+  background: var(--color-bg-white);
+  color: var(--color-text-body);
+  cursor: pointer;
+}
+
+.chatCorrectionBtn:hover {
+  background: var(--color-bg-light);
+}
+
+.chatCorrectionBtnPrimary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-white);
+}
+
+.chatCorrectionBtnPrimary:hover {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.chatStreamingCursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  background-color: var(--color-text-dark);
+  animation: chatCursorBlink 1s step-end infinite;
+  vertical-align: text-bottom;
+}
+
+@keyframes chatCursorBlink {
+  50% { opacity: 0; }
+}
+
+/* 会話が進んでも消えない説明（メッセージ一覧の先頭に常時表示） */
+.chatDescription {
+  flex-shrink: 0;
+  padding: 1rem 1rem 0.75rem;
+  background-color: var(--color-bg-white);
+  color: var(--color-text-placeholder);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.chatLoadingStatus {
+  color: var(--color-text-placeholder);
+  font-size: 0.85rem;
+  padding: 0.25rem 0;
+  flex-shrink: 0;
+}
+
+.chatInputArea {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  padding: 0.75rem 1rem;
+  max-height: 200px;
+}
+
+.chatInputWrapper {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.chatInput {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-border-medium);
+  border-radius: 0.5rem;
+  outline: none;
+  font-size: 0.95rem;
+}
+
+.chatInput:focus {
+  border-color: var(--color-primary);
+}
+
+.chatSendButton {
+  flex-shrink: 0;
+  padding: 0.75rem 1.5rem;
+  background-color: var(--color-primary);
+  color: var(--color-white);
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.95rem;
+}
+
+.chatSendButton:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+}
+
+.chatSendButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 右側: Canvasエリア */
+.canvasContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
+.canvasHeader {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-light);
+  flex-shrink: 0;
+}
+
+.canvasFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-light);
+  flex-shrink: 0;
+}
+
+.canvasCloseButton {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.85rem;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  line-height: 1;
+  border-radius: 0.25rem;
+}
+
+.canvasCloseButton:hover {
+  background: var(--color-border);
+  color: var(--color-text-darkest);
+}
+
+.canvasContentWrapper {
+  flex: 1;
+  min-height: 0;
+  padding: 1rem;
+  display: flex;
+  overflow: hidden;
+}
+
+.canvasContent {
+  flex: 1;
+  min-height: 0;
+  background-color: var(--color-bg-white);
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  color: var(--color-text-placeholder);
+  overflow-y: auto;
+}
+
+.canvasContentText {
+  margin: 0;
+  padding: 1rem;
+  overflow: auto;
+  text-align: left;
+  color: var(--color-text-dark);
+  white-space: pre-wrap;
+  word-break: break-word;
+  width: 100%;
+}
+
+/* ドロワー表示時に #acms-admin-main へ付与するレイアウトクラス */
+@media (min-width: 769px) {
+  :global(#acms-admin-main.acms-ai-drawer-layout) {
+    display: flex !important;
+    column-gap: 20px;
+    align-items: stretch;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  :global(#acms-admin-main.acms-ai-drawer-layout) > main {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+  }
+}
+
+/* SideRightDrawer */
+.sideRightDrawer {
+  flex-shrink: 0;
+  height: 100%;
+  width: 0;
+  background-color: var(--color-bg-white);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  position: relative;
+  margin-right: -20px;
+}
+
+.sideRightDrawerResizeHandle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+  z-index: 1;
+  background-color: transparent;
+  transition: background-color 0.15s;
+}
+
+.sideRightDrawerResizeHandle:hover {
+  background-color: var(--color-primary-shadow);
+}
+
+.sideRightDrawerOpen {
+  width: 480px;
+}
+
+.sideRightDrawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-light);
+  flex-shrink: 0;
+}
+
+.sideRightDrawerTitle {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--color-text-darkest);
+}
+
+.sideRightDrawerClose {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  line-height: 1;
+  border-radius: 0.25rem;
+}
+
+.sideRightDrawerClose:hover {
+  background: var(--color-border);
+  color: var(--color-text-darkest);
+}
+
+.sideRightDrawerBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+/* モバイル用 Canvasバックドロップ (デスクトップでは非表示) */
+.canvasMobileBackdrop {
+  display: none;
+}
+
+/* モバイル対応 */
+@media (max-width: 768px) {
+  .sideRightDrawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 100%;
+    width: 100% !important;
+    z-index: 2147483647;
+  }
+
+  .sideRightDrawerOpen {
+    width: 100% !important;
+  }
+
+  .sideRightDrawerResizeHandle {
+    display: none;
+  }
+
+  .chatResizeHandle {
+    display: none;
+  }
+
+  .chatContainer {
+    width: 100% !important;
+    min-width: 0;
+    flex-shrink: 1;
+  }
+
+  .canvasMobileBackdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+  }
+
+  .canvasContainer {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: var(--color-bg-white);
+    animation: canvasSlideUp 0.2s ease-out;
+  }
+}
+
+@keyframes canvasSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+

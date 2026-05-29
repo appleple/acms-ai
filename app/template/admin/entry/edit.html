@@ -1,0 +1,17 @@
+<!-- BEGIN_MODULE AI_Config -->
+<!-- BEGIN_IF [\{authorized\}/eq/true] -->
+<details class="acms-admin-accordion">
+  <summary class="acms-admin-accordion-button">
+    <span id="seo-entry-accordion-title"><!--T-->AI機能<!--/T--></span>
+    <span class="acms-admin-icon-arrow-small-down acms-admin-margin-left-mini" aria-hidden="true"></span>
+  </summary>
+  <div class="acms-admin-accordion-panel">
+    <div id="js-acms-ai"></div>
+    <div id="js-acms-ai-re-mount"></div>
+  </div>
+</details>
+
+<link rel="stylesheet" href="%{AI_CSS}">
+<script crossorigin src="%{AI_JS}"></script>
+<!-- END_IF -->
+<!-- END_MODULE AI_Config -->
