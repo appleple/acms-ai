@@ -70,6 +70,9 @@ async function build() {
     // ZIPファイル名とパスの設定
     const zipName = `AI${pkg.version}.zip`
     const zipFile = path.join(buildDir, zipName)
+    // 常に最新版を指すバージョンなしのZIP
+    const latestZipName = 'AI.zip'
+    const latestZipFile = path.join(buildDir, latestZipName)
 
     // カレントディレクトリを一時的に変更してZIP作成
     const currentDir = process.cwd()
@@ -80,10 +83,14 @@ async function build() {
       process.chdir(currentDir)  // 元のディレクトリに戻る
     }
 
+    // バージョン付きZIPを最新版（AI.zip）としてもコピー
+    await fs.copy(zipFile, latestZipFile, { overwrite: true })
+
     // プラグインディレクトリを削除（ZIPファイルのみ残す）
     await fs.remove(pluginDir)
 
     console.log(`Build completed: ${zipFile}`)
+    console.log(`Latest copy: ${latestZipFile}`)
   } catch (err) {
     console.error('Build failed:', err)
     console.error('Error details:', err.stack)
