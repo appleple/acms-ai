@@ -1,6 +1,6 @@
 import co from 'co'
 import { systemCmd } from './lib/system.js'
-import pkg from '../package.json' assert { type: 'json' };
+import pkg from '../package.json' with { type: 'json' };
 
 co(function* () {
   try {
