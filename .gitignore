@@ -14,6 +14,9 @@ dist-ssr
 
 app/bundle
 
+# build 作業ディレクトリ（zip 化前の解凍物）。zip 自体は追跡する
+build/AI/
+
 /vendor
 .phplint-cache
 
