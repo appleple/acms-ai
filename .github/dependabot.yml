@@ -1,13 +1,29 @@
-# ワークフローが使う GitHub Actions を最新に保つ。patch/minor は CI 通過後に
-# .github/workflows/dependabot-auto-merge.yml が自動マージし、major は手動レビューする。
+# 依存を最新に保つ。patch/minor は CI 通過後に .github/workflows/dependabot-auto-merge.yml が自動マージし、
+# major は手動レビューする（各 group を minor/patch に限定しているため、major は group 外＝個別 PR で届く）。
+# 自動マージのワークフローは ecosystem 非依存（update-type で判定）なので、下記いずれの PR も対象になる。
 version: 2
 updates:
+  # ワークフローが使う GitHub Actions。
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
     groups:
       github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # 管理画面 UI（React/TypeScript）の npm 依存。パッケージマネージャは pnpm（pnpm-lock.yaml を検出）。
+  # minor/patch は 1 本の PR にまとめて自動マージし、major（vite / vitest / typescript 等）は個別 PR で手動確認する。
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm:
         patterns:
           - "*"
         update-types:
