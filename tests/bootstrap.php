@@ -17,11 +17,15 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/ablogcms/testing-framework/bootstrap.php';
 
-// a-blog cms コアは boot 時に extension/plugins/{Name}/ を指すプラグイン用オートローダを prepend 登録する。
-// 同梱 docker-compose.yml では app/ を extension/plugins/AI へバインドマウントするため、放置するとテスト対象
-// クラスがそちら（インストール済みコピー）から読み込まれ、リポジトリの app/ とパスが食い違ってカバレッジが
-// 紐づかない。composer オートローダを prepend し直し、テスト対象は必ずリポジトリの app/ から解決させる
-// （＝コミット対象のコードそのものを検証する）。
+// テスト実行時は composer オートローダが 2 つ生きている:
+//   (1) 本リポジトリの vendor        … PSR-4 `Acms\Plugins\AI\` => app/
+//   (2) a-blog cms コアの php/vendor  … PSR-4 `Acms\Plugins\`   => extension/plugins/
+// (2) はコア boot（testing-framework の bootstrap 経由）で composer 標準どおり prepend 登録されるため
+// (1) より前に走り、`Acms\Plugins\AI\...` を extension/plugins/AI から解決してしまう。同梱 docker-compose.yml は
+// app/ を extension/plugins/AI へバインドマウントしており中身は同一なのでテストの合否は変わらないが、実行パスが
+// app/ と食い違うため <source>=app のカバレッジが紐づかない。(1) を prepend し直して AI 名前空間をリポジトリの
+// app/ から解決させる（＝バインドマウント先ではなく、コミット対象のコードそのものを検証する）。コア専用クラスは
+// (1) に無く (2) へフォールスルーするため副作用はない。
 $composerLoader = require __DIR__ . '/../vendor/autoload.php';
 if ($composerLoader instanceof \Composer\Autoload\ClassLoader) {
     $composerLoader->unregister();
