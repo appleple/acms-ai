@@ -33,7 +33,7 @@
     "classnames": "^2.5.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-tooltip": "^5.28.0"
+    "react-tooltip": "^6.0.8"
   },
   "pnpm": {
     "executionEnv": {
