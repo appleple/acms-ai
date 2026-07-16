@@ -17,7 +17,9 @@ parameters:
     excludePaths:
         analyse:
             # 管理画面 UI のビルド成果物（JS/CSS/SVG）。PHP は無いが将来混入しても解析しないよう明示する。
-            - app/bundle
+            # Vite ビルドで生成され Git 管理外のため、CI の checkout には存在しない。存在しなくてもエラーに
+            # しないよう (?) で任意扱いにする（PHPStan は既定で excludePaths の実在を要求するため）。
+            - app/bundle (?)
     scanDirectories:
         # a-blog cms 本体コア。appleple/acms イメージ／同梱 docker-compose.yml ではここに展開される。
         # ローカルで別パスの本体を使う場合は、この .dist をコピーした phpstan.neon（git 無視）で上書きする。
