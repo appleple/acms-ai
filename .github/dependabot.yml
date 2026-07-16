@@ -1,0 +1,15 @@
+# ワークフローが使う GitHub Actions を最新に保つ。patch/minor は CI 通過後に
+# .github/workflows/dependabot-auto-merge.yml が自動マージし、major は手動レビューする。
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
