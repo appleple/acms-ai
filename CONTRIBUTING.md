@@ -1,8 +1,9 @@
-# 開発ガイド（テスト・静的解析・CI）
+# コントリビューションガイド
 
-AI 拡張アプリの PHP 側の自動テスト・静的解析・コーディング規約・CI の実行手順をまとめる。
-管理画面 UI（React/TypeScript）のビルド・テストは [package.json](../package.json) の `pnpm run build` /
-`pnpm run test` を参照。
+AI 拡張アプリの開発（自動テスト・静的解析・コーディング規約・CI）の手順をまとめる。
+利用者向けの使い方は [docs/README.md](docs/README.md) を参照。
+
+> このファイルは開発者向けで、配布パッケージ（`build/AI.zip`）には含めない。
 
 ## 前提
 
@@ -10,6 +11,8 @@ AI 拡張アプリの PHP 側の自動テスト・静的解析・コーディン
 - テスト基盤は [ablogcms/testing-framework](https://packagist.org/packages/ablogcms/testing-framework)（`3.2.*`）。
 - ランタイム依存（PHP パッケージ）は同梱していない。独自 DB テーブルも持たない
   （利用するのはコアの `tag` テーブルのみ）。
+- 管理画面 UI（React/TypeScript）のビルド・テストは [package.json](package.json) の `pnpm run build` /
+  `pnpm run test` を参照。
 
 ## セットアップ
 
@@ -79,7 +82,7 @@ php -d pcov.enabled=1 -d pcov.directory="$PWD" vendor/bin/phpunit --coverage-tex
 
 ## CI（GitHub Actions）
 
-[.github/workflows/ci.yaml](../.github/workflows/ci.yaml) が push / pull_request で動く。
+[.github/workflows/ci.yaml](.github/workflows/ci.yaml) が push / pull_request で動く。
 
 - **quality**: 同梱 `docker-compose.yml` で a-blog cms + MySQL を起動し、コンテナ内で `composer lint` /
   `composer analyse` を 1 回実行する（PHPCompatibility / PHPStan はレンジ全体を解析するため PHP ごとの反復は不要）。
@@ -94,7 +97,7 @@ php -d pcov.enabled=1 -d pcov.directory="$PWD" vendor/bin/phpunit --coverage-tex
 ## リリース
 
 プラグインのバージョンは `app/ServiceProvider.php` の `$version` が正。`v1.2.3` のようなタグを push すると
-[.github/workflows/release.yml](../.github/workflows/release.yml) が UI をビルド（`pnpm run build`）→ `app/` を zip 化
+[.github/workflows/release.yml](.github/workflows/release.yml) が UI をビルド（`pnpm run build`）→ `app/` を zip 化
 → GitHub Release として公開する。タグと `$version` が食い違うと Verify ステップで失敗し、誤った zip は公開されない。
 
 ```bash

@@ -191,4 +191,4 @@ acms-ai-assistant-button[loading] button {
 ## 開発
 
 PHP 側の自動テスト・静的解析（PHPStan level 6）・コーディング規約・CI・カバレッジ計測の手順は
-[開発ガイド](development.md) を参照してください。
+[コントリビューションガイド](../CONTRIBUTING.md) を参照してください。
