@@ -187,3 +187,8 @@ acms-ai-assistant-button[loading] button {
 | `acms-ai:request-end` | AI のレスポンス受信完了時 |
 | `acms-ai:before-insert` | textarea への挿入直前 |
 | `acms-ai:after-insert` | textarea への挿入直後 |
+
+## 開発
+
+PHP 側の自動テスト・静的解析（PHPStan level 6）・コーディング規約・CI・カバレッジ計測の手順は
+[開発ガイド](development.md) を参照してください。
