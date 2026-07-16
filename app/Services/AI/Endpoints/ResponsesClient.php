@@ -8,7 +8,7 @@ class ResponsesClient
 {
     use EndpointTrait;
 
-    /** @var array|null */
+    /** @var array<string, mixed>|null */
     private $textFormat = null;
 
     public function createPayload(): void
@@ -17,6 +17,9 @@ class ResponsesClient
         $this->textFormat = null;
     }
 
+    /**
+     * @return array{type: string, image_url: string}
+     */
     public function createImageContent(string $url): array
     {
         return [
@@ -25,6 +28,9 @@ class ResponsesClient
         ];
     }
 
+    /**
+     * @return array{type: string, text: string}
+     */
     public function createOutputTextContent(string $text): array
     {
         return [
@@ -34,7 +40,7 @@ class ResponsesClient
     }
 
     /**
-     * @param array $format e.g. ['type' => 'json_schema', 'name' => 'tag_list', 'schema' => [...]]
+     * @param array<string, mixed> $format e.g. ['type' => 'json_schema', 'name' => 'tag_list', 'schema' => [...]]
      */
     public function setTextFormat(array $format): void
     {
@@ -43,8 +49,9 @@ class ResponsesClient
 
     /**
      * @param string $json
-     * @param array<string> $headers
+     * @param list<string> $headers
      * @return string|false
+     * @codeCoverageIgnore 実通信（curl）の I/O 境界。決定的なユニット検証ができないため実機/E2E で担保する。
      */
     public function exec(string $json, array $headers): string|false
     {
@@ -62,7 +69,7 @@ class ResponsesClient
             $error = curl_error($ch);
             throw new \Exception("cURL Error: " . $error);
         }
-        return $result;
+        return is_string($result) ? $result : false;
     }
 
     public function request(): mixed
@@ -86,9 +93,16 @@ class ResponsesClient
         }
 
         $json = json_encode($postData);
+        if ($json === false) {
+            \AcmsLogger::error('JSON encode error: ' . json_last_error_msg());
+            return null;
+        }
 
         try {
             $result = $this->exec($json, $this->buildHeaders());
+            if ($result === false) {
+                return null;
+            }
             $parse = json_decode($result);
             return $parse;
         } catch (\Exception $e) {
@@ -101,20 +115,29 @@ class ResponsesClient
      * Extract text content from Responses API output
      * Response structure: { output: [{ type: "message", content: [{ type: "output_text", text: "..." }] }] }
      *
-     * @param object $response
+     * @param mixed $response json_decode 済みの Responses API 応答（想定は \stdClass）
      * @return string|null
      */
     public static function extractText($response): ?string
     {
-        if (!isset($response->output)) {
+        if (!$response instanceof \stdClass || !isset($response->output) || !is_iterable($response->output)) {
             return null;
         }
         foreach ($response->output as $output) {
-            if ($output->type === 'message' && isset($output->content)) {
-                foreach ($output->content as $content) {
-                    if ($content->type === 'output_text' && isset($content->text)) {
-                        return $content->text;
-                    }
+            if (!$output instanceof \stdClass || ($output->type ?? null) !== 'message') {
+                continue;
+            }
+            if (!isset($output->content) || !is_iterable($output->content)) {
+                continue;
+            }
+            foreach ($output->content as $content) {
+                if (
+                    $content instanceof \stdClass
+                    && ($content->type ?? null) === 'output_text'
+                    && isset($content->text)
+                    && is_string($content->text)
+                ) {
+                    return $content->text;
                 }
             }
         }

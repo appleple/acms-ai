@@ -40,6 +40,8 @@ class ServiceProvider extends ACMS_App
 
     /**
      * サービスの初期処理
+     *
+     * @return void
      */
     public function init()
     {

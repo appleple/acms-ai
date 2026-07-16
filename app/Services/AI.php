@@ -14,9 +14,9 @@ class AI
      * @param string $organizationId ChatGPTの組織キー
      * @param string $projectId ChatGPTのプロジェクトキー
      * @param string $apiKey ChatGPTのAPIキー
-     * @return array|null $response 使用できるモデルの配列、失敗するとnull
+     * @return list<string>|null $response 使用できるモデルの配列、失敗するとnull
     */
-    public function auth(string $organizationId, string $projectId, string $apiKey)
+    public function auth(string $organizationId, string $projectId, string $apiKey): ?array
     {
         if (!$organizationId || !$projectId || !$apiKey) {
             return null;
@@ -33,22 +33,18 @@ class AI
 
         $response = null;
         try {
-            $ch = curl_init();
-
-            $options = [
-                CURLOPT_URL => $url,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HTTPHEADER => $headers
-            ];
-            curl_setopt_array($ch, $options);
-            $result = curl_exec($ch);
-            if ($result === false) {
-                throw new \Exception('cURL Error: ' . curl_error($ch));
-            }
+            $result = $this->httpGetJson($url, $headers);
             $decodedResult = json_decode($result);
             if (json_last_error() !== JSON_ERROR_NONE) {
                 throw new \Exception('JSON decode error: ' . json_last_error_msg());
-            } elseif (isset($decodedResult->error)) {
+            }
+            // Why not: 元は object 前提で getModelsByAuthResponse() に素通ししていたが、非オブジェクト応答
+            // （配列やスカラ）では TypeError で fatal していた。catch(\Exception) では拾えないため、ここで
+            // 明示的に弾いてログ＋null 返却の安全側に倒す。
+            if (!$decodedResult instanceof \stdClass) {
+                throw new \Exception('Unexpected response from ChatGPT server.');
+            }
+            if (isset($decodedResult->error)) {
                 throw new \Exception("ChatGPT's server error: " . $decodedResult->error->message);
             }
 
@@ -61,10 +57,34 @@ class AI
     }
 
     /**
+     * OpenAI の API へ GET し、レスポンスボディ（JSON 文字列）を返す。curl 依存の I/O 境界。
+     * 実通信を切り離すためのシームで、テストではこのメソッドを差し替えて auth() の解析・分岐を検証する。
+     *
+     * @param list<string> $headers HTTP ヘッダ
+     * @return string レスポンスボディ
+     * @throws \Exception cURL 実行に失敗した場合
+     * @codeCoverageIgnore 実通信（curl）の I/O 境界。決定的なユニット検証ができないため実機/E2E で担保する。
+     */
+    protected function httpGetJson(string $url, array $headers): string
+    {
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => $headers,
+        ]);
+        $result = curl_exec($ch);
+        if (!is_string($result)) {
+            throw new \Exception('cURL Error: ' . curl_error($ch));
+        }
+        return $result;
+    }
+
+    /**
      * @param Field $config コンフィグのフィールド
-     * @return array|null $result 認証キーの配列｜失敗するとnull
+     * @return array<string, mixed> $result 認証キーの配列
     */
-    public function getCertification(Field $config)
+    public function getCertification(Field $config): array
     {
         $organizationId = $config->get('ai_organization_id');
         $projectId = $config->get('ai_project_id');
@@ -82,9 +102,9 @@ class AI
     }
 
     /**
-     * @return Field|null $result プロンプト｜失敗するとnull
+     * @return Field $config プロンプトを含むコンフィグ
     */
-    public function getConfig()
+    public function getConfig(): Field
     {
         $config = Config::loadDefaultField();
         $config->overload(Config::loadBlogConfig(BID));
@@ -92,15 +112,18 @@ class AI
     }
 
     /**
-     * @param object $result
-     * @return array $models
+     * @param \stdClass $result models エンドポイントのデコード済み応答
+     * @return list<string> $models 利用可能なモデル名の配列
      */
-    private function getModelsByAuthResponse(object $result)
+    private function getModelsByAuthResponse(\stdClass $result): array
     {
         $models = [];
+        if (!isset($result->data) || !is_iterable($result->data)) {
+            return $models;
+        }
         foreach ($result->data as $datum) {
-            if ($this->availableModel($datum->id)) {
-                $models[] = $datum->id;
+            if (is_object($datum) && isset($datum->id) && $this->availableModel((string) $datum->id)) {
+                $models[] = (string) $datum->id;
             }
         }
         return $models;
@@ -110,7 +133,7 @@ class AI
      * @param string $model モデル名
      * @return string|null $available 利用可能ならモデル名を返し、利用できないならnullを返す。
      */
-    public function availableModel(string $model)
+    public function availableModel(string $model): ?string
     {
         if (!$model) {
             return null;
@@ -124,9 +147,9 @@ class AI
     }
 
     /**
-     * @return array $result タグの配列
+     * @return list<string> $result タグの配列
      */
-    public static function getTagNameAll()
+    public static function getTagNameAll(): array
     {
         $result = [];
         try {
@@ -135,8 +158,12 @@ class AI
             $SQL->addSelect('tag_name');
             $q = $SQL->get(dsn());
             $tagNameArr = $DB->query($q, 'all');
-            foreach ($tagNameArr as $row) {
-                $result[] = $row["tag_name"];
+            if (is_iterable($tagNameArr)) {
+                foreach ($tagNameArr as $row) {
+                    if (is_array($row) && isset($row['tag_name'])) {
+                        $result[] = (string) $row['tag_name'];
+                    }
+                }
             }
         } catch (Exception $e) {
             \AcmsLogger::error($e->getMessage());
