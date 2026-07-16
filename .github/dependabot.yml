@@ -1,0 +1,51 @@
+# 依存を最新に保つ。patch/minor は CI 通過後に .github/workflows/dependabot-auto-merge.yml が自動マージし、
+# major は手動レビューする（各 group を minor/patch に限定しているため、major は group 外＝個別 PR で届く）。
+# 自動マージのワークフローは ecosystem 非依存（update-type で判定）なので、下記いずれの PR も対象になる。
+version: 2
+updates:
+  # ワークフローが使う GitHub Actions。
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # 管理画面 UI（React/TypeScript）の npm 依存。パッケージマネージャは pnpm（pnpm-lock.yaml を検出）。
+  # minor/patch は 1 本の PR にまとめて自動マージし、major（vite / vitest / typescript 等）は個別 PR で手動確認する。
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # PHP の開発依存（PHPStan / PHPUnit / phpcs / phpcompatibility 等）。composer.lock をコミットしているため
+  # ロック更新が届く。これらは配布物（app/ の zip）には含まれない dev ツールで、更新の影響は CI/ローカル開発のみ
+  # かつ CI で検証されるため、minor/patch は 1 本にまとめて自動マージ、major は個別 PR で手動確認する。
+  - package-ecosystem: "composer"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      composer:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # テスト基盤は検証対象の a-blog cms マイナー（現状 3.2）に手動で合わせる。3.3 以降への minor/major 昇格は
+      # CI マトリクス（acms 3.2）とずれるため Dependabot に触らせない（3.2.x のパッチ更新だけは通す）。
+      - dependency-name: "ablogcms/testing-framework"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]

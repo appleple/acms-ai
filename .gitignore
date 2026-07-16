@@ -20,6 +20,17 @@ app/bundle
 /vendor
 .phplint-cache
 
+# PHPUnit
+.phpunit.cache/
+.phpunit.result.cache
+/coverage/
+
+# ローカル上書き用（コミットするのは *.dist / *.example のみ）
+.env
+/phpunit.xml
+/phpcs.xml
+/phpstan.neon
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -1,0 +1,26 @@
+includes:
+    # ablogcms/testing-framework 同梱。a-blog cms コアのシンボル（スタブ・短縮ファサード・request 定数）を供給する。
+    - vendor/ablogcms/testing-framework/phpstan/extension.neon
+parameters:
+    # a-blog cms コアは型付けが緩く（Config::get / DB::query など多くの API が mixed を返す）、level 9 相当の
+    # strict-mixed 検査は本体側の型に由来するノイズ（cast mixed to string 等）が大量に出る。プラグイン向けの
+    # 実用水準として 6 を採用する（未定義メソッド・引数型・戻り値型・デッドコード・型ヒント欠落までを検出）。
+    level: 6
+    # 本番の対応 PHP は 8.1〜8.5。全レンジで解析する。
+    phpVersion:
+        min: 80100
+        max: 80500
+    paths:
+        # プラグイン本体は app/（composer.json の autoload で Acms\Plugins\AI\ => app/）。
+        - app
+        - tests
+    excludePaths:
+        analyse:
+            # 管理画面 UI のビルド成果物（JS/CSS/SVG）。PHP は無いが将来混入しても解析しないよう明示する。
+            # Vite ビルドで生成され Git 管理外のため、CI の checkout には存在しない。存在しなくてもエラーに
+            # しないよう (?) で任意扱いにする（PHPStan は既定で excludePaths の実在を要求するため）。
+            - app/bundle (?)
+    scanDirectories:
+        # a-blog cms 本体コア。appleple/acms イメージ／同梱 docker-compose.yml ではここに展開される。
+        # ローカルで別パスの本体を使う場合は、この .dist をコピーした phpstan.neon（git 無視）で上書きする。
+        - /var/www/html/php

@@ -8,7 +8,8 @@ class Hook
      * JSが更新された場合に、以前のバージョンで作られたキャッシュを使用しないようにキャッシュバスティングを行う
      * scriptタグでJSを読み込む際に、acmsのグローバル変数を経由する
      *
-     * @param \Field &$globalVars
+     * @param \Field $globalVars
+     * @return void
      */
     public function extendsGlobalVars(&$globalVars)
     {

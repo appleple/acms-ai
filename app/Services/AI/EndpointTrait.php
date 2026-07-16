@@ -13,7 +13,7 @@ trait EndpointTrait
     /** @var string */
     protected $endpoint = '';
 
-    /** @var array */
+    /** @var list<array{role: string, content: array<int, array<string, mixed>>}> */
     protected $input = [];
 
     /** @var string|null */
@@ -46,6 +46,9 @@ trait EndpointTrait
         $this->resetEndpointState();
     }
 
+    /**
+     * @param list<array<string, mixed>> $contents
+     */
     public function addInput(string $role, array $contents): void
     {
         $this->input[] = [
@@ -54,6 +57,9 @@ trait EndpointTrait
         ];
     }
 
+    /**
+     * @return array{type: string, text: string}
+     */
     public function createTextContent(string $text, string $role = 'user'): array
     {
         $type = $role === 'assistant' ? 'output_text' : 'input_text';

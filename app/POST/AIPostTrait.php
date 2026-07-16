@@ -47,6 +47,9 @@ trait AIPostTrait
         return Common::responseJson($response);
     }
 
+    /**
+     * @param list<array{role?: string, content?: string}> $promptMessages
+     */
     protected function executeAiRequest(string $instructions, string $schemaName, array $promptMessages): mixed
     {
         if (!$this->apiKey || !$this->model) {

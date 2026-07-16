@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         failOnWarning="true"
+         failOnRisky="true"
+         cacheDirectory=".phpunit.cache">
+    <testsuites>
+        <!-- DB を使わない純粋ロジック（Acms\TestingFramework\TestCase）。 -->
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <!-- DB を使う統合テスト（Acms\TestingFramework\DatabaseTestCase。トランザクションで自動ロールバック）。 -->
+        <testsuite name="Integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <!--
+                カバレッジ母数はプラグイン本体（app）全体とする。ドメインロジック層（Services）は行 90% 以上を
+                目標とするが、母数をあえて app 全体に広げておくことで、将来 Services 以外のディレクトリを
+                追加したときにテスト不在（低カバレッジ）を検知できるようにする。
+                redirect()/exit/HTTP・テンプレート依存（GET/POST ハンドラ等）は決定的なユニット検証が難しく
+                実機/E2E で担保するため、現状はカバレッジに現れないが、隠さず可視化しておく。
+            -->
+            <directory suffix=".php">app</directory>
+        </include>
+        <exclude>
+            <!-- 管理画面 UI のビルド成果物（JS/CSS/SVG）。PHP は無い。 -->
+            <directory>app/bundle</directory>
+        </exclude>
+    </source>
+    <php>
+        <!--
+            a-blog cms 本体のルート。Docker（appleple/acms イメージ／同梱 docker-compose.yml）では
+            コンテナ内の /var/www/html。ローカルで別パスの本体を使う場合は、この .dist をコピーした
+            phpunit.xml（git 無視）で ACMS_ROOT を上書きする。
+        -->
+        <env name="ACMS_ROOT" value="/var/www/html"/>
+    </php>
+</phpunit>

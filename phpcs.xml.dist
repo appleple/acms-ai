@@ -3,10 +3,16 @@
 <ruleset name="phpcs rules">
     <rule ref="PSR12">
       <exclude name="PSR1.Methods.CamelCapsMethodName.NotCamelCaps"/>
+      <exclude name="Generic.Files.LineLength.TooLong"/>
     </rule>
 
     <!-- Run against the PHPCompatibility ruleset -->
-    <rule ref="PHPCompatibility"/>
+    <rule ref="PHPCompatibility">
+        <!-- PHP 8.5 の __destruct-after-constructor-exit 警告。対象レンジ 8.1-8.5 では無関係。 -->
+        <exclude name="PHPCompatibility.FunctionDeclarations.RemovedCallingDestructAfterConstructorExit.NeedsInspection"/>
+        <!-- fgetcsv() の $escape 既定変更は PHP 9.0 の前方互換警告。対象レンジ外。 -->
+        <exclude name="PHPCompatibility.ParameterValues.RemovedProprietaryCSVEscaping.DeprecatedParamNotPassed"/>
+    </rule>
     <config name="testVersion" value="8.1-8.5"/>
 
     <!-- 配列の古い構文を使用禁止にする -->
@@ -19,7 +25,6 @@
     <rule ref="Generic.VersionControl.GitMergeConflict"/>
     <!-- 非推奨の関数を使用禁止にする -->
     <rule ref="Generic.PHP.DeprecatedFunctions"/>
-    <!-- <rule ref="Generic.CodeAnalysis.EmptyStatement"/> -->
     <rule ref="Generic.CodeAnalysis.UnconditionalIfStatement"/>
 
     <!-- 拡張子が php のものにだけ適用 -->
@@ -33,6 +38,7 @@
 
     <!-- 適用するファイル・ディレクトリ -->
     <file>app</file>
+    <file>tests</file>
 
     <!-- 除外するファイル・ディレクトリ -->
     <exclude-pattern>*/vendor/*</exclude-pattern>
