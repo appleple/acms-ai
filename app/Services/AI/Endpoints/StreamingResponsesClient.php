@@ -17,6 +17,7 @@ class StreamingResponsesClient
      * Does not use setTextFormat - chat returns free-form text.
      *
      * @return void
+     * @codeCoverageIgnore SSE を curl コールバックで逐次出力する実通信の I/O 境界。決定的なユニット検証ができないため実機/E2E で担保する。
      */
     public function stream(): void
     {

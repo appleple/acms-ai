@@ -19,18 +19,17 @@
     <source>
         <include>
             <!--
-                カバレッジ目標（行 90% 以上）はドメインロジック層（Services）を対象とする。GET/POST ハンドラ・
-                ServiceProvider・Hook は redirect()/exit/HTTP/テンプレート依存でユニット対象外＝実機/E2E のため
-                カバレッジ母数から外す（テンプレート同様、契約は実機で担保する）。
+                カバレッジ母数はプラグイン本体（app）全体とする。ドメインロジック層（Services）は行 90% 以上を
+                目標とするが、母数をあえて app 全体に広げておくことで、将来 Services 以外のディレクトリを
+                追加したときにテスト不在（低カバレッジ）を検知できるようにする。
+                redirect()/exit/HTTP・テンプレート依存（GET/POST ハンドラ等）は決定的なユニット検証が難しく
+                実機/E2E で担保するため、現状はカバレッジに現れないが、隠さず可視化しておく。
             -->
-            <directory suffix=".php">app/Services</directory>
+            <directory suffix=".php">app</directory>
         </include>
         <exclude>
-            <!--
-                SSE（Server-Sent Events）をクライアントへ素通しするだけの純粋な HTTP ストリーミング I/O。
-                curl のコールバックで逐次出力するため決定的なユニット検証ができず、実機/E2E で担保する。
-            -->
-            <file>app/Services/AI/Endpoints/StreamingResponsesClient.php</file>
+            <!-- 管理画面 UI のビルド成果物（JS/CSS/SVG）。PHP は無い。 -->
+            <directory>app/bundle</directory>
         </exclude>
     </source>
     <php>

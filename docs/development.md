@@ -53,13 +53,17 @@ composer check     # 上記 3 つをまとめて実行
 | Unit | `Acms\TestingFramework\TestCase` | DB を使わない純粋ロジック | `tests/Unit/` |
 | Integration | `Acms\TestingFramework\DatabaseTestCase` | DB 依存ロジック（トランザクションで自動ロールバック） | `tests/Integration/` |
 
-- テスト対象はドメインロジック層（`app/Services`）。行カバレッジ **90% 以上**を維持する。
-- `redirect()` / `exit` / HTTP・テンプレート依存（`app/GET`・`app/POST` のハンドラ、`ServiceProvider`、`Hook`、
-  および Services 内の実通信シーム `AI::httpGetJson` / `ResponsesClient::exec` / `StreamingResponsesClient`）は
-  決定的なユニット検証ができないため対象外＝実機/E2E で担保する。カバレッジ母数からも外している
-  （`phpunit.xml.dist` の `<source>` と `@codeCoverageIgnore`）。
-- 実通信は差し替え可能な薄いシームに切り出してあり、テスト用ダブル（`tests/Support/`）で解析・分岐ロジックを
-  決定的に検証する。
+- **ドメインロジック層（`app/Services`）は行カバレッジ 90% 以上**を目標とする。純粋ロジックはユニットで、
+  DB 依存は統合テストで検証する。
+- カバレッジの母数（`phpunit.xml.dist` の `<source>`）は **`app` 全体**にしている。目標は Services だが、母数を
+  あえて広げることで、**将来 Services 以外のディレクトリを追加したときにテスト不在（低カバレッジ）に気づける**
+  ようにするため。テスト可能なものは Services 以外でも書く（例: `Hook`、`ServiceProvider::init` の配線）。
+- `redirect()` / `exit` / HTTP・テンプレート依存（`app/GET`・`app/POST` のハンドラ、`ServiceProvider` の
+  ライフサイクル no-op 等）は決定的なユニット検証が難しく実機/E2E で担保する。**母数から隠さず**、低カバレッジ
+  として可視化しておく（意味の薄いテストで数字だけ埋めない）。
+- Services 内の実通信シーム（`AI::httpGetJson` / `ResponsesClient::exec` / `StreamingResponsesClient::stream`）は
+  `@codeCoverageIgnore` を付け、理由を添えて母数から外す（curl の I/O 境界で決定的検証ができないため）。実通信は
+  差し替え可能な薄いシームに切り出してあり、テスト用ダブル（`tests/Support/`）で解析・分岐ロジックを検証する。
 
 ### カバレッジ計測
 
