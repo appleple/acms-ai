@@ -37,7 +37,6 @@
         "ext-zip": "*",
         "phpcompatibility/php-compatibility": "^10.0@dev",
         "phpstan/phpstan": "^2.1",
-        "phpunit/phpunit": "^10.5",
         "squizlabs/php_codesniffer": "^4.0"
     },
     "extra": {
