@@ -29,3 +29,23 @@ updates:
         update-types:
           - "minor"
           - "patch"
+
+  # PHP の開発依存（PHPStan / PHPUnit / phpcs / phpcompatibility 等）。composer.lock をコミットしているため
+  # ロック更新が届く。これらは配布物（app/ の zip）には含まれない dev ツールで、更新の影響は CI/ローカル開発のみ
+  # かつ CI で検証されるため、minor/patch は 1 本にまとめて自動マージ、major は個別 PR で手動確認する。
+  - package-ecosystem: "composer"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      composer:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # テスト基盤は検証対象の a-blog cms マイナー（現状 3.2）に手動で合わせる。3.3 以降への minor/major 昇格は
+      # CI マトリクス（acms 3.2）とずれるため Dependabot に触らせない（3.2.x のパッチ更新だけは通す）。
+      - dependency-name: "ablogcms/testing-framework"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
