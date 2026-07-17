@@ -165,7 +165,7 @@ class OpenAiProvider implements AiProvider, ModelListingProvider
         return new GenerationResult($text, $raw, $continuation, $finishReason, $this->usageFromResponse($raw));
     }
 
-    public function streamText(GenerationRequest $request, callable $onChunk): void
+    public function streamText(GenerationRequest $request, callable $onEvent): void
     {
         $client = $this->streamingClient($request->model);
         $client->createPayload();
@@ -187,7 +187,7 @@ class OpenAiProvider implements AiProvider, ModelListingProvider
             $client->setPreviousResponseId($request->continuationToken);
         }
 
-        $client->stream($onChunk);
+        $client->stream($onEvent);
     }
 
     /**

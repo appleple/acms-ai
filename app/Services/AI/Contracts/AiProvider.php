@@ -36,10 +36,11 @@ interface AiProvider
     public function generateText(GenerationRequest $request): GenerationResult;
 
     /**
-     * ストリーミング生成。各チャンク（正準 SSE 形式のワイヤ列）を `$onChunk` へ渡す。
-     * 出力の echo/flush など HTTP 出力の責務は呼び出し側（$onChunk）が持つ。
+     * ストリーミング生成。中立の {@see StreamEvent}（delta/completed/error）を `$onEvent` へ渡す。
+     * ベンダ固有のワイヤ形式（SSE 等）はプロバイダ内でデコード済みで、SSE 整形・echo/flush などの
+     * HTTP 出力の責務は呼び出し側（$onEvent）が持つ。
      *
-     * @param callable(string): void $onChunk
+     * @param callable(StreamEvent): void $onEvent
      */
-    public function streamText(GenerationRequest $request, callable $onChunk): void;
+    public function streamText(GenerationRequest $request, callable $onEvent): void;
 }

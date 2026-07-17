@@ -2,25 +2,27 @@
 
 namespace Acms\Plugins\AI\Services\AI\Providers\OpenAi;
 
+use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
+
 /**
  * Streaming version of ResponsesClient.
- * Proxies the OpenAI Responses API SSE stream chunk-by-chunk to a caller-supplied callback.
+ * OpenAI Responses API の SSE ストリームを中立の {@see StreamEvent} へデコードして呼び出し側へ渡す。
  */
 class StreamingResponsesClient
 {
     use EndpointTrait;
 
     /**
-     * Execute a streaming request and hand each raw SSE chunk to $onChunk.
-     * HTTP output concerns (echo/flush) are the caller's responsibility so the wire layer
-     * stays agnostic to how the chunks are delivered. Does not use setTextFormat - chat
-     * returns free-form text.
+     * ストリーミング要求を実行し、OpenAI SSE を中立の {@see StreamEvent} へデコードして $onEvent へ渡す。
+     * HTTP 出力（echo/flush）や SSE 整形は呼び出し側の責務なので、ワイヤ層は配信方法に依存しない。
+     * setTextFormat は使わない（チャットは自由文を返す）。
      *
-     * @param callable(string): void $onChunk
+     * @param callable(StreamEvent): void $onEvent
      * @return void
-     * @codeCoverageIgnore SSE を curl コールバックで逐次出力する実通信の I/O 境界。決定的なユニット検証ができないため実機/E2E で担保する。
+     * @codeCoverageIgnore SSE を curl コールバックで逐次受信する実通信の I/O 境界。デコード自体は
+     *   {@see ResponsesStreamParser} でユニット検証するため、ここは実機/E2E で担保する。
      */
-    public function stream(callable $onChunk): void
+    public function stream(callable $onEvent): void
     {
         $postData = [
             "model" => $this->model,
@@ -40,14 +42,15 @@ class StreamingResponsesClient
         $json = json_encode($postData);
 
         $ch = curl_init();
+        $parser = new ResponsesStreamParser();
 
         curl_setopt_array($ch, [
             CURLOPT_URL => $this->endpoint,
             CURLOPT_RETURNTRANSFER => false,
             CURLOPT_HTTPHEADER => $this->buildHeaders(),
             CURLOPT_POSTFIELDS => $json,
-            CURLOPT_WRITEFUNCTION => function ($ch, string $data) use ($onChunk): int {
-                $onChunk($data);
+            CURLOPT_WRITEFUNCTION => function ($ch, string $data) use ($parser, $onEvent): int {
+                $parser->feed($data, $onEvent);
                 return strlen($data);
             },
         ]);

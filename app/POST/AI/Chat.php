@@ -9,6 +9,7 @@ use Acms\Plugins\AI\POST\AIPostTrait;
 use Acms\Plugins\AI\Services\AI\Contracts\ContentPart;
 use Acms\Plugins\AI\Services\AI\Contracts\GenerationRequest;
 use Acms\Plugins\AI\Services\AI\Contracts\Message;
+use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
 
 /**
  * ACMS_POST_AI_Chat
@@ -62,10 +63,19 @@ class Chat extends ACMS_POST
         }
 
         try {
-            // 各 SSE チャンクをそのままクライアントへ echo/flush する（正準ワイヤ形式）。
-            // HTTP 出力の責務はここが持ち、プロバイダ実装はワイヤ列の生成に専念する。
-            $this->provider->streamText($request, static function (string $chunk): void {
-                echo $chunk;
+            // プロバイダがデコードした中立イベントを SSE 形式へ整形してクライアントへ echo/flush する。
+            // ベンダ固有のワイヤ形式（OpenAI SSE の解析）はプロバイダ内に閉じ、ここは HTTP 出力に専念する。
+            $this->provider->streamText($request, static function (StreamEvent $event): void {
+                $payload = match ($event->type) {
+                    StreamEvent::TYPE_DELTA => ['type' => 'delta', 'text' => $event->text],
+                    StreamEvent::TYPE_COMPLETED => ['type' => 'completed', 'continuationToken' => $event->continuationToken],
+                    StreamEvent::TYPE_ERROR => ['type' => 'error', 'message' => $event->message],
+                    default => null,
+                };
+                if ($payload === null) {
+                    return;
+                }
+                echo 'data: ' . json_encode($payload) . "\n\n";
                 if (ob_get_level() !== 0) {
                     ob_flush();
                 }
