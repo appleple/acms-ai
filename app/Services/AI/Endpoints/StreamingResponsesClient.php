@@ -47,7 +47,7 @@ class StreamingResponsesClient
             CURLOPT_POSTFIELDS => $json,
             CURLOPT_WRITEFUNCTION => function ($ch, string $data): int {
                 echo $data;
-                if (ob_get_level()) {
+                if (ob_get_level() !== 0) {
                     ob_flush();
                 }
                 flush();
@@ -57,7 +57,7 @@ class StreamingResponsesClient
 
         curl_exec($ch);
 
-        if (curl_errno($ch)) {
+        if (curl_errno($ch) !== 0) {
             $error = curl_error($ch);
             throw new \Exception("cURL Error: " . $error);
         }

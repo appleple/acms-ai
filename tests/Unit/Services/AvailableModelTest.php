@@ -23,7 +23,7 @@ final class AvailableModelTest extends TestCase
     {
         $service = new AI();
         foreach (['gpt-5.4', 'gpt-5.4-pro', 'gpt-5.4-mini', 'gpt-5.4-nano'] as $model) {
-            $this->assertSame($model, $service->availableModel($model));
+            self::assertSame($model, $service->availableModel($model));
         }
     }
 
@@ -32,15 +32,15 @@ final class AvailableModelTest extends TestCase
     public function unknownModelReturnsNull(): void
     {
         $service = new AI();
-        $this->assertNull($service->availableModel('gpt-4o-mini'));
-        $this->assertNull($service->availableModel('gpt-5.4-ultra'));
-        $this->assertNull($service->availableModel('GPT-5.4'));
+        self::assertNull($service->availableModel('gpt-4o-mini'));
+        self::assertNull($service->availableModel('gpt-5.4-ultra'));
+        self::assertNull($service->availableModel('GPT-5.4'));
     }
 
     #[Test]
     #[TestDox('空文字は null を返す')]
     public function emptyModelReturnsNull(): void
     {
-        $this->assertNull((new AI())->availableModel(''));
+        self::assertNull((new AI())->availableModel(''));
     }
 }

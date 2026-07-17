@@ -65,7 +65,7 @@ class ResponsesClient
         ]);
         $result = curl_exec($ch);
 
-        if (curl_errno($ch)) {
+        if (curl_errno($ch) !== 0) {
             $error = curl_error($ch);
             throw new \Exception("cURL Error: " . $error);
         }

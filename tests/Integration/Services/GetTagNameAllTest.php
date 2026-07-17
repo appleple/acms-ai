@@ -30,13 +30,13 @@ final class GetTagNameAllTest extends DatabaseTestCase
         $tags = AI::getTagNameAll();
 
         sort($tags);
-        $this->assertSame(['PHP', 'a-blog cms'], $tags);
+        self::assertSame(['PHP', 'a-blog cms'], $tags);
     }
 
     #[Test]
     #[TestDox('タグが 1 件も無ければ空配列を返す')]
     public function returnsEmptyArrayWhenNoTags(): void
     {
-        $this->assertSame([], AI::getTagNameAll());
+        self::assertSame([], AI::getTagNameAll());
     }
 }

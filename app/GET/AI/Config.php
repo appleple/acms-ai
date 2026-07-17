@@ -23,7 +23,7 @@ class Config extends AI
             if (
                 isset($cert['ai_api_key']) &&
                 isset($cert['ai_model']) &&
-                $ServiceAI->availableModel($cert['ai_model'])
+                $ServiceAI->availableModel($cert['ai_model']) !== null
             ) {
                 $this->authorized = true;
                 $this->configField = Tpl::buildField($config, $Tpl);

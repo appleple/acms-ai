@@ -18,7 +18,7 @@ class AI
     */
     public function auth(string $organizationId, string $projectId, string $apiKey): ?array
     {
-        if (!$organizationId || !$projectId || !$apiKey) {
+        if ($organizationId === '' || $projectId === '' || $apiKey === '') {
             return null;
         }
 
@@ -122,7 +122,7 @@ class AI
             return $models;
         }
         foreach ($result->data as $datum) {
-            if (is_object($datum) && isset($datum->id) && $this->availableModel((string) $datum->id)) {
+            if (is_object($datum) && isset($datum->id) && $this->availableModel((string) $datum->id) !== null) {
                 $models[] = (string) $datum->id;
             }
         }
@@ -135,7 +135,7 @@ class AI
      */
     public function availableModel(string $model): ?string
     {
-        if (!$model) {
+        if ($model === '') {
             return null;
         }
         $availableModels = ['gpt-5.4', 'gpt-5.4-pro', 'gpt-5.4-mini', 'gpt-5.4-nano'];

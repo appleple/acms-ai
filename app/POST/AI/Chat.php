@@ -18,7 +18,7 @@ class Chat extends ACMS_POST
     {
         $this->initAiConfig();
 
-        if (!$this->apiKey || !$this->model) {
+        if ($this->apiKey === '' || $this->model === '') {
             return $this->jsonResponse([
                 'message' => 'APIキーまたはモデルの設定がありません。',
                 'errorCode' => 500
@@ -83,12 +83,12 @@ class Chat extends ACMS_POST
             $client->createTextContent($input)
         ]);
 
-        if ($previousResponseId) {
+        if ($previousResponseId !== '') {
             $client->setPreviousResponseId($previousResponseId);
         }
 
         // Stream output directly - must run before any other output
-        if (ob_get_level()) {
+        if (ob_get_level() !== 0) {
             ob_end_clean();
         }
         @ini_set('zlib.output_compression', '0');

@@ -4,8 +4,8 @@ includes:
     # phpstan-strict-rules: level とは独立の追加ルール集。暗黙の型変換・switch の fall-through・== の乱用・
     # 不要な nullsafe など「型的には通るが危険」な記法を検出し、プラグインの型安全性を底上げする。
     - vendor/phpstan/phpstan-strict-rules/rules.neon
-    # 既存コードの strict-rules 違反（116 件）を段階導入のため記録する。a-blog cms 由来の緩い型を bool
-    # 文脈で使う既存パターンが中心で、振る舞いを変えずに導入するのが狙い。新規コードには strict が効く。
+    # 一括修正が振る舞いを変えうる残りの既存違反（a-blog cms 由来の緩い型を bool 文脈で使う箇所・empty()・
+    # ユーザー入力の否定など）を段階導入のため baseline に記録する。新規コードには strict が効く。
     # 個別に解消する際は phpstan-baseline.neon の該当エントリを削除し、コード側を明示比較へ修正する。
     - phpstan-baseline.neon
 parameters:

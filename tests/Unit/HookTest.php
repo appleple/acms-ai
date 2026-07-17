@@ -28,7 +28,7 @@ final class HookTest extends TestCase
         $js = $globalVars->get('AI_JS');
         $css = $globalVars->get('AI_CSS');
 
-        $this->assertStringContainsString('extension/plugins/AI/bundle/acms-ai.js', $js);
-        $this->assertStringContainsString('extension/plugins/AI/bundle/acms-ai.css', $css);
+        self::assertStringContainsString('extension/plugins/AI/bundle/acms-ai.js', $js);
+        self::assertStringContainsString('extension/plugins/AI/bundle/acms-ai.css', $css);
     }
 }

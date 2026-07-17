@@ -41,7 +41,7 @@ class Tag extends ACMS_POST
         $article = $this->Post->get('article');
         $addPrompt = $this->Post->get('addPrompt');
         $alreadyGeneratedTagsRaw = $this->Post->get('alreadyGeneratedTags');
-        $alreadyGeneratedTags = $alreadyGeneratedTagsRaw
+        $alreadyGeneratedTags = $alreadyGeneratedTagsRaw !== ''
             ? json_decode($alreadyGeneratedTagsRaw, true)
             : [];
 

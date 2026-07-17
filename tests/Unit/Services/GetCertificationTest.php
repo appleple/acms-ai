@@ -44,10 +44,10 @@ final class GetCertificationTest extends TestCase
 
         $cert = (new AI())->getCertification($field);
 
-        $this->assertSame('org-123', $cert['ai_organization_id']);
-        $this->assertSame('proj-456', $cert['ai_project_id']);
-        $this->assertSame('sk-secret', $cert['ai_api_key']);
-        $this->assertSame('gpt-5.4-mini', $cert['ai_model']);
+        self::assertSame('org-123', $cert['ai_organization_id']);
+        self::assertSame('proj-456', $cert['ai_project_id']);
+        self::assertSame('sk-secret', $cert['ai_api_key']);
+        self::assertSame('gpt-5.4-mini', $cert['ai_model']);
     }
 
     #[Test]
@@ -56,7 +56,7 @@ final class GetCertificationTest extends TestCase
     {
         $cert = (new AI())->getCertification($this->fieldWith([]));
 
-        $this->assertSame(
+        self::assertSame(
             ['ai_organization_id', 'ai_project_id', 'ai_api_key', 'ai_model'],
             array_keys($cert)
         );

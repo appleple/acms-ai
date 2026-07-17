@@ -28,6 +28,6 @@ final class ServiceProviderTest extends TestCase
 
         $entries = InjectTemplate::singleton()->get('admin-entry-field');
 
-        $this->assertContains(PLUGIN_DIR . 'AI/template/admin/entry/edit.html', $entries);
+        self::assertContains(PLUGIN_DIR . 'AI/template/admin/entry/edit.html', $entries);
     }
 }

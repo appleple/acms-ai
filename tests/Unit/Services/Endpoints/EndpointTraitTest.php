@@ -33,9 +33,9 @@ final class EndpointTraitTest extends TestCase
         $client->request();
 
         $payload = $client->capturedPayload();
-        $this->assertSame('gpt-5.4', $payload['model']);
-        $this->assertTrue($payload['store']);
-        $this->assertSame([], $payload['input']);
+        self::assertSame('gpt-5.4', $payload['model']);
+        self::assertTrue($payload['store']);
+        self::assertSame([], $payload['input']);
     }
 
     #[Test]
@@ -44,15 +44,15 @@ final class EndpointTraitTest extends TestCase
     {
         $client = $this->client();
 
-        $this->assertSame(
+        self::assertSame(
             ['type' => 'input_text', 'text' => 'hello'],
             $client->createTextContent('hello')
         );
-        $this->assertSame(
+        self::assertSame(
             ['type' => 'input_text', 'text' => 'hello'],
             $client->createTextContent('hello', 'user')
         );
-        $this->assertSame(
+        self::assertSame(
             ['type' => 'output_text', 'text' => 'ok'],
             $client->createTextContent('ok', 'assistant')
         );
@@ -69,12 +69,12 @@ final class EndpointTraitTest extends TestCase
         $client->request();
 
         $input = $client->capturedPayload()['input'];
-        $this->assertCount(2, $input);
-        $this->assertSame('user', $input[0]['role']);
-        $this->assertSame('input_text', $input[0]['content'][0]['type']);
-        $this->assertSame('first', $input[0]['content'][0]['text']);
-        $this->assertSame('assistant', $input[1]['role']);
-        $this->assertSame('output_text', $input[1]['content'][0]['type']);
+        self::assertCount(2, $input);
+        self::assertSame('user', $input[0]['role']);
+        self::assertSame('input_text', $input[0]['content'][0]['type']);
+        self::assertSame('first', $input[0]['content'][0]['text']);
+        self::assertSame('assistant', $input[1]['role']);
+        self::assertSame('output_text', $input[1]['content'][0]['type']);
     }
 
     #[Test]
@@ -88,8 +88,8 @@ final class EndpointTraitTest extends TestCase
         $client->request();
 
         $payload = $client->capturedPayload();
-        $this->assertSame('be concise', $payload['instructions']);
-        $this->assertSame('resp_123', $payload['previous_response_id']);
+        self::assertSame('be concise', $payload['instructions']);
+        self::assertSame('resp_123', $payload['previous_response_id']);
     }
 
     #[Test]
@@ -101,8 +101,8 @@ final class EndpointTraitTest extends TestCase
         $client->request();
 
         $payload = $client->capturedPayload();
-        $this->assertArrayNotHasKey('instructions', $payload);
-        $this->assertArrayNotHasKey('previous_response_id', $payload);
+        self::assertArrayNotHasKey('instructions', $payload);
+        self::assertArrayNotHasKey('previous_response_id', $payload);
     }
 
     #[Test]
@@ -120,9 +120,9 @@ final class EndpointTraitTest extends TestCase
         $client->request();
 
         $payload = $client->capturedPayload();
-        $this->assertSame([], $payload['input']);
-        $this->assertArrayNotHasKey('instructions', $payload);
-        $this->assertArrayNotHasKey('previous_response_id', $payload);
+        self::assertSame([], $payload['input']);
+        self::assertArrayNotHasKey('instructions', $payload);
+        self::assertArrayNotHasKey('previous_response_id', $payload);
     }
 
     #[Test]
@@ -133,8 +133,8 @@ final class EndpointTraitTest extends TestCase
         $client->createPayload();
         $client->request();
 
-        $this->assertNotNull($client->capturedHeaders);
-        $this->assertContains('Content-Type: application/json', $client->capturedHeaders);
-        $this->assertContains('Authorization: Bearer sk-test-key', $client->capturedHeaders);
+        self::assertNotNull($client->capturedHeaders);
+        self::assertContains('Content-Type: application/json', $client->capturedHeaders);
+        self::assertContains('Authorization: Bearer sk-test-key', $client->capturedHeaders);
     }
 }

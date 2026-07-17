@@ -33,7 +33,7 @@ final class ExtractTextTest extends TestCase
             '{"output":[{"type":"message","content":[{"type":"output_text","text":"こんにちは"}]}]}'
         );
 
-        $this->assertSame('こんにちは', ResponsesClient::extractText($response));
+        self::assertSame('こんにちは', ResponsesClient::extractText($response));
     }
 
     #[Test]
@@ -47,7 +47,7 @@ final class ExtractTextTest extends TestCase
             . ']}'
         );
 
-        $this->assertSame('採用', ResponsesClient::extractText($response));
+        self::assertSame('採用', ResponsesClient::extractText($response));
     }
 
     #[Test]
@@ -61,14 +61,14 @@ final class ExtractTextTest extends TestCase
             . ']}]}'
         );
 
-        $this->assertSame('本文', ResponsesClient::extractText($response));
+        self::assertSame('本文', ResponsesClient::extractText($response));
     }
 
     #[Test]
     #[TestDox('output が無い応答は null を返す')]
     public function returnsNullWhenNoOutput(): void
     {
-        $this->assertNull(ResponsesClient::extractText($this->decode('{"status":"completed"}')));
+        self::assertNull(ResponsesClient::extractText($this->decode('{"status":"completed"}')));
     }
 
     #[Test]
@@ -79,7 +79,7 @@ final class ExtractTextTest extends TestCase
             '{"output":[{"type":"message","content":[{"type":"output_text"}]}]}'
         );
 
-        $this->assertNull(ResponsesClient::extractText($response));
+        self::assertNull(ResponsesClient::extractText($response));
     }
 
     #[Test]
@@ -90,7 +90,7 @@ final class ExtractTextTest extends TestCase
             '{"output":[{"type":"message","content":[{"type":"output_text","text":123}]}]}'
         );
 
-        $this->assertNull(ResponsesClient::extractText($response));
+        self::assertNull(ResponsesClient::extractText($response));
     }
 
     #[Test]
@@ -104,20 +104,20 @@ final class ExtractTextTest extends TestCase
             . '{"type":"message","content":[{"type":"output_text","text":"後続"}]}'
             . ']}'
         );
-        $this->assertSame('後続', ResponsesClient::extractText($response));
+        self::assertSame('後続', ResponsesClient::extractText($response));
 
         // すべての message に有効な content が無ければ null。
         $empty = $this->decode('{"output":[{"type":"message","content":[]}]}');
-        $this->assertNull(ResponsesClient::extractText($empty));
+        self::assertNull(ResponsesClient::extractText($empty));
     }
 
     #[Test]
     #[TestDox('オブジェクト以外（配列・文字列・null）の入力は null を返す')]
     public function returnsNullForNonObjectInput(): void
     {
-        $this->assertNull(ResponsesClient::extractText(null));
-        $this->assertNull(ResponsesClient::extractText('plain string'));
-        $this->assertNull(ResponsesClient::extractText([1, 2, 3]));
-        $this->assertNull(ResponsesClient::extractText($this->decode('[]')));
+        self::assertNull(ResponsesClient::extractText(null));
+        self::assertNull(ResponsesClient::extractText('plain string'));
+        self::assertNull(ResponsesClient::extractText([1, 2, 3]));
+        self::assertNull(ResponsesClient::extractText($this->decode('[]')));
     }
 }

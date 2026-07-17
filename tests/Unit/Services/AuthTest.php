@@ -25,11 +25,11 @@ final class AuthTest extends TestCase
         $service = new FakeAuthService();
         $service->body = '{"data":[{"id":"gpt-5.4"}]}';
 
-        $this->assertNull($service->auth('', 'proj', 'key'));
-        $this->assertNull($service->auth('org', '', 'key'));
-        $this->assertNull($service->auth('org', 'proj', ''));
+        self::assertNull($service->auth('', 'proj', 'key'));
+        self::assertNull($service->auth('org', '', 'key'));
+        self::assertNull($service->auth('org', 'proj', ''));
         // 通信は一度も行われない。
-        $this->assertNull($service->requestedUrl);
+        self::assertNull($service->requestedUrl);
     }
 
     #[Test]
@@ -41,7 +41,7 @@ final class AuthTest extends TestCase
 
         $service->auth('org', 'proj', 'key');
 
-        $this->assertSame('https://api.openai.com/v1/models', $service->requestedUrl);
+        self::assertSame('https://api.openai.com/v1/models', $service->requestedUrl);
     }
 
     #[Test]
@@ -51,7 +51,7 @@ final class AuthTest extends TestCase
         $service = new FakeAuthService();
         $service->fail = true;
 
-        $this->assertNull($service->auth('org', 'proj', 'key'));
+        self::assertNull($service->auth('org', 'proj', 'key'));
     }
 
     #[Test]
@@ -61,7 +61,7 @@ final class AuthTest extends TestCase
         $service = new FakeAuthService();
         $service->body = 'not-json';
 
-        $this->assertNull($service->auth('org', 'proj', 'key'));
+        self::assertNull($service->auth('org', 'proj', 'key'));
     }
 
     #[Test]
@@ -71,10 +71,10 @@ final class AuthTest extends TestCase
         $service = new FakeAuthService();
 
         $service->body = '[]';
-        $this->assertNull($service->auth('org', 'proj', 'key'));
+        self::assertNull($service->auth('org', 'proj', 'key'));
 
         $service->body = '"just a string"';
-        $this->assertNull($service->auth('org', 'proj', 'key'));
+        self::assertNull($service->auth('org', 'proj', 'key'));
     }
 
     #[Test]
@@ -84,7 +84,7 @@ final class AuthTest extends TestCase
         $service = new FakeAuthService();
         $service->body = '{"error":{"message":"Incorrect API key provided"}}';
 
-        $this->assertNull($service->auth('org', 'proj', 'key'));
+        self::assertNull($service->auth('org', 'proj', 'key'));
     }
 
     #[Test]
@@ -99,11 +99,11 @@ final class AuthTest extends TestCase
                 ['id' => 'gpt-5.4-mini'],
                 ['id' => 'dall-e-3'],
             ],
-        ]) ?: '{}';
+        ], JSON_THROW_ON_ERROR);
 
         $models = $service->auth('org', 'proj', 'key');
 
-        $this->assertSame(['gpt-5.4', 'gpt-5.4-mini'], $models);
+        self::assertSame(['gpt-5.4', 'gpt-5.4-mini'], $models);
     }
 
     #[Test]
@@ -117,11 +117,11 @@ final class AuthTest extends TestCase
                 'not-an-object',
                 ['id' => 'gpt-5.4-nano'],
             ],
-        ]) ?: '{}';
+        ], JSON_THROW_ON_ERROR);
 
         $models = $service->auth('org', 'proj', 'key');
 
-        $this->assertSame(['gpt-5.4-nano'], $models);
+        self::assertSame(['gpt-5.4-nano'], $models);
     }
 
     #[Test]
@@ -131,6 +131,6 @@ final class AuthTest extends TestCase
         $service = new FakeAuthService();
         $service->body = '{"object":"list"}';
 
-        $this->assertSame([], $service->auth('org', 'proj', 'key'));
+        self::assertSame([], $service->auth('org', 'proj', 'key'));
     }
 }

@@ -43,7 +43,7 @@ trait AIPostTrait
     private function errorResponse(string $message, array $logContext = []): mixed
     {
         $response = ['message' => $message, 'errorCode' => 500];
-        \AcmsLogger::notice($message, empty($logContext) ? $response : $logContext);
+        \AcmsLogger::notice($message, $logContext === [] ? $response : $logContext);
         return Common::responseJson($response);
     }
 
@@ -52,7 +52,7 @@ trait AIPostTrait
      */
     protected function executeAiRequest(string $instructions, string $schemaName, array $promptMessages): mixed
     {
-        if (!$this->apiKey || !$this->model) {
+        if ($this->apiKey === '' || $this->model === '') {
             return $this->errorResponse('APIキーまたはモデルの設定がありません。');
         }
 

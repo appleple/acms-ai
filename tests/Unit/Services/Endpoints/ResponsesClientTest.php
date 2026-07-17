@@ -30,7 +30,7 @@ final class ResponsesClientTest extends TestCase
     {
         $client = $this->client();
 
-        $this->assertSame(
+        self::assertSame(
             ['type' => 'input_image', 'image_url' => 'https://example.com/a.png'],
             $client->createImageContent('https://example.com/a.png')
         );
@@ -42,7 +42,7 @@ final class ResponsesClientTest extends TestCase
     {
         $client = $this->client();
 
-        $this->assertSame(
+        self::assertSame(
             ['type' => 'output_text', 'text' => 'done'],
             $client->createOutputTextContent('done')
         );
@@ -59,7 +59,7 @@ final class ResponsesClientTest extends TestCase
         $client->request();
 
         $payload = $client->capturedPayload();
-        $this->assertSame($format, $payload['text']['format']);
+        self::assertSame($format, $payload['text']['format']);
     }
 
     #[Test]
@@ -70,7 +70,7 @@ final class ResponsesClientTest extends TestCase
         $client->stubResult = '{}';
         $client->request();
 
-        $this->assertArrayNotHasKey('text', $client->capturedPayload());
+        self::assertArrayNotHasKey('text', $client->capturedPayload());
     }
 
     #[Test]
@@ -84,7 +84,7 @@ final class ResponsesClientTest extends TestCase
         $client->createPayload();
         $client->request();
 
-        $this->assertArrayNotHasKey('text', $client->capturedPayload());
+        self::assertArrayNotHasKey('text', $client->capturedPayload());
     }
 
     #[Test]
@@ -96,9 +96,9 @@ final class ResponsesClientTest extends TestCase
 
         $result = $client->request();
 
-        $this->assertIsObject($result);
-        $this->assertSame('resp_1', $result->id);
-        $this->assertSame('completed', $result->status);
+        self::assertIsObject($result);
+        self::assertSame('resp_1', $result->id);
+        self::assertSame('completed', $result->status);
     }
 
     #[Test]
@@ -108,7 +108,7 @@ final class ResponsesClientTest extends TestCase
         $client = $this->client();
         $client->stubResult = false;
 
-        $this->assertNull($client->request());
+        self::assertNull($client->request());
     }
 
     #[Test]
@@ -118,6 +118,6 @@ final class ResponsesClientTest extends TestCase
         $client = $this->client();
         $client->throwOnExec = true;
 
-        $this->assertNull($client->request());
+        self::assertNull($client->request());
     }
 }
