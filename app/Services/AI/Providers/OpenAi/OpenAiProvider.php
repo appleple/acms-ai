@@ -13,6 +13,7 @@ use Acms\Plugins\AI\Services\AI\Contracts\GenerationResult;
 use Acms\Plugins\AI\Services\AI\Contracts\Message;
 use Acms\Plugins\AI\Services\AI\Contracts\ModelListingProvider;
 use Acms\Plugins\AI\Services\AI\Contracts\TokenUsage;
+use Acms\Plugins\AI\Services\AI\EnvCredential;
 use Acms\Services\Facades\Common;
 use Acms\Services\Facades\Logger;
 use Field;
@@ -28,6 +29,12 @@ use Field;
 class OpenAiProvider implements AiProvider, ModelListingProvider
 {
     public const ID = 'openai';
+
+    /** 認証情報を供給できる環境変数名（.env）。設定されていれば config より優先する。 */
+    public const ENV_API_KEY = 'ACMS_AI_OPENAI_API_KEY';
+    public const ENV_ORGANIZATION_ID = 'ACMS_AI_OPENAI_ORGANIZATION_ID';
+    public const ENV_PROJECT_ID = 'ACMS_AI_OPENAI_PROJECT_ID';
+
     private const MODELS_ENDPOINT = 'https://api.openai.com/v1/models';
 
     /** @var list<string> このプロバイダで利用を許可するモデル名。 */
@@ -39,15 +46,16 @@ class OpenAiProvider implements AiProvider, ModelListingProvider
 
     /**
      * config（`ai_api_key` / `ai_organization_id` / `ai_project_id`）から生成する。
+     * 環境変数（{@see self::ENV_API_KEY} 等）が設定されていればそちらを優先する。
      * モデルはリクエストごとに与えられるためここでは読まない。
      */
     public static function fromConfig(Field $config): self
     {
         return new self(new Credentials(
-            $config->get('ai_api_key'),
+            EnvCredential::get(self::ENV_API_KEY, $config->get('ai_api_key')),
             [
-                'organizationId' => $config->get('ai_organization_id'),
-                'projectId' => $config->get('ai_project_id'),
+                'organizationId' => EnvCredential::get(self::ENV_ORGANIZATION_ID, $config->get('ai_organization_id')),
+                'projectId' => EnvCredential::get(self::ENV_PROJECT_ID, $config->get('ai_project_id')),
             ]
         ));
     }

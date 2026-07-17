@@ -66,6 +66,9 @@
           <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="ChatGPT API で取得する Organization ID を入力してください。"></i>
         </th>
         <td>
+          <!-- BEGIN_IF [%{AI_OPENAI_ORGANIZATION_ID_FROM_ENV}/eq/1] -->
+          <p class="acms-admin-text-helper">.env（ACMS_AI_OPENAI_ORGANIZATION_ID）で設定済みのため、ここでの入力は不要です。</p>
+          <!-- ELSE -->
           <input
             type="text"
             name="ai_organization_id"
@@ -74,6 +77,7 @@
             placeholder="org-xxxxxxxxxxxxxxxxxxxxxxxx"
           />
           <input type="hidden" name="config[]" value="ai_organization_id" />
+          <!-- END_IF -->
         </td>
       </tr>
       <tr>
@@ -82,6 +86,9 @@
           <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="ChatGPT API で取得する Project ID を入力してください。"></i>
         </th>
         <td>
+          <!-- BEGIN_IF [%{AI_OPENAI_PROJECT_ID_FROM_ENV}/eq/1] -->
+          <p class="acms-admin-text-helper">.env（ACMS_AI_OPENAI_PROJECT_ID）で設定済みのため、ここでの入力は不要です。</p>
+          <!-- ELSE -->
           <input
             type="text"
             name="ai_project_id"
@@ -90,6 +97,7 @@
             placeholder="proj-xxxxxxxxxxxxxxxxxxxxxxxx"
           />
           <input type="hidden" name="config[]" value="ai_project_id" />
+          <!-- END_IF -->
         </td>
       </tr>
       <tr>
@@ -98,6 +106,9 @@
           <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="ChatGPT API で取得する API KEY を入力してください。"></i>
         </th>
         <td>
+          <!-- BEGIN_IF [%{AI_OPENAI_API_KEY_FROM_ENV}/eq/1] -->
+          <p class="acms-admin-text-helper">.env（ACMS_AI_OPENAI_API_KEY）で設定済みのため、ここでの入力は不要です。</p>
+          <!-- ELSE -->
           <input
             type="text"
             name="ai_api_key"
@@ -106,6 +117,7 @@
             placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
           />
           <input type="hidden" name="config[]" value="ai_api_key" />
+          <!-- END_IF -->
         </td>
       </tr>
       <tr>
@@ -114,6 +126,9 @@
           <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="Anthropic Console で取得する API KEY を入力してください。"></i>
         </th>
         <td>
+          <!-- BEGIN_IF [%{AI_ANTHROPIC_API_KEY_FROM_ENV}/eq/1] -->
+          <p class="acms-admin-text-helper">.env（ACMS_AI_ANTHROPIC_API_KEY）で設定済みのため、ここでの入力は不要です。</p>
+          <!-- ELSE -->
           <input
             type="text"
             name="ai_anthropic_api_key"
@@ -122,6 +137,7 @@
             placeholder="sk-ant-xxxxxxxxxxxxxxxxxxxxxxxx"
           />
           <input type="hidden" name="config[]" value="ai_anthropic_api_key" />
+          <!-- END_IF -->
         </td>
       </tr>
       <tr>
@@ -130,6 +146,9 @@
           <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="Google AI Studio で取得する API KEY を入力してください。"></i>
         </th>
         <td>
+          <!-- BEGIN_IF [%{AI_GEMINI_API_KEY_FROM_ENV}/eq/1] -->
+          <p class="acms-admin-text-helper">.env（ACMS_AI_GEMINI_API_KEY）で設定済みのため、ここでの入力は不要です。</p>
+          <!-- ELSE -->
           <input
             type="text"
             name="ai_gemini_api_key"
@@ -138,6 +157,7 @@
             placeholder="AIzaXxxxxxxxxxxxxxxxxxxxxxxx"
           />
           <input type="hidden" name="config[]" value="ai_gemini_api_key" />
+          <!-- END_IF -->
         </td>
       </tr>
       <tr>
@@ -146,6 +166,9 @@
           <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI互換エンドポイント（さくらのAI Engine など）の API KEY を入力してください。"></i>
         </th>
         <td>
+          <!-- BEGIN_IF [%{AI_COMPAT_API_KEY_FROM_ENV}/eq/1] -->
+          <p class="acms-admin-text-helper">.env（ACMS_AI_SAKURA_API_KEY）で設定済みのため、ここでの入力は不要です。</p>
+          <!-- ELSE -->
           <input
             type="text"
             name="ai_compat_api_key"
@@ -154,6 +177,7 @@
             placeholder="xxxxxxxxxxxxxxxxxxxxxxxx"
           />
           <input type="hidden" name="config[]" value="ai_compat_api_key" />
+          <!-- END_IF -->
         </td>
       </tr>
       <tr>
