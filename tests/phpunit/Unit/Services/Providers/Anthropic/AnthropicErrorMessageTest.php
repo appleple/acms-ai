@@ -42,6 +42,23 @@ final class AnthropicErrorMessageTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('クレジット残高不足（invalid_request_error で届く）は残高の案内を返す')]
+    public function detectsLowCreditBalance(): void
+    {
+        // 実際の API 応答（type は invalid_request_error）を再現する。
+        $error = json_decode(json_encode([
+            'type' => 'invalid_request_error',
+            'message' => 'Your credit balance is too low to access the Anthropic API. '
+                . 'Please go to Plans & Billing to upgrade or purchase credits.',
+        ]));
+
+        $message = AnthropicErrorMessage::fromError($error);
+
+        self::assertStringContainsString('クレジット残高', $message);
+        self::assertStringNotContainsString('リクエストが不正', $message);
+    }
+
+    #[Test]
     #[TestDox('未知の type・不正な形は汎用メッセージへフォールバックする')]
     public function fallsBackForUnknownShapes(): void
     {
