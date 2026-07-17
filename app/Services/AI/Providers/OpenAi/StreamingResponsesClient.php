@@ -1,25 +1,26 @@
 <?php
 
-namespace Acms\Plugins\AI\Services\AI\Endpoints;
-
-use Acms\Plugins\AI\Services\AI\EndpointTrait;
+namespace Acms\Plugins\AI\Services\AI\Providers\OpenAi;
 
 /**
  * Streaming version of ResponsesClient.
- * Proxies OpenAI Responses API SSE stream to the client.
+ * Proxies the OpenAI Responses API SSE stream chunk-by-chunk to a caller-supplied callback.
  */
 class StreamingResponsesClient
 {
     use EndpointTrait;
 
     /**
-     * Execute streaming request and output SSE to client.
-     * Does not use setTextFormat - chat returns free-form text.
+     * Execute a streaming request and hand each raw SSE chunk to $onChunk.
+     * HTTP output concerns (echo/flush) are the caller's responsibility so the wire layer
+     * stays agnostic to how the chunks are delivered. Does not use setTextFormat - chat
+     * returns free-form text.
      *
+     * @param callable(string): void $onChunk
      * @return void
      * @codeCoverageIgnore SSE を curl コールバックで逐次出力する実通信の I/O 境界。決定的なユニット検証ができないため実機/E2E で担保する。
      */
-    public function stream(): void
+    public function stream(callable $onChunk): void
     {
         $postData = [
             "model" => $this->model,
@@ -45,12 +46,8 @@ class StreamingResponsesClient
             CURLOPT_RETURNTRANSFER => false,
             CURLOPT_HTTPHEADER => $this->buildHeaders(),
             CURLOPT_POSTFIELDS => $json,
-            CURLOPT_WRITEFUNCTION => function ($ch, string $data): int {
-                echo $data;
-                if (ob_get_level() !== 0) {
-                    ob_flush();
-                }
-                flush();
+            CURLOPT_WRITEFUNCTION => function ($ch, string $data) use ($onChunk): int {
+                $onChunk($data);
                 return strlen($data);
             },
         ]);

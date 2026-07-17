@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Acms\Plugins\AI\Tests\Support;
 
-use Acms\Plugins\AI\Services\AI\Endpoints\ResponsesClient;
+use Acms\Plugins\AI\Services\AI\Providers\OpenAi\ResponsesClient;
 
 /**
  * ResponsesClient のテスト用ダブル。

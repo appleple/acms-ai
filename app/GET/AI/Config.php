@@ -20,11 +20,11 @@ class Config extends AI
             $cert = $ServiceAI->getCertification($config);
             $this->configField = Tpl::buildField($config, $Tpl);
 
-            if (
-                isset($cert['ai_api_key']) &&
-                isset($cert['ai_model']) &&
-                $ServiceAI->availableModel($cert['ai_model']) !== null
-            ) {
+            // API キーとモデルが設定済みなら AI 機能を有効表示する。モデルの妥当性検証（許可リスト）は
+            // プロバイダ固有のため、認証を行う管理画面（GET/AI/Admin → provider->authenticate()）の責務に集約する。
+            $apiKey = $cert['ai_api_key'];
+            $model = $cert['ai_model'];
+            if (is_string($apiKey) && $apiKey !== '' && is_string($model) && $model !== '') {
                 $this->authorized = true;
                 $this->configField = Tpl::buildField($config, $Tpl);
             }

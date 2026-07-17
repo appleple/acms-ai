@@ -39,6 +39,18 @@
     <table class="acms-admin-table-admin-edit">
       <tr>
         <th>
+          <!-- T -->プロバイダ<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="利用する AI プロバイダを選択してください。"></i>
+        </th>
+        <td>
+          <select name="ai_provider" class="acms-admin-form-width-full">
+            <option value="openai" <!-- BEGIN_IF [{ai_provider}/eq/openai] -->selected<!-- END_IF -->>OpenAI</option>
+          </select>
+          <input type="hidden" name="config[]" value="ai_provider" />
+        </td>
+      </tr>
+      <tr>
+        <th>
           <!-- T -->Organization ID<!-- /T -->
           <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="ChatGPT API で取得する Organization ID を入力してください。"></i>
         </th>

@@ -1,8 +1,6 @@
 <?php
 
-namespace Acms\Plugins\AI\Services\AI\Endpoints;
-
-use Acms\Plugins\AI\Services\AI\EndpointTrait;
+namespace Acms\Plugins\AI\Services\AI\Providers\OpenAi;
 
 class ResponsesClient
 {

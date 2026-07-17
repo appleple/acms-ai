@@ -7,6 +7,7 @@ use Template;
 use ACMS_Corrector;
 use Acms\Plugins\AI\GET\AI;
 use Acms\Plugins\AI\Services\AI as ServiceAI;
+use Acms\Plugins\AI\Services\AI\ProviderRegistry;
 
 class Admin extends AI
 {
@@ -20,7 +21,8 @@ class Admin extends AI
             $config = $ServiceAI->getConfig();
             $cert = $ServiceAI->getCertification($config);
 
-            $models = $ServiceAI->auth($cert['ai_organization_id'], $cert['ai_project_id'], $cert['ai_api_key']);
+            $provider = ProviderRegistry::withDefaults()->resolve($config);
+            $models = $provider->authenticate();
             if ($models !== null) {
                 $this->authorized = $models !== [] ? true : false;
             }

@@ -4,7 +4,9 @@ namespace Acms\Plugins\AI\POST\AI;
 
 use ACMS_POST;
 use Acms\Plugins\AI\POST\AIPostTrait;
-use Acms\Plugins\AI\Services\AI\Endpoints\StreamingResponsesClient;
+use Acms\Plugins\AI\Services\AI\Contracts\ContentPart;
+use Acms\Plugins\AI\Services\AI\Contracts\GenerationRequest;
+use Acms\Plugins\AI\Services\AI\Contracts\Message;
 
 /**
  * ACMS_POST_AI_Chat
@@ -18,7 +20,7 @@ class Chat extends ACMS_POST
     {
         $this->initAiConfig();
 
-        if ($this->apiKey === '' || $this->model === '') {
+        if ($this->provider === null || $this->apiKey === '' || $this->model === '') {
             return $this->jsonResponse([
                 'message' => 'APIキーまたはモデルの設定がありません。',
                 'errorCode' => 500
@@ -36,16 +38,58 @@ class Chat extends ACMS_POST
             ]);
         }
 
-        $client = new StreamingResponsesClient($this->apiKey, $this->model);
-        $client->createPayload();
+        $request = new GenerationRequest(
+            $this->model,
+            [Message::user(ContentPart::text($input))],
+            $this->buildInstructions($silent),
+            null,
+            null,
+            $previousResponseId !== '' ? $previousResponseId : null
+        );
+
+        // Stream output directly - must run before any other output
+        if (ob_get_level() !== 0) {
+            ob_end_clean();
+        }
+        @ini_set('zlib.output_compression', '0');
+        header('Content-Type: text/event-stream');
+        header('Cache-Control: no-cache');
+        header('X-Accel-Buffering: no');
+        if (function_exists('apache_setenv')) {
+            @apache_setenv('no-gzip', '1');
+        }
+
+        try {
+            // 各 SSE チャンクをそのままクライアントへ echo/flush する（正準ワイヤ形式）。
+            // HTTP 出力の責務はここが持ち、プロバイダ実装はワイヤ列の生成に専念する。
+            $this->provider->streamText($request, static function (string $chunk): void {
+                echo $chunk;
+                if (ob_get_level() !== 0) {
+                    ob_flush();
+                }
+                flush();
+            });
+        } catch (\Exception $e) {
+            \AcmsLogger::error($e->getMessage());
+            echo "data: " . json_encode(['type' => 'error', 'message' => $e->getMessage()]) . "\n\n";
+        }
+
+        exit;
+    }
+
+    /**
+     * チャットの system 指示を組み立てる。silent モードでは <correction> タグ強制を最優先で付加する。
+     */
+    private function buildInstructions(bool $silent): string
+    {
         $silentInstruction = $silent
             ? "\n\n## SILENT MODE (highest priority)\n" .
               "This is an automated request. " .
               "You MUST output the result wrapped in <correction>...</correction>. " .
               "Never omit the tag regardless of how simple or ambiguous the request is.\n"
             : "";
-        $client->setInstructions(
-            "You are a helpful assistant. Respond in Japanese unless the user asks otherwise.\n" .
+
+        return "You are a helpful assistant. Respond in Japanese unless the user asks otherwise.\n" .
             "\n" .
             "## Text Processing Tasks\n" .
             "When the user requests text transformation or processing "
@@ -77,36 +121,7 @@ class Chat extends ACMS_POST
             "<correction>\n" .
             "The simplified text\n" .
             "</correction>" .
-            $silentInstruction
-        );
-        $client->addInput('user', [
-            $client->createTextContent($input)
-        ]);
-
-        if ($previousResponseId !== '') {
-            $client->setPreviousResponseId($previousResponseId);
-        }
-
-        // Stream output directly - must run before any other output
-        if (ob_get_level() !== 0) {
-            ob_end_clean();
-        }
-        @ini_set('zlib.output_compression', '0');
-        header('Content-Type: text/event-stream');
-        header('Cache-Control: no-cache');
-        header('X-Accel-Buffering: no');
-        if (function_exists('apache_setenv')) {
-            @apache_setenv('no-gzip', '1');
-        }
-
-        try {
-            $client->stream();
-        } catch (\Exception $e) {
-            \AcmsLogger::error($e->getMessage());
-            echo "data: " . json_encode(['type' => 'error', 'message' => $e->getMessage()]) . "\n\n";
-        }
-
-        exit;
+            $silentInstruction;
     }
 
     /**

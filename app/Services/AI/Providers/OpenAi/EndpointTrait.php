@@ -1,6 +1,6 @@
 <?php
 
-namespace Acms\Plugins\AI\Services\AI;
+namespace Acms\Plugins\AI\Services\AI\Providers\OpenAi;
 
 trait EndpointTrait
 {

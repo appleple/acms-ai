@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Acms\Plugins\AI\Tests\Unit\Services\Endpoints;
+namespace Acms\Plugins\AI\Tests\Unit\Services\Providers\OpenAi;
 
 use Acms\Plugins\AI\Tests\Support\StubResponsesClient;
 use Acms\TestingFramework\TestCase;
