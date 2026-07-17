@@ -84,7 +84,7 @@ trait AIPostTrait
         $result = $this->provider->generateText($request);
         $text = $result->text;
         if ($text === null || $text === '') {
-            return $this->errorResponse('データを取得できませんでした。');
+            return $this->errorResponse($result->errorMessage ?? 'データを取得できませんでした。');
         }
 
         $decoded = json_decode($text, true);

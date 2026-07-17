@@ -18,6 +18,7 @@ final class GenerationResult
      * @param string|null $continuationToken 会話継続トークン
      * @param string|null $finishReason 終了理由（あれば）
      * @param TokenUsage|null $usage トークン使用量（取得できれば）
+     * @param string|null $errorMessage 失敗時の利用者向けメッセージ（プロバイダが分かりやすい理由へ整形。成功時は null）
      */
     public function __construct(
         public readonly ?string $text,
@@ -25,6 +26,7 @@ final class GenerationResult
         public readonly ?string $continuationToken = null,
         public readonly ?string $finishReason = null,
         public readonly ?TokenUsage $usage = null,
+        public readonly ?string $errorMessage = null,
     ) {
     }
 }

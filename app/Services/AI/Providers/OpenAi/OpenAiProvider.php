@@ -160,7 +160,7 @@ class OpenAiProvider implements AiProvider, ModelListingProvider
         // エラーの実体（message/type/code）をログに残し、原因を運用ログから追えるようにする。
         if ($raw instanceof \stdClass && isset($raw->error)) {
             Logger::error('【AI plugin】 OpenAI API がエラーを返しました', $this->errorToContext($raw->error));
-            return new GenerationResult(null, $raw);
+            return new GenerationResult(null, $raw, errorMessage: OpenAiErrorMessage::fromError($raw->error));
         }
 
         $text = ResponsesClient::extractText($raw);

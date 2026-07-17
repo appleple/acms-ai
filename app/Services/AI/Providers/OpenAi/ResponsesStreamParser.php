@@ -63,10 +63,8 @@ final class ResponsesStreamParser
                 $onEvent(StreamEvent::completed($this->responseId($event)));
                 break;
             case 'error':
-                $message = (isset($event->message) && is_string($event->message))
-                    ? $event->message
-                    : 'エラーが発生しました。';
-                $onEvent(StreamEvent::error($message));
+                // OpenAI 固有の code/type を利用者向けメッセージへ写す（生成側と同一の変換点）。
+                $onEvent(StreamEvent::error(OpenAiErrorMessage::fromError($event)));
                 break;
         }
     }

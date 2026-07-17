@@ -166,7 +166,7 @@ final class OpenAiProviderTest extends TestCase
     }
 
     #[Test]
-    #[TestDox('OpenAI がエラー応答（error フィールド）を返したら text は null になり流れを壊さない')]
+    #[TestDox('OpenAI がエラー応答（error フィールド）を返したら text は null＋利用者向けメッセージを載せる')]
     public function generateTextReturnsNullTextOnApiError(): void
     {
         $provider = new StubOpenAiProvider($this->creds());
@@ -176,5 +176,6 @@ final class OpenAiProviderTest extends TestCase
         $result = $provider->generateText(new GenerationRequest('gpt-5.4-mini', [Message::user(ContentPart::text('x'))]));
 
         self::assertNull($result->text);
+        self::assertSame('選択中のモデルが利用できません。モデル設定をご確認ください。', $result->errorMessage);
     }
 }

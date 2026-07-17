@@ -61,14 +61,16 @@ final class ResponsesStreamParserTest extends TestCase
     }
 
     #[Test]
-    #[TestDox('error はメッセージ付きの error イベントへ写す')]
+    #[TestDox('error は code に応じた利用者向けメッセージの error イベントへ写す')]
     public function mapsError(): void
     {
-        $events = $this->parse('data: {"type":"error","message":"boom"}' . "\n\n");
+        $events = $this->parse(
+            'data: {"type":"error","code":"insufficient_quota","message":"You exceeded your current quota"}' . "\n\n"
+        );
 
         self::assertCount(1, $events);
         self::assertSame(StreamEvent::TYPE_ERROR, $events[0]->type);
-        self::assertSame('boom', $events[0]->message);
+        self::assertStringContainsString('利用枠', (string) $events[0]->message);
     }
 
     #[Test]
