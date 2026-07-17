@@ -2,7 +2,7 @@
 
 namespace Acms\Plugins\AI\GET\AI;
 
-use Tpl;
+use Acms\Services\Facades\Template as Tpl;
 use Template;
 use ACMS_Corrector;
 use Acms\Plugins\AI\GET\AI;

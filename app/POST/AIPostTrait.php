@@ -2,7 +2,8 @@
 
 namespace Acms\Plugins\AI\POST;
 
-use Common;
+use Acms\Services\Facades\Common;
+use Acms\Services\Facades\Logger;
 use Acms\Plugins\AI\Services\AI as ServicesAI;
 use Acms\Plugins\AI\Services\AI\Endpoints\ResponsesClient;
 
@@ -29,7 +30,7 @@ trait AIPostTrait
                 $this->model = $cert['ai_model'];
             }
         } catch (\Exception $e) {
-            \AcmsLogger::error($e->getMessage());
+            Logger::error('【AI plugin】 AI 設定の初期化に失敗しました', Common::exceptionArray($e));
         }
     }
 
@@ -43,7 +44,7 @@ trait AIPostTrait
     private function errorResponse(string $message, array $logContext = []): mixed
     {
         $response = ['message' => $message, 'errorCode' => 500];
-        \AcmsLogger::notice($message, $logContext === [] ? $response : $logContext);
+        Logger::notice($message, $logContext === [] ? $response : $logContext);
         return Common::responseJson($response);
     }
 

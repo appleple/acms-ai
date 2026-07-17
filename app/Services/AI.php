@@ -2,10 +2,12 @@
 
 namespace Acms\Plugins\AI\Services;
 
-use DB;
+use Acms\Services\Facades\Common;
+use Acms\Services\Facades\Config;
+use Acms\Services\Facades\Database;
+use Acms\Services\Facades\Logger;
 use SQL;
 use Field;
-use Config;
 use Exception;
 
 class AI
@@ -50,7 +52,7 @@ class AI
 
             $response = $this->getModelsByAuthResponse($decodedResult);
         } catch (\Exception $e) {
-            \AcmsLogger::error($e->getMessage());
+            Logger::error('【AI plugin】 モデル一覧の取得に失敗しました', Common::exceptionArray($e));
         }
 
         return $response;
@@ -153,7 +155,7 @@ class AI
     {
         $result = [];
         try {
-            $DB = DB::singleton(dsn());
+            $DB = Database::singleton(dsn());
             $SQL = SQL::newSelect('tag');
             $SQL->addSelect('tag_name');
             $q = $SQL->get(dsn());
@@ -166,7 +168,7 @@ class AI
                 }
             }
         } catch (Exception $e) {
-            \AcmsLogger::error($e->getMessage());
+            Logger::error('【AI plugin】 タグ一覧の取得に失敗しました', Common::exceptionArray($e));
             return $result;
         }
 

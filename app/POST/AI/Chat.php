@@ -3,6 +3,8 @@
 namespace Acms\Plugins\AI\POST\AI;
 
 use ACMS_POST;
+use Acms\Services\Facades\Common;
+use Acms\Services\Facades\Logger;
 use Acms\Plugins\AI\POST\AIPostTrait;
 use Acms\Plugins\AI\Services\AI\Endpoints\StreamingResponsesClient;
 
@@ -102,7 +104,7 @@ class Chat extends ACMS_POST
         try {
             $client->stream();
         } catch (\Exception $e) {
-            \AcmsLogger::error($e->getMessage());
+            Logger::error('【AI plugin】 チャット応答の生成に失敗しました', Common::exceptionArray($e));
             echo "data: " . json_encode(['type' => 'error', 'message' => $e->getMessage()]) . "\n\n";
         }
 
@@ -115,6 +117,6 @@ class Chat extends ACMS_POST
      */
     private function jsonResponse(array $data): mixed
     {
-        return \Common::responseJson($data);
+        return Common::responseJson($data);
     }
 }
