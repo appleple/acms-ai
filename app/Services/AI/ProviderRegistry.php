@@ -6,6 +6,7 @@ namespace Acms\Plugins\AI\Services\AI;
 
 use Acms\Plugins\AI\Services\AI\Contracts\AiProvider;
 use Acms\Plugins\AI\Services\AI\Providers\Anthropic\AnthropicProvider;
+use Acms\Plugins\AI\Services\AI\Providers\Gemini\GeminiProvider;
 use Acms\Plugins\AI\Services\AI\Providers\OpenAi\OpenAiProvider;
 use Field;
 use RuntimeException;
@@ -55,7 +56,7 @@ final class ProviderRegistry
 
     /**
      * 既定プロバイダを登録済みのレジストリを返す。
-     * Gemini などを追加する際はここへ register() を足す。
+     * 新しいプロバイダを追加する際はここへ register() を足す。
      */
     public static function withDefaults(): self
     {
@@ -67,6 +68,10 @@ final class ProviderRegistry
         $registry->register(
             AnthropicProvider::ID,
             static fn(Field $config): AiProvider => AnthropicProvider::fromConfig($config)
+        );
+        $registry->register(
+            GeminiProvider::ID,
+            static fn(Field $config): AiProvider => GeminiProvider::fromConfig($config)
         );
 
         return $registry;
