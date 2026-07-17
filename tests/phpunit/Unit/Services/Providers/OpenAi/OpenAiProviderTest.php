@@ -164,4 +164,17 @@ final class OpenAiProviderTest extends TestCase
         self::assertSame(7, $result->usage->completionTokens);
         self::assertSame(18, $result->usage->totalTokens);
     }
+
+    #[Test]
+    #[TestDox('OpenAI がエラー応答（error フィールド）を返したら text は null になり流れを壊さない')]
+    public function generateTextReturnsNullTextOnApiError(): void
+    {
+        $provider = new StubOpenAiProvider($this->creds());
+        $provider->stubResult = '{"error":{"message":"The model `gpt-5.4-mini` does not exist",'
+            . '"type":"invalid_request_error","code":"model_not_found"}}';
+
+        $result = $provider->generateText(new GenerationRequest('gpt-5.4-mini', [Message::user(ContentPart::text('x'))]));
+
+        self::assertNull($result->text);
+    }
 }
