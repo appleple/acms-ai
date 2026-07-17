@@ -601,6 +601,8 @@ class OpenAiCompatProvider implements AiProvider, ModelListingProvider
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT => 30,
         ]);
         $result = curl_exec($ch);
         if (!is_string($result)) {
@@ -626,6 +628,9 @@ class OpenAiCompatProvider implements AiProvider, ModelListingProvider
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_POSTFIELDS => $body,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            // 重量級モデルの生成は分単位になり得るため長めに取る（無期限ハングだけを防ぐ）。
+            CURLOPT_TIMEOUT => 180,
         ]);
         $result = curl_exec($ch);
         if (!is_string($result)) {
@@ -657,6 +662,10 @@ class OpenAiCompatProvider implements AiProvider, ModelListingProvider
                 $onBytes($data);
                 return strlen($data);
             },
+            CURLOPT_CONNECTTIMEOUT => 10,
+            // ストリーミングは総時間ではなく「停止」を検出して打ち切る（120秒間 1B/s 未満で中断）。
+            CURLOPT_LOW_SPEED_LIMIT => 1,
+            CURLOPT_LOW_SPEED_TIME => 120,
         ]);
         curl_exec($ch);
 
