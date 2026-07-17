@@ -19,7 +19,7 @@ class Tag extends ACMS_POST
         $tagNameAll = ServiceAI::getTagNameAll();
         $tagStr = implode(", ", $tagNameAll);
 
-        if (!empty($tagStr)) {
+        if ($tagStr !== '') {
             $client->addInput("user", [
                 $client->createTextContent(
                     "This is a list of existing tags. "
@@ -49,7 +49,7 @@ class Tag extends ACMS_POST
         $config = $serviceAI->getConfig();
 
         $tagValid = $config->get('ai_tag_valid');
-        $customPrompt = !empty($tagValid)
+        $customPrompt = $tagValid !== ''
             ? $config->get('ai_tag_prompt')
             : 'Please answer in Japanese.';
 
@@ -57,11 +57,11 @@ class Tag extends ACMS_POST
             . "Please generate the linked tag without including the set tag.\n\n"
             . "article: \"\"\"\n{$article}\n\"\"\"";
 
-        if (!empty($addPrompt)) {
+        if ($addPrompt !== '') {
             $content .= "\n\nTags set: \"\"\"\n{$addPrompt}\n\"\"\"";
         }
 
-        if (!empty($alreadyGeneratedTags)) {
+        if (is_array($alreadyGeneratedTags) && $alreadyGeneratedTags !== []) {
             $tagList = implode(', ', $alreadyGeneratedTags);
             $content .= "\n\nAlready generated tags (do not include these in the new suggestions): \"\"\"\n"
                 . "{$tagList}\n\"\"\"";

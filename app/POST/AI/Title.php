@@ -23,7 +23,7 @@ class Title extends ACMS_POST
         $config = $serviceAI->getConfig();
 
         $titleValid = $config->get('ai_title_valid');
-        $customPrompt = !empty($titleValid)
+        $customPrompt = $titleValid !== ''
             ? $config->get('ai_title_prompt')
             : "- Please give 5 suggestions.\n- Please answer in Japanese.";
 

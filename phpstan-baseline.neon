@@ -37,12 +37,6 @@ parameters:
 			path: app/POST/AI/Chat.php
 
 		-
-			message: '#^Construct empty\(\) is not allowed\. Use more strict comparison\.$#'
-			identifier: empty.notAllowed
-			count: 4
-			path: app/POST/AI/Tag.php
-
-		-
 			message: '#^Only booleans are allowed in &&, mixed given on the left side\.$#'
 			identifier: booleanAnd.leftNotBoolean
 			count: 1
@@ -65,12 +59,6 @@ parameters:
 			identifier: booleanNot.exprNotBoolean
 			count: 1
 			path: app/POST/AI/Tag.php
-
-		-
-			message: '#^Construct empty\(\) is not allowed\. Use more strict comparison\.$#'
-			identifier: empty.notAllowed
-			count: 1
-			path: app/POST/AI/Title.php
 
 		-
 			message: '#^Only booleans are allowed in &&, mixed given on the left side\.$#'
