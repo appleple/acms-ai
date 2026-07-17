@@ -45,13 +45,14 @@
         <td>
           <select name="ai_provider" class="acms-admin-form-width-full">
             <option value="openai" <!-- BEGIN_IF [{ai_provider}/eq/openai] -->selected<!-- END_IF -->>OpenAI</option>
+            <option value="anthropic" <!-- BEGIN_IF [{ai_provider}/eq/anthropic] -->selected<!-- END_IF -->>Anthropic (Claude)</option>
           </select>
           <input type="hidden" name="config[]" value="ai_provider" />
         </td>
       </tr>
       <tr>
         <th>
-          <!-- T -->Organization ID<!-- /T -->
+          <!-- T -->OpenAI Organization ID<!-- /T -->
           <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="ChatGPT API で取得する Organization ID を入力してください。"></i>
         </th>
         <td>
@@ -67,7 +68,7 @@
       </tr>
       <tr>
         <th>
-          <!-- T -->Project ID<!-- /T -->
+          <!-- T -->OpenAI Project ID<!-- /T -->
           <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="ChatGPT API で取得する Project ID を入力してください。"></i>
         </th>
         <td>
@@ -83,7 +84,7 @@
       </tr>
       <tr>
         <th>
-          <!-- T -->API KEY<!-- /T -->
+          <!-- T -->OpenAI API KEY<!-- /T -->
           <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="ChatGPT API で取得する API KEY を入力してください。"></i>
         </th>
         <td>
@@ -97,16 +98,32 @@
           <input type="hidden" name="config[]" value="ai_api_key" />
         </td>
       </tr>
+      <tr>
+        <th>
+          <!-- T -->Anthropic API KEY<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="Anthropic Console で取得する API KEY を入力してください。"></i>
+        </th>
+        <td>
+          <input
+            type="text"
+            name="ai_anthropic_api_key"
+            value="{ai_anthropic_api_key}"
+            class="acms-admin-form-width-full"
+            placeholder="sk-ant-xxxxxxxxxxxxxxxxxxxxxxxx"
+          />
+          <input type="hidden" name="config[]" value="ai_anthropic_api_key" />
+        </td>
+      </tr>
 
       <tr>
         <th>
           <!-- T -->モデル<!-- /T -->
-          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="gpt-5.4, gpt-5.4-pro, gpt-5.4-mini, gpt-5.4-nanoが対応しています。"></i>
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="選択中のプロバイダで利用できるモデルが表示されます。"></i>
         </th>
         <td>
           <!-- BEGIN_MODULE AI_Admin -->
-          <!-- BEGIN_IF [{ai_organization_id}/em/_or_/{ai_project_id}/em/_or_/{ai_api_key}/em] -->
-          <p>Organization ID, Project ID, API KEY を保存してください。</p>
+          <!-- BEGIN_IF [{configured}/eq/false] -->
+          <p>選択中のプロバイダの認証情報を保存してください。</p>
           <!-- ELSE -->
           <!-- BEGIN_IF [{authorized}/eq/false] -->
           <p>認証に失敗または、API KEY に使用できるモデルがない可能性があります。</p>
