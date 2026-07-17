@@ -74,14 +74,15 @@ class ServiceProvider extends ACMS_App
     private function visionReady()
     {
         try {
-            $config = (new Services\AI())->getConfig();
+            $serviceAi = new Services\AI();
+            $config = $serviceAi->getConfig();
             if ($config->get('ai_vision_valid') === '') {
                 return false;
             }
             $provider = Services\AI\ProviderRegistry::withDefaults()->resolve($config);
 
             return $provider->isConfigured()
-                && $config->get('ai_model') !== ''
+                && $serviceAi->visionModel($config) !== ''
                 && $provider->supports(Services\AI\Contracts\Capability::VisionInput);
         } catch (\Throwable $e) {
             return false;

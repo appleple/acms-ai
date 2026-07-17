@@ -30,6 +30,20 @@ class AI
     }
 
     /**
+     * 画像解析（vision）で使うモデル名を解決する。
+     *
+     * 画像解析モデル（`ai_vision_model`）が設定されていればそれを優先し、
+     * 空なら通常モデル（`ai_model`）へフォールバックする（既存設定を壊さないため）。
+     * さくらのAI Engine のように用途でモデルを使い分けたいプロバイダ向けの設定。
+     */
+    public function visionModel(Field $config): string
+    {
+        $model = trim($config->get('ai_vision_model'));
+
+        return $model !== '' ? $model : trim($config->get('ai_model'));
+    }
+
+    /**
      * @return list<string> $result タグの配列
      */
     public static function getTagNameAll(): array

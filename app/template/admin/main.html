@@ -194,6 +194,35 @@
           <!-- END_MODULE AI_Admin -->
         </td>
       </tr>
+      <tr>
+        <th>
+          <!-- T -->画像解析モデル<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="メディアの画像解析（AI生成）で使うモデル。未選択の場合は上のモデルを使用します。"></i>
+        </th>
+        <td>
+          <!-- BEGIN_MODULE AI_Admin -->
+          <!-- BEGIN_IF [{configured}/eq/false] -->
+          <p>選択中のプロバイダの認証情報を保存してください。</p>
+          <!-- ELSE -->
+          <!-- BEGIN_IF [{authorized}/eq/false] -->
+          <p>認証に失敗または、API KEY に使用できるモデルがない可能性があります。</p>
+          <!-- ELSE -->
+          <select name="ai_vision_model" class="acms-admin-form-width-full">
+            <option value="">---（通常モデルと同じ）</option>
+            <!-- BEGIN model:loop -->
+            <option
+              value="{model}"
+              <!-- BEGIN_IF [{model}/eq/{vision_model_cur}] -->selected<!-- END_IF -->>
+              {model}
+            </option>
+            <!-- END model:loop -->
+          </select>
+          <input type="hidden" name="config[]" value="ai_vision_model" />
+          <!-- END_IF -->
+          <!-- END_IF -->
+          <!-- END_MODULE AI_Admin -->
+        </td>
+      </tr>
     </table>
 
     <h2 class="acms-admin-admin-title2"><!-- T -->プロンプト設定<!-- /T --></h2>
