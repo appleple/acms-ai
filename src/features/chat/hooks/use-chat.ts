@@ -39,16 +39,18 @@ interface ChatState {
 
 const chatStateStore = new Map<string, ChatState>()
 
-interface SSERawEvent {
+interface SSEEvent {
   type?: string
-  delta?: string
+  text?: string
+  continuationToken?: string
   message?: string
-  response?: { id?: string }
 }
 
 /**
- * ReadableStream から SSE イベントを読み取り、各コールバックに委譲する純粋関数。
- * `response.completed` で accumulatedText をリセットし、残余テキストを返す。
+ * ReadableStream からプロバイダ非依存の SSE イベント（delta/completed/error）を読み取り、
+ * 各コールバックに委譲する純粋関数。ベンダ固有のワイヤ形式（OpenAI の response.* イベント）は
+ * サーバ側でデコード済みで、ここではその中立形式だけを解釈する。
+ * `completed` で accumulatedText をリセットし、残余テキストを返す。
  */
 async function processSSEStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,
@@ -75,22 +77,22 @@ async function processSSEStream(
       if (jsonStr === '[DONE]') continue
 
       try {
-        const event = JSON.parse(jsonStr) as SSERawEvent
+        const event = JSON.parse(jsonStr) as SSEEvent
 
         if (event.type === 'error') {
           onError(event.message ?? 'エラーが発生しました。')
           return accumulatedText
         }
 
-        if (event.type === 'response.output_text.delta' && event.delta) {
-          accumulatedText += event.delta
+        if (event.type === 'delta' && typeof event.text === 'string') {
+          accumulatedText += event.text
           onDelta(accumulatedText)
         }
 
-        if (event.type === 'response.completed') {
+        if (event.type === 'completed') {
           const completed = accumulatedText
           accumulatedText = ''
-          onCompleted(completed, event.response?.id)
+          onCompleted(completed, event.continuationToken)
         }
       } catch {
         // Skip malformed JSON

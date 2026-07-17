@@ -1,10 +1,9 @@
 <?php
 
-namespace Acms\Plugins\AI\Services\AI\Endpoints;
+namespace Acms\Plugins\AI\Services\AI\Providers\OpenAi;
 
 use Acms\Services\Facades\Common;
 use Acms\Services\Facades\Logger;
-use Acms\Plugins\AI\Services\AI\EndpointTrait;
 
 class ResponsesClient
 {

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Acms\Plugins\AI\Tests\Unit\Services\Endpoints;
+namespace Acms\Plugins\AI\Tests\Unit\Services\Providers\OpenAi;
 
-use Acms\Plugins\AI\Services\AI\Endpoints\ResponsesClient;
+use Acms\Plugins\AI\Services\AI\Providers\OpenAi\ResponsesClient;
 use Acms\TestingFramework\TestCase;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestDox;

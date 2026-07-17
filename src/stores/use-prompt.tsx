@@ -11,7 +11,8 @@ const defaultPrompt: PromptType = {
   status: 'default',
   results: [],
   insertSelector: '',
-  mode: ''
+  mode: '',
+  error: null
 }
 
 export const PromptContext = createContext<{
@@ -23,6 +24,7 @@ export const PromptContext = createContext<{
   putResult: (result: PromptResultType) => PromptResultType | null;
   setMode: (mode: string) => void
   setInsertSelector: (insertId: string) => void
+  setError: (error: string | null) => void
 }>({
   prompt: defaultPrompt,
   setIsPrompt: () => {},
@@ -31,7 +33,8 @@ export const PromptContext = createContext<{
   addResult: () => {},
   putResult: () => null,
   setMode: () => {},
-  setInsertSelector: () => {}
+  setInsertSelector: () => {},
+  setError: () => {}
 });
 
 export function PromptContextProvider({
@@ -76,6 +79,10 @@ export function PromptContextProvider({
     (insertSelector: string) => setPrompt((prev) => ({ ...prev, insertSelector })),
     []
   )
+  const setError = useCallback(
+    (error: string | null) => setPrompt((prev) => ({ ...prev, error })),
+    []
+  )
 
 
   const value = useMemo(() => ({
@@ -86,8 +93,9 @@ export function PromptContextProvider({
     setResults,
     addResult,
     putResult,
-    setInsertSelector
-  }), [prompt, setIsPrompt, setStatus, setMode, setResults, addResult, putResult, setInsertSelector])
+    setInsertSelector,
+    setError
+  }), [prompt, setIsPrompt, setStatus, setMode, setResults, addResult, putResult, setInsertSelector, setError])
 
   return <PromptContext.Provider value={value}>{children}</PromptContext.Provider>
 }

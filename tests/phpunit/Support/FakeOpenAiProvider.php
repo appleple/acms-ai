@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace Acms\Plugins\AI\Tests\Support;
 
-use Acms\Plugins\AI\Services\AI;
+use Acms\Plugins\AI\Services\AI\Providers\OpenAi\OpenAiProvider;
 
 /**
- * AI サービスのテスト用ダブル。
+ * OpenAiProvider のテスト用ダブル。
  *
- * OpenAI との実通信（{@see AI::httpGetJson()}）だけを差し替え、auth() の「JSON 解析・エラー分岐・
- * モデル絞り込み」ロジックを決定的に検証できるようにする。$body に返すレスポンスボディを、$fail に
- * cURL 失敗（例外）を模すフラグを与える。
+ * OpenAI との実通信（{@see OpenAiProvider::httpGetJson()}）だけを差し替え、listModels() の
+ * 「JSON 解析・エラー分岐・モデル絞り込み」ロジックを決定的に検証できるようにする。$body に返す
+ * レスポンスボディを、$fail に cURL 失敗（例外）を模すフラグを与える。
  */
-final class FakeAuthService extends AI
+final class FakeOpenAiProvider extends OpenAiProvider
 {
     /** @var string httpGetJson が返すレスポンスボディ */
     public string $body = '{}';

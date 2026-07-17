@@ -5,7 +5,8 @@ namespace Acms\Plugins\AI\POST\AI;
 use ACMS_POST;
 use Acms\Plugins\AI\POST\AIPostTrait;
 use Acms\Plugins\AI\Services\AI as ServiceAI;
-use Acms\Plugins\AI\Services\AI\Endpoints\ResponsesClient;
+use Acms\Plugins\AI\Services\AI\Contracts\ContentPart;
+use Acms\Plugins\AI\Services\AI\Contracts\Message;
 
 /**
  * ACMS_POST_AI_Tag
@@ -14,24 +15,31 @@ class Tag extends ACMS_POST
 {
     use AIPostTrait;
 
-    protected function injectAdditionalMessages(ResponsesClient $client): void
+    /**
+     * 既存タグの一覧をユーザー／アシスタントの往復として先頭に差し込み、表記ゆれを抑えたタグ生成を促す。
+     *
+     * @return list<Message>
+     */
+    protected function additionalMessages(): array
     {
         $tagNameAll = ServiceAI::getTagNameAll();
         $tagStr = implode(", ", $tagNameAll);
 
-        if ($tagStr !== '') {
-            $client->addInput("user", [
-                $client->createTextContent(
-                    "This is a list of existing tags. "
-                    . "When generating tags, please use the existing tag list notation"
-                    . " for tags with duplicate meanings.\n\n"
-                    . "list of existing tags: \"\"\"\n$tagStr\n\"\"\""
-                )
-            ]);
-            $client->addInput("assistant", [
-                $client->createOutputTextContent("I got it. Please give me some prompts regarding tag generation.")
-            ]);
+        if ($tagStr === '') {
+            return [];
         }
+
+        return [
+            Message::user(ContentPart::text(
+                "This is a list of existing tags. "
+                . "When generating tags, please use the existing tag list notation"
+                . " for tags with duplicate meanings.\n\n"
+                . "list of existing tags: \"\"\"\n$tagStr\n\"\"\""
+            )),
+            Message::assistant(ContentPart::text(
+                "I got it. Please give me some prompts regarding tag generation."
+            )),
+        ];
     }
 
     public function post(): mixed

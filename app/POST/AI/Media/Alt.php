@@ -10,7 +10,9 @@
 // use Acms\Services\Facades\Media as MediaService;
 // use Acms\Services\Facades\PublicStorage;
 // use Acms\Plugins\AI\POST\AI\Media;
-// use Acms\Plugins\AI\Services\AI\Endpoints\ResponsesClient;
+// use Acms\Plugins\AI\Services\AI\Providers\OpenAi\ResponsesClient;
+// Note: v3.3 での再有効化時は、直接 ResponsesClient を new せず AIPostTrait 経由で
+// $this->provider->generateText()（VisionInput 対応プロバイダ）を使う形へ寄せること。
 
 // class Alt extends Media
 // {

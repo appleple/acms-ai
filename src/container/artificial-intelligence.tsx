@@ -5,13 +5,16 @@ import { usePromptContext } from '../stores/use-prompt'
 // Context を直接購読するため memo による最適化効果がなく、不要なラップを避ける
 const TitleResultRow = () => {
   const {
-    prompt: { results, status, mode }
+    prompt: { results, status, mode, error }
   } = usePromptContext()
 
   return (
     <>
       <CreateTitle />
       {mode === 'createTitle' && status === 'loading' && <p>生成中</p>}
+      {mode === 'createTitle' && status === 'error' && error && (
+        <p className="acms-admin-text-danger" role="alert">{error}</p>
+      )}
       {results
         .filter((result) => result.byMode === 'createTitle')
         .map((result) => (
@@ -25,7 +28,7 @@ const TitleResultRow = () => {
 
 const TagResultRow = () => {
   const {
-    prompt: { results, status, mode }
+    prompt: { results, status, mode, error }
   } = usePromptContext()
 
   return (
@@ -33,6 +36,9 @@ const TagResultRow = () => {
       <CreateTag />
       <EntryTagInitializer />
       {mode === 'createTag' && status === 'loading' && <p>生成中</p>}
+      {mode === 'createTag' && status === 'error' && error && (
+        <p className="acms-admin-text-danger" role="alert">{error}</p>
+      )}
       {results
         .filter((result) => result.byMode === 'createTag')
         .map((result) => (

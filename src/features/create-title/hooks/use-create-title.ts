@@ -6,10 +6,11 @@ import type { PromptResultType } from '../../../types/prompt-type'
 
 export function useCreateTitle(initialLabel = 'ユニットからタイトルを生成') {
   const [displayLabel, setDisplayLabel] = useState(initialLabel)
-  const { prompt: { results: promptResults, status }, setStatus, addResult, putResult, setMode } = usePromptContext()
+  const { prompt: { results: promptResults, status }, setStatus, addResult, putResult, setMode, setError } = usePromptContext()
 
   const postPrompt = useCallback(async () => {
     setMode('createTitle')
+    setError(null)
     setStatus('loading')
     const unitJoin = UnitJoin()
 
@@ -25,23 +26,33 @@ export function useCreateTitle(initialLabel = 'ユニットからタイトルを
         exec: 'ACMS_POST_AI_Title',
         formToken: window.csrfToken
       })
-      if (!result) return null
-      if (result.errorCode && result.errorCode === 500) return null
+      if (!result) {
+        setError('AI からの応答取得に失敗しました。時間をおいて再試行してください。')
+        setStatus('error')
+        return null
+      }
+      if (result.errorCode && result.errorCode === 500) {
+        setError(typeof result.message === 'string' && result.message ? result.message : 'タイトル生成に失敗しました。')
+        setStatus('error')
+        return null
+      }
       return result
     } catch {
-      setStatus('default')
+      setError('通信に失敗しました。時間をおいて再試行してください。')
+      setStatus('error')
       return null
     }
-  }, [setMode, setStatus])
+  }, [setMode, setStatus, setError])
 
   const createTitle = useCallback(async () => {
     const result = await postPrompt()
     if (!result) {
-      console.error('取得に失敗しました。')
+      // エラーメッセージ・status は postPrompt 側で設定済み。
       return
     }
     if (!result[0].content) {
-      console.error('生成に失敗しました。')
+      setError('生成結果が空でした。もう一度お試しください。')
+      setStatus('error')
       return
     }
 
@@ -66,7 +77,7 @@ export function useCreateTitle(initialLabel = 'ユニットからタイトルを
       setDisplayLabel('再生成')
     }
     setStatus('result')
-  }, [postPrompt, promptResults, putResult, addResult, setStatus])
+  }, [postPrompt, promptResults, putResult, addResult, setStatus, setError])
 
   return { status, displayLabel, createTitle }
 }

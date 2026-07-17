@@ -6,10 +6,11 @@ import type { PromptResponseType } from '../../../types/prompt-type'
 
 export function useCreateTag(addPrompt?: string, initialLabel = 'ユニットからタグを生成') {
   const [displayLabel, setDisplayLabel] = useState(initialLabel)
-  const { prompt: { results: promptResults, status }, setStatus, addResult, setMode } = usePromptContext()
+  const { prompt: { results: promptResults, status }, setStatus, addResult, setMode, setError } = usePromptContext()
 
   const postPrompt = useCallback(async () => {
     setMode('createTag')
+    setError(null)
     setStatus('loading')
     const unitJoin = UnitJoin()
 
@@ -32,23 +33,33 @@ export function useCreateTag(addPrompt?: string, initialLabel = 'ユニットか
         exec: 'ACMS_POST_AI_Tag',
         formToken: window.csrfToken
       })
-      if (!result) return null
-      if (result.errorCode && result.errorCode === 500) return null
+      if (!result) {
+        setError('AI からの応答取得に失敗しました。時間をおいて再試行してください。')
+        setStatus('error')
+        return null
+      }
+      if (result.errorCode && result.errorCode === 500) {
+        setError(typeof result.message === 'string' && result.message ? result.message : 'タグ生成に失敗しました。')
+        setStatus('error')
+        return null
+      }
       return result
     } catch {
-      setStatus('default')
+      setError('通信に失敗しました。時間をおいて再試行してください。')
+      setStatus('error')
       return null
     }
-  }, [promptResults, addPrompt, setMode, setStatus])
+  }, [promptResults, addPrompt, setMode, setStatus, setError])
 
   const createTag = useCallback(async () => {
     const result = await postPrompt()
     if (!result) {
-      console.error('取得に失敗しました。')
+      // エラーメッセージ・status は postPrompt 側で設定済み。
       return
     }
     if (!result[0].content) {
-      console.error('生成に失敗しました。')
+      setError('生成結果が空でした。もう一度お試しください。')
+      setStatus('error')
       return
     }
 
@@ -61,7 +72,7 @@ export function useCreateTag(addPrompt?: string, initialLabel = 'ユニットか
     addResult({ id: length + 1, data: filterTags, resultType: 'checkbox', byMode: 'createTag' })
     setDisplayLabel('追加生成')
     setStatus('result')
-  }, [postPrompt, promptResults, addResult, setStatus])
+  }, [postPrompt, promptResults, addResult, setStatus, setError])
 
   return { status, displayLabel, createTag }
 }
