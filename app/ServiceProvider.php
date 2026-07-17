@@ -70,6 +70,8 @@ class ServiceProvider extends ACMS_App
         }
 
         if (ADMIN === 'app_' . $this->menu) {
+            // 管理画面上部のパンくず（トピックパス）にページ名「AI機能」を表示する
+            $inject->add('admin-topicpath', PLUGIN_DIR . 'AI/template/admin/topicpath.html');
             $inject->add('admin-main', PLUGIN_DIR . 'AI/template/admin/main.html');
         }
     }

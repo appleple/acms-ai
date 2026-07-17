@@ -1,13 +1,25 @@
 export const isScrollable = (el: Element) => el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth;
 
 export const UnitJoin = () => {
-  const units = document.querySelectorAll('.entryFormLiteEditor');
   let text = '';
-  units.forEach((item) => {
+
+  // 旧ライトエディタ（テキストユニット）の本文。innerHTML を連結する。
+  document.querySelectorAll('.entryFormLiteEditor').forEach((item) => {
     if (!item.closest('.entryFormColumnItem-hidden')) {
       text += `${item.innerHTML}\n`;
     }
   });
+
+  // ブロックエディタの本文。各ユニットがシリアライズ済みHTMLを hidden
+  // input[name^="block-editor_html_"] に保持しているため、その値（実HTML）を連結する。
+  // ProseMirror の DOM を直接読むとツールバー等のノイズが混ざるため hidden を使う。
+  document
+    .querySelectorAll<HTMLInputElement>('input[name^="block-editor_html_"]')
+    .forEach((input) => {
+      if (!input.closest('.entryFormColumnItem-hidden') && input.value) {
+        text += `${input.value}\n`;
+      }
+    });
 
   return text;
 };
