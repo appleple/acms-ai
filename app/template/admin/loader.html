@@ -1,0 +1,56 @@
+<!--
+  全管理画面共通ローダー（admin-main インジェクトポイントに常時注入）。
+  ページ内に <acms-ai-assistant-button> がある場合だけ、本体バンドル(acms-ai.js)を
+  遅延ロードする。これによりエントリー編集以外の管理画面でも Web Component を使える。
+  プロバイダ未設定(authorized=false)のときは ServiceProvider 側で注入自体を行わない。
+  エントリー編集で admin-entry-field 側が既にバンドルを読み込む場合は、二重ロードを避ける。
+
+  ※ BEGIN_MODULE でラップすると Template::render() が走り、JS 内の「同一行で開閉する
+     中身ありの波括弧 {...}」を変数とみなして削除してしまう（loadBundle の {once:true}
+     等が消えて構文崩壊する）。そのためモジュール化せず素の <script> として注入し、
+     authorized 判定は PHP（ServiceProvider）側で行う。%{AI_JS}/%{AI_CSS} はグローバル
+     変数置換のため module 不要で解決される。
+-->
+<script>
+(function () {
+  var JS_URL = '%{AI_JS}';
+  var CSS_URL = '%{AI_CSS}';
+
+  function bundleAlreadyPresent() {
+    // 既に読み込み済み or 読み込み予約済みなら true
+    if (window.customElements && window.customElements.get('acms-ai-assistant-button')) {
+      return true;
+    }
+    return !!document.querySelector(
+      'script[data-acms-ai-bundle], script[src*="extension/plugins/AI/bundle/acms-ai.js"]'
+    );
+  }
+
+  function loadBundle() {
+    if (!document.querySelector('acms-ai-assistant-button')) {
+      return; // コンポーネントが無い画面では何もしない
+    }
+    if (bundleAlreadyPresent()) {
+      return; // 二重ロード防止（エントリー編集など）
+    }
+    if (CSS_URL) {
+      var link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = CSS_URL;
+      document.head.appendChild(link);
+    }
+    var script = document.createElement('script');
+    script.src = JS_URL;
+    script.crossOrigin = 'anonymous';
+    script.setAttribute('data-acms-ai-bundle', '');
+    document.body.appendChild(script);
+  }
+
+  // loadBundle は冪等（bundleAlreadyPresent でガード）なので once オプションは不要。
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadBundle);
+  } else {
+    loadBundle();
+  }
+})();
+</script>
