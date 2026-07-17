@@ -11,6 +11,8 @@ use Acms\Plugins\AI\Services\AI\Contracts\Credentials;
 use Acms\Plugins\AI\Services\AI\Contracts\GenerationRequest;
 use Acms\Plugins\AI\Services\AI\Contracts\GenerationResult;
 use Acms\Plugins\AI\Services\AI\Contracts\Message;
+use Acms\Services\Facades\Common;
+use Acms\Services\Facades\Logger;
 use Field;
 
 /**
@@ -104,7 +106,7 @@ class OpenAiProvider implements AiProvider
 
             return $this->modelsFromResponse($decoded);
         } catch (\Exception $e) {
-            \AcmsLogger::error($e->getMessage());
+            Logger::error('【AI plugin】 モデル一覧の取得に失敗しました', Common::exceptionArray($e));
             return null;
         }
     }

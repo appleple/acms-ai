@@ -2,6 +2,9 @@
 
 namespace Acms\Plugins\AI\Services\AI\Providers\OpenAi;
 
+use Acms\Services\Facades\Common;
+use Acms\Services\Facades\Logger;
+
 class ResponsesClient
 {
     use EndpointTrait;
@@ -92,7 +95,7 @@ class ResponsesClient
 
         $json = json_encode($postData);
         if ($json === false) {
-            \AcmsLogger::error('JSON encode error: ' . json_last_error_msg());
+            Logger::error('【AI plugin】 JSON encode error: ' . json_last_error_msg());
             return null;
         }
 
@@ -104,7 +107,7 @@ class ResponsesClient
             $parse = json_decode($result);
             return $parse;
         } catch (\Exception $e) {
-            \AcmsLogger::error($e->getMessage());
+            Logger::error('【AI plugin】 OpenAI API リクエストに失敗しました', Common::exceptionArray($e));
             return null;
         }
     }
