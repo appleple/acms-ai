@@ -15,6 +15,7 @@ use Acms\Plugins\AI\Services\AI\Contracts\ModelListingProvider;
 use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
 use Acms\Plugins\AI\Services\AI\Contracts\TokenUsage;
 use Acms\Plugins\AI\Services\AI\Conversation\ConversationStore;
+use Acms\Plugins\AI\Services\AI\Vision\DataUrl;
 use Acms\Services\Facades\Common;
 use Acms\Services\Facades\Logger;
 use Field;
@@ -253,7 +254,9 @@ class AnthropicProvider implements AiProvider, ModelListingProvider
 
     /**
      * 1 メッセージ分のコンテンツ断片を Messages API の content ブロック配列へ変換する。
-     * テキストは text ブロックに、画像は URL ソースの image ブロックに振り分ける。
+     * テキストは text ブロックに、画像は image ブロックに振り分ける。
+     * 画像が data URL（サーバー側で取得済みのメディア画像など）の場合は base64 ソースへ、
+     * それ以外は URL ソースへ変換する。
      *
      * @return list<array<string, mixed>>
      */
@@ -261,9 +264,21 @@ class AnthropicProvider implements AiProvider, ModelListingProvider
     {
         $contents = [];
         foreach ($message->parts as $part) {
-            $contents[] = $part->type === ContentPart::TYPE_IMAGE
-                ? ['type' => 'image', 'source' => ['type' => 'url', 'url' => $part->value]]
-                : ['type' => 'text', 'text' => $part->value];
+            if ($part->type !== ContentPart::TYPE_IMAGE) {
+                $contents[] = ['type' => 'text', 'text' => $part->value];
+                continue;
+            }
+            $inline = DataUrl::parse($part->value);
+            $contents[] = $inline !== null
+                ? [
+                    'type' => 'image',
+                    'source' => [
+                        'type' => 'base64',
+                        'media_type' => $inline['mimeType'],
+                        'data' => $inline['data'],
+                    ],
+                ]
+                : ['type' => 'image', 'source' => ['type' => 'url', 'url' => $part->value]];
         }
 
         return $contents;

@@ -181,6 +181,27 @@ final class GeminiProviderTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('data URL の画像パートは取得せずにそのまま inlineData へ変換する')]
+    public function dataUrlImagePartSkipsFetch(): void
+    {
+        $provider = $this->provider();
+        $provider->stubPostResult = '{"candidates":[{"content":{"parts":[{"text":"ok"}]}}]}';
+
+        $provider->generateText(new GenerationRequest(
+            'gemini-2.5-flash',
+            [Message::user(ContentPart::image('data:image/jpeg;base64,ZGF0YQ=='))],
+        ));
+
+        // フェッチは呼ばれない。
+        self::assertSame([], $provider->fetchedImageUrls);
+        $payload = $provider->capturedPayload();
+        self::assertSame(
+            [['inlineData' => ['mimeType' => 'image/jpeg', 'data' => 'ZGF0YQ==']]],
+            $payload['contents'][0]['parts']
+        );
+    }
+
+    #[Test]
     #[TestDox('エラー応答は日本語メッセージ付きの失敗結果になる')]
     public function errorResponseBecomesFailureResult(): void
     {
