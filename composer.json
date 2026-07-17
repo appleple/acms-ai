@@ -8,7 +8,7 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Acms\\Plugins\\AI\\Tests\\": "tests/"
+            "Acms\\Plugins\\AI\\Tests\\": "tests/phpunit/"
         }
     },
     "scripts": {

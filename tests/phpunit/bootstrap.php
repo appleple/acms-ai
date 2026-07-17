@@ -15,7 +15,7 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../vendor/ablogcms/testing-framework/bootstrap.php';
+require_once __DIR__ . '/../../vendor/ablogcms/testing-framework/bootstrap.php';
 
 // テスト実行時は composer オートローダが 2 つ生きている:
 //   (1) 本リポジトリの vendor        … PSR-4 `Acms\Plugins\AI\` => app/
@@ -26,7 +26,7 @@ require_once __DIR__ . '/../vendor/ablogcms/testing-framework/bootstrap.php';
 // app/ と食い違うため <source>=app のカバレッジが紐づかない。(1) を prepend し直して AI 名前空間をリポジトリの
 // app/ から解決させる（＝バインドマウント先ではなく、コミット対象のコードそのものを検証する）。コア専用クラスは
 // (1) に無く (2) へフォールスルーするため副作用はない。
-$composerLoader = require __DIR__ . '/../vendor/autoload.php';
+$composerLoader = require __DIR__ . '/../../vendor/autoload.php';
 if ($composerLoader instanceof \Composer\Autoload\ClassLoader) {
     $composerLoader->unregister();
     $composerLoader->register(true);
