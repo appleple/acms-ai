@@ -19,11 +19,6 @@ trait AIPostTrait
     protected $provider = null;
 
     /**
-     * @var string 選択中の API キー（設定済みかの判定に用いる）
-     */
-    protected $apiKey = "";
-
-    /**
      * @var string 選択中のモデル名
      */
     protected $model = "";
@@ -33,11 +28,7 @@ trait AIPostTrait
         try {
             $ServiceAI = new ServicesAI();
             $config = $ServiceAI->getConfig();
-            $cert = $ServiceAI->getCertification($config);
-            if ($cert['ai_api_key'] && $cert['ai_model']) {
-                $this->apiKey = (string) $cert['ai_api_key'];
-                $this->model = (string) $cert['ai_model'];
-            }
+            $this->model = $config->get('ai_model');
             $this->provider = ProviderRegistry::withDefaults()->resolve($config);
         } catch (\Throwable $e) {
             Logger::error('【AI plugin】 AI 設定の初期化に失敗しました', Common::exceptionArray($e));
@@ -69,7 +60,7 @@ trait AIPostTrait
      */
     protected function executeAiRequest(string $instructions, string $schemaName, array $promptMessages): mixed
     {
-        if ($this->provider === null || $this->apiKey === '' || $this->model === '') {
+        if ($this->provider === null || !$this->provider->isConfigured() || $this->model === '') {
             return $this->errorResponse('APIキーまたはモデルの設定がありません。');
         }
 

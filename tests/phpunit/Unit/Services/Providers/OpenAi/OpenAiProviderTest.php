@@ -49,7 +49,7 @@ final class OpenAiProviderTest extends TestCase
     }
 
     #[Test]
-    #[TestDox('テキスト生成・構造化出力・画像入力・ストリーミング・モデル列挙をサポートする')]
+    #[TestDox('テキスト生成・構造化出力・画像入力・ストリーミングをサポートする')]
     public function supportsExpectedCapabilities(): void
     {
         $provider = new OpenAiProvider($this->creds());
@@ -58,7 +58,6 @@ final class OpenAiProviderTest extends TestCase
             Capability::StructuredOutput,
             Capability::VisionInput,
             Capability::Streaming,
-            Capability::ModelListing,
         ];
         foreach ($capabilities as $capability) {
             self::assertTrue($provider->supports($capability));
@@ -147,5 +146,22 @@ final class OpenAiProviderTest extends TestCase
         $result = $provider->generateText(new GenerationRequest('gpt-5.4', [Message::user(ContentPart::text('x'))]));
 
         self::assertNull($result->text);
+    }
+
+    #[Test]
+    #[TestDox('usage と status を GenerationResult の TokenUsage / finishReason へ写す')]
+    public function generateTextMapsUsageAndFinishReason(): void
+    {
+        $provider = new StubOpenAiProvider($this->creds());
+        $provider->stubResult = '{"status":"completed","usage":{"input_tokens":11,"output_tokens":7,"total_tokens":18},'
+            . '"output":[{"type":"message","content":[{"type":"output_text","text":"hi"}]}]}';
+
+        $result = $provider->generateText(new GenerationRequest('gpt-5.4', [Message::user(ContentPart::text('x'))]));
+
+        self::assertSame('completed', $result->finishReason);
+        self::assertNotNull($result->usage);
+        self::assertSame(11, $result->usage->promptTokens);
+        self::assertSame(7, $result->usage->completionTokens);
+        self::assertSame(18, $result->usage->totalTokens);
     }
 }

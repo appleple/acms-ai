@@ -20,27 +20,6 @@ use Exception;
 class AI
 {
     /**
-     * @param Field $config コンフィグのフィールド
-     * @return array<string, mixed> $result 認証キーの配列
-    */
-    public function getCertification(Field $config): array
-    {
-        $organizationId = $config->get('ai_organization_id');
-        $projectId = $config->get('ai_project_id');
-        $apiKey = $config->get('ai_api_key');
-        $model = $config->get('ai_model');
-
-        $result = [
-            'ai_organization_id' => $organizationId,
-            'ai_project_id' => $projectId,
-            'ai_api_key' => $apiKey,
-            'ai_model' => $model,
-        ];
-
-        return $result;
-    }
-
-    /**
      * @return Field $config プロンプトを含むコンフィグ
     */
     public function getConfig(): Field

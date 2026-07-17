@@ -17,12 +17,14 @@ final class GenerationResult
      * @param mixed $raw プロバイダの生応答
      * @param string|null $continuationToken 会話継続トークン
      * @param string|null $finishReason 終了理由（あれば）
+     * @param TokenUsage|null $usage トークン使用量（取得できれば）
      */
     public function __construct(
         public readonly ?string $text,
         public readonly mixed $raw = null,
         public readonly ?string $continuationToken = null,
         public readonly ?string $finishReason = null,
+        public readonly ?TokenUsage $usage = null,
     ) {
     }
 }

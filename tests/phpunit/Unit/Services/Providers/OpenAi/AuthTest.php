@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestDox;
 
 /**
- * OpenAI /models への認証（OpenAiProvider::authenticate）の「認証情報バリデーション・レスポンス解析・
+ * OpenAI /models へのモデル列挙（OpenAiProvider::listModels）の「認証情報バリデーション・レスポンス解析・
  * エラー分岐・利用可能モデル絞り込み」を固定する。
  *
  * 実通信は {@see FakeOpenAiProvider} で差し替え、決定的に検証する。cURL 自体（OpenAiProvider::httpGetJson）は
@@ -48,9 +48,9 @@ final class AuthTest extends TestCase
         $noOrg = $this->provider('key', ['organizationId' => '', 'projectId' => 'proj'], $body);
         $noProject = $this->provider('key', ['organizationId' => 'org', 'projectId' => ''], $body);
 
-        self::assertNull($noKey->authenticate());
-        self::assertNull($noOrg->authenticate());
-        self::assertNull($noProject->authenticate());
+        self::assertNull($noKey->listModels());
+        self::assertNull($noOrg->listModels());
+        self::assertNull($noProject->listModels());
         // 通信は一度も行われない。
         self::assertNull($noKey->requestedUrl);
         self::assertNull($noOrg->requestedUrl);
@@ -63,7 +63,7 @@ final class AuthTest extends TestCase
     {
         $provider = $this->configured('{"data":[]}');
 
-        $provider->authenticate();
+        $provider->listModels();
 
         self::assertSame('https://api.openai.com/v1/models', $provider->requestedUrl);
     }
@@ -72,29 +72,29 @@ final class AuthTest extends TestCase
     #[TestDox('通信失敗（cURL エラー）は握りつぶして null を返す')]
     public function returnsNullOnTransportFailure(): void
     {
-        self::assertNull($this->configured('{}', true)->authenticate());
+        self::assertNull($this->configured('{}', true)->listModels());
     }
 
     #[Test]
     #[TestDox('不正な JSON 応答は null を返す')]
     public function returnsNullOnInvalidJson(): void
     {
-        self::assertNull($this->configured('not-json')->authenticate());
+        self::assertNull($this->configured('not-json')->listModels());
     }
 
     #[Test]
     #[TestDox('オブジェクト以外の JSON（配列・スカラ）は null を返す')]
     public function returnsNullOnNonObjectJson(): void
     {
-        self::assertNull($this->configured('[]')->authenticate());
-        self::assertNull($this->configured('"just a string"')->authenticate());
+        self::assertNull($this->configured('[]')->listModels());
+        self::assertNull($this->configured('"just a string"')->listModels());
     }
 
     #[Test]
     #[TestDox('error フィールドを含む応答は null を返す')]
     public function returnsNullWhenResponseHasError(): void
     {
-        self::assertNull($this->configured('{"error":{"message":"Incorrect API key provided"}}')->authenticate());
+        self::assertNull($this->configured('{"error":{"message":"Incorrect API key provided"}}')->listModels());
     }
 
     #[Test]
@@ -110,7 +110,7 @@ final class AuthTest extends TestCase
             ],
         ], JSON_THROW_ON_ERROR);
 
-        self::assertSame(['gpt-5.4', 'gpt-5.4-mini'], $this->configured($body)->authenticate());
+        self::assertSame(['gpt-5.4', 'gpt-5.4-mini'], $this->configured($body)->listModels());
     }
 
     #[Test]
@@ -125,13 +125,13 @@ final class AuthTest extends TestCase
             ],
         ], JSON_THROW_ON_ERROR);
 
-        self::assertSame(['gpt-5.4-nano'], $this->configured($body)->authenticate());
+        self::assertSame(['gpt-5.4-nano'], $this->configured($body)->listModels());
     }
 
     #[Test]
     #[TestDox('data が無い応答は空配列を返す')]
     public function returnsEmptyArrayWhenNoData(): void
     {
-        self::assertSame([], $this->configured('{"object":"list"}')->authenticate());
+        self::assertSame([], $this->configured('{"object":"list"}')->listModels());
     }
 }

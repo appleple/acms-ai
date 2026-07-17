@@ -8,6 +8,7 @@ use ACMS_Corrector;
 use Acms\Plugins\AI\GET\AI;
 use Acms\Plugins\AI\Services\AI as ServiceAI;
 use Acms\Plugins\AI\Services\AI\ProviderRegistry;
+use Acms\Plugins\AI\Services\AI\Contracts\ModelListingProvider;
 
 class Admin extends AI
 {
@@ -19,15 +20,15 @@ class Admin extends AI
         try {
             $ServiceAI = new ServiceAI();
             $config = $ServiceAI->getConfig();
-            $cert = $ServiceAI->getCertification($config);
 
             $provider = ProviderRegistry::withDefaults()->resolve($config);
-            $models = $provider->authenticate();
+            $models = $provider instanceof ModelListingProvider ? $provider->listModels() : null;
             if ($models !== null) {
                 $this->authorized = $models !== [] ? true : false;
             }
-            if ($cert['ai_model']) {
-                $this->modelCur = $cert['ai_model'];
+            $selectedModel = $config->get('ai_model');
+            if ($selectedModel !== '') {
+                $this->modelCur = $selectedModel;
             }
 
             if (is_array($models) && $models !== []) {

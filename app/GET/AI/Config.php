@@ -7,6 +7,7 @@ use Template;
 use ACMS_Corrector;
 use Acms\Plugins\AI\GET\AI;
 use Acms\Plugins\AI\Services\AI as ServiceAI;
+use Acms\Plugins\AI\Services\AI\ProviderRegistry;
 
 class Config extends AI
 {
@@ -17,16 +18,15 @@ class Config extends AI
         try {
             $ServiceAI = new ServiceAI();
             $config = $ServiceAI->getConfig();
-            $cert = $ServiceAI->getCertification($config);
             $this->configField = Tpl::buildField($config, $Tpl);
 
-            // API キーとモデルが設定済みなら AI 機能を有効表示する。モデルの妥当性検証（許可リスト）は
-            // プロバイダ固有のため、認証を行う管理画面（GET/AI/Admin → provider->authenticate()）の責務に集約する。
-            $apiKey = $cert['ai_api_key'];
-            $model = $cert['ai_model'];
-            if (is_string($apiKey) && $apiKey !== '' && is_string($model) && $model !== '') {
+            // 資格情報が揃い、モデルが選択済みなら AI 機能を有効表示する。プロバイダ固有の資格情報
+            // （OpenAI の organization/project 等）の充足判定は provider->isConfigured() に閉じ、
+            // 許可リストによるモデル妥当性検証は列挙を行う管理画面（GET/AI/Admin → listModels()）の責務に集約する。
+            $provider = ProviderRegistry::withDefaults()->resolve($config);
+            $model = $config->get('ai_model');
+            if ($provider->isConfigured() && $model !== '') {
                 $this->authorized = true;
-                $this->configField = Tpl::buildField($config, $Tpl);
             }
         } catch (\Exception $e) {
         }

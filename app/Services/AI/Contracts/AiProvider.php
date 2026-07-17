@@ -25,12 +25,10 @@ interface AiProvider
     public function supports(Capability $capability): bool;
 
     /**
-     * 保持している認証情報を検証し、利用可能なモデル名の一覧を返す。
-     * 認証情報が未設定・不正、または通信に失敗した場合は null。
-     *
-     * @return list<string>|null
+     * API 呼び出しに足る認証情報が揃っているか。プロバイダ固有の資格情報
+     * （OpenAI の organization/project 等）の充足判定は実装内に閉じ、消費側には bool だけを見せる。
      */
-    public function authenticate(): ?array;
+    public function isConfigured(): bool;
 
     /**
      * テキストを生成する。`$request->outputSchema` があれば構造化出力を要求する。

@@ -11,6 +11,8 @@ use Acms\Plugins\AI\Services\AI\Contracts\Credentials;
 use Acms\Plugins\AI\Services\AI\Contracts\GenerationRequest;
 use Acms\Plugins\AI\Services\AI\Contracts\GenerationResult;
 use Acms\Plugins\AI\Services\AI\Contracts\Message;
+use Acms\Plugins\AI\Services\AI\Contracts\ModelListingProvider;
+use Acms\Plugins\AI\Services\AI\Contracts\TokenUsage;
 use Acms\Services\Facades\Common;
 use Acms\Services\Facades\Logger;
 use Field;
@@ -23,10 +25,13 @@ use Field;
  * output_text/input_image/text.format/previous_response_id、/v1/models 応答、3 点認証）は
  * すべてこのクラス配下（本クラスと {@see ResponsesClient} / {@see StreamingResponsesClient}）に閉じる。
  */
-class OpenAiProvider implements AiProvider
+class OpenAiProvider implements AiProvider, ModelListingProvider
 {
     public const ID = 'openai';
     private const MODELS_ENDPOINT = 'https://api.openai.com/v1/models';
+
+    /** @var list<string> このプロバイダで利用を許可するモデル名。 */
+    private const ALLOWED_MODELS = ['gpt-5.4', 'gpt-5.4-pro', 'gpt-5.4-mini', 'gpt-5.4-nano'];
 
     public function __construct(private readonly Credentials $credentials)
     {
@@ -59,25 +64,36 @@ class OpenAiProvider implements AiProvider
             Capability::StructuredOutput,
             Capability::VisionInput,
             Capability::Streaming,
-            Capability::ModelListing,
         ], true);
+    }
+
+    public function isConfigured(): bool
+    {
+        return $this->credentials->apiKey() !== ''
+            && $this->credentials->attribute('organizationId') !== ''
+            && $this->credentials->attribute('projectId') !== '';
+    }
+
+    public function supportsModel(string $model): bool
+    {
+        return $model !== '' && in_array($model, self::ALLOWED_MODELS, true);
     }
 
     /**
      * OpenAI の /v1/models を叩き、許可リストに含まれる利用可能モデル名を返す。
-     * 3 点認証（API キー・Organization ID・Project ID）のいずれかが空なら通信せず null。
+     * 認証情報（API キー・Organization ID・Project ID）が未充足なら通信せず null。
      *
      * @return list<string>|null
      */
-    public function authenticate(): ?array
+    public function listModels(): ?array
     {
+        if (!$this->isConfigured()) {
+            return null;
+        }
+
         $apiKey = $this->credentials->apiKey();
         $organizationId = $this->credentials->attribute('organizationId');
         $projectId = $this->credentials->attribute('projectId');
-
-        if ($apiKey === '' || $organizationId === '' || $projectId === '') {
-            return null;
-        }
 
         $headers = [
             "Content-Type: application/json",
@@ -142,8 +158,11 @@ class OpenAiProvider implements AiProvider
         $continuation = ($raw instanceof \stdClass && isset($raw->id) && is_string($raw->id))
             ? $raw->id
             : null;
+        $finishReason = ($raw instanceof \stdClass && isset($raw->status) && is_string($raw->status))
+            ? $raw->status
+            : null;
 
-        return new GenerationResult($text, $raw, $continuation);
+        return new GenerationResult($text, $raw, $continuation, $finishReason, $this->usageFromResponse($raw));
     }
 
     public function streamText(GenerationRequest $request, callable $onChunk): void
@@ -169,19 +188,6 @@ class OpenAiProvider implements AiProvider
         }
 
         $client->stream($onChunk);
-    }
-
-    /**
-     * モデル名が利用可能（許可リストに含まれる）ならその名前を、含まれなければ null を返す。
-     */
-    public function availableModel(string $model): ?string
-    {
-        if ($model === '') {
-            return null;
-        }
-        $availableModels = ['gpt-5.4', 'gpt-5.4-pro', 'gpt-5.4-mini', 'gpt-5.4-nano'];
-
-        return in_array($model, $availableModels, true) ? $model : null;
     }
 
     /**
@@ -214,12 +220,30 @@ class OpenAiProvider implements AiProvider
             return $models;
         }
         foreach ($result->data as $datum) {
-            if ($datum instanceof \stdClass && isset($datum->id) && $this->availableModel((string) $datum->id) !== null) {
+            if ($datum instanceof \stdClass && isset($datum->id) && $this->supportsModel((string) $datum->id)) {
                 $models[] = (string) $datum->id;
             }
         }
 
         return $models;
+    }
+
+    /**
+     * Responses API の usage（input_tokens / output_tokens / total_tokens）を {@see TokenUsage} へ写す。
+     * usage が無ければ null。
+     */
+    private function usageFromResponse(mixed $raw): ?TokenUsage
+    {
+        if (!$raw instanceof \stdClass || !isset($raw->usage) || !$raw->usage instanceof \stdClass) {
+            return null;
+        }
+        $usage = $raw->usage;
+
+        return new TokenUsage(
+            (int) ($usage->input_tokens ?? 0),
+            (int) ($usage->output_tokens ?? 0),
+            (int) ($usage->total_tokens ?? 0),
+        );
     }
 
     /**

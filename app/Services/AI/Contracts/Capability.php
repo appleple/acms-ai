@@ -24,7 +24,4 @@ enum Capability
 
     /** ストリーミング生成（逐次チャンク出力）。 */
     case Streaming;
-
-    /** 認証情報に基づく利用可能モデルの列挙。 */
-    case ModelListing;
 }

@@ -9,7 +9,7 @@ use Acms\Plugins\AI\Services\AI\Providers\OpenAi\OpenAiProvider;
 /**
  * OpenAiProvider のテスト用ダブル。
  *
- * OpenAI との実通信（{@see OpenAiProvider::httpGetJson()}）だけを差し替え、authenticate() の
+ * OpenAI との実通信（{@see OpenAiProvider::httpGetJson()}）だけを差し替え、listModels() の
  * 「JSON 解析・エラー分岐・モデル絞り込み」ロジックを決定的に検証できるようにする。$body に返す
  * レスポンスボディを、$fail に cURL 失敗（例外）を模すフラグを与える。
  */
