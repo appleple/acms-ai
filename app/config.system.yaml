@@ -1,0 +1,23 @@
+#BEGIN_AIConfig
+# acms-ai プラグインの既定設定。インストール時に private/config.system.yaml へ追記される。
+# #BEGIN_AIConfig 〜 #END_AIConfig で囲み、再インストール時の二重記述を防いでいるので削除しないこと。
+# ここに既定プロンプトを置くことで、管理画面の textarea に既定値が表示され（BEGIN_IF 不要）、
+# 未保存でも生成時に既定プロンプトが使われる。
+
+# エントリー: タイトル/タグ生成の既定プロンプト
+ai_title_prompt: |-
+  - Please give 5 suggestions.
+  - Please answer in Japanese.
+ai_tag_prompt: "Please answer in Japanese."
+
+# メディア: 画像からのフィールド生成プロンプト
+ai_vision_system_prompt: "あなたは画像のメタ情報を作成するアシスタントです。指定されたキーだけを持つ JSON オブジェクトを1つだけ出力してください。コードフェンス・説明文・前後の文章は一切付けず、JSON のみを返します。"
+ai_vision_prompt_alt: "視覚障害のあるユーザー向けの簡潔で具体的な代替テキスト（日本語、120文字以内、「画像」などの前置きや引用符・改行なし）"
+ai_vision_prompt_caption: "画像の短いキャプション（日本語、100文字以内、1文程度）"
+ai_vision_prompt_memo: "管理者向けの内部メモ（日本語、200文字以内、被写体・用途・キーワードなど）"
+ai_vision_prompt_filename: "内容を表す英小文字スラッグ（半角英数字とハイフンのみ。拡張子は書かない／元の拡張子は自動で保持。60文字以内、例: business-woman-office）"
+ai_vision_prompt_tags: "画像内容を表す日本語タグの配列（5個程度、各タグは10文字以内の短い語、JSON 配列）"
+
+# さくらのAI Engine（OpenAI互換）の既定エンドポイント
+ai_compat_base_url: "https://api.ai.sakura.ad.jp/v1"
+#END_AIConfig
