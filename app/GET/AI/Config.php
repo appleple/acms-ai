@@ -14,6 +14,8 @@ class Config extends AI
     public function get()
     {
         $Tpl = new Template($this->tpl, new ACMS_Corrector());
+        $titleEnabled = false;
+        $tagEnabled = false;
 
         try {
             $ServiceAI = new ServiceAI();
@@ -28,12 +30,19 @@ class Config extends AI
             if ($provider->isConfigured() && $model !== '') {
                 $this->authorized = true;
             }
+
+            // タイトル/タグ生成機能の有効・無効（エントリー編集 UI の表示制御に使う）
+            $titleEnabled = $config->get('ai_title_valid') !== '';
+            $tagEnabled = $config->get('ai_tag_valid') !== '';
         } catch (\Exception $e) {
         }
 
         $obj = array_merge(
             [
                 'authorized' => $this->authorized ? 'true' : 'false',
+                'entry_ai_enabled' => ($titleEnabled || $tagEnabled) ? 'true' : 'false',
+                'title_enabled' => $titleEnabled ? 'true' : 'false',
+                'tag_enabled' => $tagEnabled ? 'true' : 'false',
             ],
             $this->configField
         );

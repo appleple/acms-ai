@@ -641,3 +641,135 @@
 }
 
 
+
+/* ===== エントリー編集: フィールド埋め込み型 AI 生成 UI ===== */
+
+/* タイトル/タグ各フィールド行末に差し込む「AI生成」ボタンのラッパー */
+.entryAiInlineAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.entryAiLoading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.entryAiLoadingSpinner {
+  width: 0.9em;
+  height: 0.9em;
+  border: 0.15em solid var(--color-primary-border);
+  border-right-color: var(--color-primary);
+  border-radius: 50%;
+  animation: entry-ai-loading-spin 0.75s linear infinite;
+}
+
+@keyframes entry-ai-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.entryAiResultList {
+  /* 行間はセル余白（上下）で確保するため、リスト自体の上下マージンは持たせない
+     （ul のマージンが重なって余白が二重になるのを防ぐ） */
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entryAiResultList li {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entryAiResultListStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.entryAiResultListInline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 1rem;
+}
+
+/* タイトル/タグ各行の直下に挿入する結果行。候補が無いときに空白行ができないよう
+   セル余白・枠線を0にし、中身（候補リストや生成中表示）が入ったときだけ高さを持たせる。 */
+.entryAiResultRow > th,
+.entryAiResultRow > td {
+  padding: 0;
+  border: 0;
+}
+
+/* 結果セルが空（候補・生成中表示なし）のときは行ごと隠して空白を作らない */
+.entryAiResultRow:has(> td:empty) {
+  display: none;
+}
+
+/* 「このタイトルにする」＋「×（閉じる）」の行。候補リストから 8px 空ける */
+.entryAiApplyRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 8px;
+}
+
+/* 候補を適用せず閉じる ×。ボタンの見た目は持たせず、× 文字だけを少し大きめに表示 */
+.entryAiCancelButton {
+  border: 0;
+  background: transparent;
+  padding: 0 0.25rem;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: var(--color-text-muted, #888);
+  cursor: pointer;
+}
+
+.entryAiCancelButton:hover {
+  color: var(--color-text-general, #333);
+}
+
+.entryAiCancelButton:focus-visible {
+  outline: 2px solid var(--color-primary, #2f6fed);
+  outline-offset: 2px;
+}
+
+.entryAiTitleChoicePanel {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition:
+    grid-template-rows 0.24s ease,
+    opacity 0.18s ease,
+    margin 0.24s ease;
+}
+
+.entryAiTitleChoicePanelCollapsed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+.entryAiTitleChoicePanelInner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entryAiTitleChoicePanel {
+    transition: none;
+  }
+}

@@ -1,17 +1,16 @@
 <!-- BEGIN_MODULE AI_Config -->
 <!-- BEGIN_IF [\{authorized\}/eq/true] -->
-<details class="acms-admin-accordion">
-  <summary class="acms-admin-accordion-button">
-    <span id="seo-entry-accordion-title"><!--T-->AI機能<!--/T--></span>
-    <span class="acms-admin-icon-arrow-small-down acms-admin-margin-left-mini" aria-hidden="true"></span>
-  </summary>
-  <div class="acms-admin-accordion-panel">
-    <div id="js-acms-ai"></div>
-    <div id="js-acms-ai-re-mount"></div>
-  </div>
-</details>
+<!-- BEGIN_IF [\{entry_ai_enabled\}/eq/true] -->
+<!--
+  AI 機能のマウント点。UI（「AI生成」ボタンと候補結果）は React が
+  タイトル/タグ各フィールドへポータルで差し込むため、この要素自体は非表示。
+  data 属性の \{ \} は、外側のレンダリングで変数として解決されないようエスケープが必須
+  （未エスケープだと空になり title/tag の表示制御が効かなくなる）。
+-->
+<div id="js-acms-ai" data-title-enabled="\{title_enabled\}" data-tag-enabled="\{tag_enabled\}" style="display:none"></div>
 
 <link rel="stylesheet" href="%{AI_CSS}">
 <script crossorigin src="%{AI_JS}"></script>
+<!-- END_IF -->
 <!-- END_IF -->
 <!-- END_MODULE AI_Config -->

@@ -56,10 +56,16 @@ class Tag extends ACMS_POST
         $serviceAI = new ServiceAI();
         $config = $serviceAI->getConfig();
 
-        $tagValid = $config->get('ai_tag_valid');
-        $customPrompt = $tagValid !== ''
-            ? $config->get('ai_tag_prompt')
-            : 'Please answer in Japanese.';
+        // 「有効」設定はフロントの表示制御に加えて、直接 POST への防御として二重に検査する
+        if ($config->get('ai_tag_valid') === '') {
+            return $this->errorResponse('タグ生成は管理画面で有効化されていません。');
+        }
+
+        // 保存済みプロンプト（既定値は config.system.yaml が供給。空なら内蔵既定へフォールバック）
+        $customPrompt = trim($config->get('ai_tag_prompt'));
+        if ($customPrompt === '') {
+            $customPrompt = 'Please answer in Japanese.';
+        }
 
         $content = "Consider the tags for this article.\n\ncondition:\n{$customPrompt}\n"
             . "Please generate the linked tag without including the set tag.\n\n"

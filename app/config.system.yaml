@@ -4,6 +4,10 @@
 # ここに既定プロンプトを置くことで、管理画面の textarea に既定値が表示され（BEGIN_IF 不要）、
 # 未保存でも生成時に既定プロンプトが使われる。
 
+# エントリー: タイトル/タグ生成は既定で有効（チェックを外すと機能ごと非表示・無効になる）
+ai_title_valid: "on"
+ai_tag_valid: "on"
+
 # エントリー: タイトル/タグ生成の既定プロンプト
 ai_title_prompt: |-
   - Please give 5 suggestions.
