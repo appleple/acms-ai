@@ -63,7 +63,13 @@ export function openChatDrawer(options: {
   } = options
 
   const textarea = document.querySelector<HTMLTextAreaElement>(targetSelector)
-  if (!textarea) return false
+  if (!textarea) {
+    console.warn(
+      `[acms-ai] target textarea not found: "${targetSelector}". ` +
+      '<acms-ai-assistant-button> の target 属性に、実在する textarea の CSS セレクターを指定してください。'
+    )
+    return false
+  }
 
   const insertTextarea = insertSelector
     ? document.querySelector<HTMLTextAreaElement>(insertSelector) ?? undefined
