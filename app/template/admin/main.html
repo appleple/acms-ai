@@ -58,6 +58,17 @@
             <option value="compat" <!-- BEGIN_IF [{ai_provider}/eq/compat] -->selected<!-- END_IF -->>OpenAI互換（さくらのAI Engine など）</option>
           </select>
           <input type="hidden" name="config[]" value="ai_provider" />
+          <!-- BEGIN_MODULE AI_Admin -->
+          <p class="acms-admin-margin-top-mini">
+            <!-- BEGIN provider_status:loop -->
+            <!-- BEGIN_IF [{provider_configured}/eq/true] -->
+            <span class="acms-admin-label acms-admin-label-success">{provider_label}: 設定済み</span>
+            <!-- ELSE -->
+            <span class="acms-admin-label">{provider_label}: 未設定</span>
+            <!-- END_IF -->
+            <!-- END provider_status:loop -->
+          </p>
+          <!-- END_MODULE AI_Admin -->
         </td>
       </tr>
     </table>

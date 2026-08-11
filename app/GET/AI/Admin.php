@@ -12,21 +12,56 @@ use Acms\Plugins\AI\Services\AI\Contracts\ModelListingProvider;
 
 class Admin extends AI
 {
+    /**
+     * プロバイダ id → 表示名（管理画面のプロバイダ select の表記に合わせる）
+     */
+    private const PROVIDER_LABELS = [
+        'openai' => 'OpenAI',
+        'anthropic' => 'Anthropic (Claude)',
+        'gemini' => 'Google (Gemini)',
+        'compat' => 'OpenAI互換',
+    ];
+
+    /**
+     * リクエスト内の listModels 結果のメモ（プロバイダ id → モデル一覧）。
+     * 本モジュールはテンプレートに複数配置される（モデル・画像解析モデル・設定状況）ため、
+     * 配置数ぶんプロバイダ API を叩き直さないようにする。
+     *
+     * @var array<string, list<string>|null>
+     */
+    private static array $modelsMemo = [];
+
     public function get()
     {
         $Tpl = new Template($this->tpl, new ACMS_Corrector());
         $models = [];
         $configured = false;
+        $providerStatus = [];
 
         try {
             $ServiceAI = new ServiceAI();
             $config = $ServiceAI->getConfig();
 
-            $provider = ProviderRegistry::withDefaults()->resolve($config);
+            $registry = ProviderRegistry::withDefaults();
+            // 選択中以外も含む全プロバイダの設定状況。管理画面でプロバイダを切り替えなくても
+            // どのプロバイダに資格情報が設定済みかを一覧できるようにする
+            foreach ($registry->ids() as $id) {
+                $providerStatus[] = [
+                    'provider_label' => self::PROVIDER_LABELS[$id] ?? $id,
+                    'provider_configured' => $registry->resolveById($id, $config)->isConfigured() ? 'true' : 'false',
+                ];
+            }
+
+            $provider = $registry->resolve($config);
             // 資格情報の充足はプロバイダ内の判定（isConfigured）に閉じ、テンプレート側が
             // プロバイダ固有の config キー（ai_api_key / ai_anthropic_api_key 等）を知らずに済むようにする。
             $configured = $provider->isConfigured();
-            $models = $provider instanceof ModelListingProvider ? $provider->listModels() : null;
+            if (array_key_exists($provider->id(), self::$modelsMemo)) {
+                $models = self::$modelsMemo[$provider->id()];
+            } else {
+                $models = $provider instanceof ModelListingProvider ? $provider->listModels() : null;
+                self::$modelsMemo[$provider->id()] = $models;
+            }
             if ($models !== null) {
                 $this->authorized = $models !== [] ? true : false;
             }
@@ -52,6 +87,7 @@ class Admin extends AI
 
         $obj = array_merge(
             ['model' => $this->authorizedModels],
+            ['provider_status' => $providerStatus],
             ['authorized' => $this->authorized ? 'true' : 'false'],
             ['configured' => $configured ? 'true' : 'false'],
             $this->configField

@@ -39,6 +39,16 @@ final class ProviderRegistry
     }
 
     /**
+     * 登録済みプロバイダ id の一覧を登録順で返す。
+     *
+     * @return string[]
+     */
+    public function ids(): array
+    {
+        return array_keys($this->factories);
+    }
+
+    /**
      * config の `ai_provider` に対応するプロバイダを生成して返す。
      * 未設定・未登録の値なら既定（OpenAI）へフォールバックする。
      */
@@ -48,6 +58,16 @@ final class ProviderRegistry
         if ($id === '' || !isset($this->factories[$id])) {
             $id = self::DEFAULT_PROVIDER;
         }
+
+        return $this->resolveById($id, $config);
+    }
+
+    /**
+     * 指定 id のプロバイダを生成して返す（フォールバックなし）。
+     * 選択中以外のプロバイダの状態確認（設定済み判定など）に使う。
+     */
+    public function resolveById(string $id, Field $config): AiProvider
+    {
         if (!isset($this->factories[$id])) {
             throw new RuntimeException("No AI provider registered for id: {$id}");
         }
