@@ -98,8 +98,8 @@ final class AuthTest extends TestCase
     }
 
     #[Test]
-    #[TestDox('成功時は許可リストのモデルだけを配列で返す')]
-    public function returnsOnlyAllowedModelsOnSuccess(): void
+    #[TestDox('成功時は API の返す全モデルを配列で返す（絞り込みは config で消費側が行う）')]
+    public function returnsAllModelsOnSuccess(): void
     {
         $body = json_encode([
             'data' => [
@@ -110,7 +110,10 @@ final class AuthTest extends TestCase
             ],
         ], JSON_THROW_ON_ERROR);
 
-        self::assertSame(['gpt-5.4', 'gpt-5.4-mini'], $this->configured($body)->listModels());
+        self::assertSame(
+            ['gpt-5.4', 'gpt-3.5-turbo', 'gpt-5.4-mini', 'dall-e-3'],
+            $this->configured($body)->listModels()
+        );
     }
 
     #[Test]

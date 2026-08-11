@@ -24,4 +24,18 @@ ai_vision_prompt_tags: "画像内容を表す日本語タグの配列（5個程�
 
 # さくらのAI Engine（OpenAI互換）の既定エンドポイント
 ai_compat_base_url: "https://api.ai.sakura.ad.jp/v1"
+
+# モデル選択肢の絞り込み（空白・カンマ・改行区切り、* ワイルドカード可。空 = API の返す全モデル）
+# 新しいモデルが出たらここを書き換えるだけで選択肢に反映される（コード変更・リリース不要）
+ai_openai_allowed_models: "gpt-5.4*"
+ai_anthropic_allowed_models: ""
+ai_gemini_allowed_models: ""
+ai_compat_allowed_models: ""
+
+# 画像解析（vision）モデルの選択肢の絞り込み（空 = 上の通常モデルと同じ一覧）
+# 例) さくらのAI Engine で vision 対応モデルだけにする: "preview/Qwen3-VL*"
+ai_openai_allowed_vision_models: ""
+ai_anthropic_allowed_vision_models: ""
+ai_gemini_allowed_vision_models: ""
+ai_compat_allowed_vision_models: ""
 #END_AIConfig
