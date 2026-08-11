@@ -39,22 +39,50 @@ final class AuthTest extends TestCase
     }
 
     #[Test]
-    #[TestDox('組織 ID・プロジェクト ID・API キーのいずれかが空なら通信せず null を返す')]
-    public function returnsNullWhenAnyCredentialEmpty(): void
+    #[TestDox('API キーが空なら通信せず null を返す')]
+    public function returnsNullWhenApiKeyEmpty(): void
     {
-        $body = '{"data":[{"id":"gpt-5.4"}]}';
-
-        $noKey = $this->provider('', ['organizationId' => 'org', 'projectId' => 'proj'], $body);
-        $noOrg = $this->provider('key', ['organizationId' => '', 'projectId' => 'proj'], $body);
-        $noProject = $this->provider('key', ['organizationId' => 'org', 'projectId' => ''], $body);
+        $noKey = $this->provider('', ['organizationId' => 'org', 'projectId' => 'proj'], '{"data":[{"id":"gpt-5.4"}]}');
 
         self::assertNull($noKey->listModels());
-        self::assertNull($noOrg->listModels());
-        self::assertNull($noProject->listModels());
         // 通信は一度も行われない。
         self::assertNull($noKey->requestedUrl);
-        self::assertNull($noOrg->requestedUrl);
-        self::assertNull($noProject->requestedUrl);
+    }
+
+    #[Test]
+    #[TestDox('Organization ID / Project ID は任意（空でも API キーがあれば問い合わせる）')]
+    public function queriesWithoutOrganizationAndProject(): void
+    {
+        $provider = $this->provider('key', ['organizationId' => '', 'projectId' => ''], '{"data":[{"id":"gpt-5.4"}]}');
+
+        self::assertSame(['gpt-5.4'], $provider->listModels());
+        self::assertSame('https://api.openai.com/v1/models', $provider->requestedUrl);
+    }
+
+    #[Test]
+    #[TestDox('Organization ID / Project ID が空のときは空のヘッダーを送らない')]
+    public function omitsEmptyOrganizationAndProjectHeaders(): void
+    {
+        $provider = $this->provider('key', ['organizationId' => '', 'projectId' => ''], '{"data":[]}');
+        $provider->listModels();
+
+        self::assertNotNull($provider->requestedHeaders);
+        foreach ($provider->requestedHeaders as $header) {
+            self::assertStringStartsNotWith('OpenAI-Organization:', $header);
+            self::assertStringStartsNotWith('OpenAI-Project:', $header);
+        }
+    }
+
+    #[Test]
+    #[TestDox('Organization ID / Project ID が設定されているときはヘッダーへ付与する')]
+    public function sendsOrganizationAndProjectHeadersWhenSet(): void
+    {
+        $provider = $this->configured('{"data":[]}');
+        $provider->listModels();
+
+        self::assertNotNull($provider->requestedHeaders);
+        self::assertContains('OpenAI-Organization: org', $provider->requestedHeaders);
+        self::assertContains('OpenAI-Project: proj', $provider->requestedHeaders);
     }
 
     #[Test]
