@@ -23,6 +23,10 @@ class Chat extends ACMS_POST
     {
         $this->initAiConfig();
 
+        if (($denied = $this->denyUnlessContribution()) !== null) {
+            return $denied;
+        }
+
         if ($this->provider === null || !$this->provider->isConfigured() || $this->model === '') {
             return $this->jsonResponse([
                 'message' => 'APIキーまたはモデルの設定がありません。',
