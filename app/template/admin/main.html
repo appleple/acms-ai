@@ -27,7 +27,7 @@
       <div class="acms_fix_bg_index">
         <input
           type="submit"
-          name="ACMS_POST_Config"
+          name="ACMS_POST_AI_Config"
           value="<!--T-->保存<!--/T-->"
           class="acms-admin-btn-admin acms-admin-btn-admin-primary acms-admin-btn-admin-save js-saving-splash"
         />
@@ -125,13 +125,30 @@
           <!-- BEGIN_IF [%{AI_OPENAI_API_KEY_FROM_ENV}/eq/1] -->
           <span class="acms-admin-label acms-admin-label-success"><!-- T -->.env 設定済み<!-- /T --></span>
           <!-- ELSE -->
+          <!-- BEGIN_IF [{ai_api_key}/nem/] -->
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->設定済み<!-- /T --></span>
           <input
             type="text"
             name="ai_api_key"
-            value="{ai_api_key}"
+            value=""
+            class="acms-admin-form-width-full acms-admin-margin-top-mini"
+            placeholder="変更する場合のみ新しい API KEY を入力（空欄なら現在のキーを維持）"
+            autocomplete="off"
+          />
+          <div class="acms-admin-form-checkbox acms-admin-margin-top-mini">
+            <input type="checkbox" name="ai_api_key_delete" value="on" id="input-checkbox-ai_api_key_delete" />
+            <label for="input-checkbox-ai_api_key_delete"><i class="acms-admin-ico-checkbox"></i><!-- T -->保存時にキーを削除する<!-- /T --></label>
+          </div>
+          <!-- ELSE -->
+          <input
+            type="text"
+            name="ai_api_key"
+            value=""
             class="acms-admin-form-width-full"
             placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
+            autocomplete="off"
           />
+          <!-- END_IF -->
           <input type="hidden" name="config[]" value="ai_api_key" />
           <!-- END_IF -->
         </td>
@@ -151,13 +168,30 @@
           <!-- BEGIN_IF [%{AI_ANTHROPIC_API_KEY_FROM_ENV}/eq/1] -->
           <span class="acms-admin-label acms-admin-label-success"><!-- T -->.env 設定済み<!-- /T --></span>
           <!-- ELSE -->
+          <!-- BEGIN_IF [{ai_anthropic_api_key}/nem/] -->
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->設定済み<!-- /T --></span>
           <input
             type="text"
             name="ai_anthropic_api_key"
-            value="{ai_anthropic_api_key}"
+            value=""
+            class="acms-admin-form-width-full acms-admin-margin-top-mini"
+            placeholder="変更する場合のみ新しい API KEY を入力（空欄なら現在のキーを維持）"
+            autocomplete="off"
+          />
+          <div class="acms-admin-form-checkbox acms-admin-margin-top-mini">
+            <input type="checkbox" name="ai_anthropic_api_key_delete" value="on" id="input-checkbox-ai_anthropic_api_key_delete" />
+            <label for="input-checkbox-ai_anthropic_api_key_delete"><i class="acms-admin-ico-checkbox"></i><!-- T -->保存時にキーを削除する<!-- /T --></label>
+          </div>
+          <!-- ELSE -->
+          <input
+            type="text"
+            name="ai_anthropic_api_key"
+            value=""
             class="acms-admin-form-width-full"
             placeholder="sk-ant-xxxxxxxxxxxxxxxxxxxxxxxx"
+            autocomplete="off"
           />
+          <!-- END_IF -->
           <input type="hidden" name="config[]" value="ai_anthropic_api_key" />
           <!-- END_IF -->
         </td>
@@ -177,13 +211,30 @@
           <!-- BEGIN_IF [%{AI_GEMINI_API_KEY_FROM_ENV}/eq/1] -->
           <span class="acms-admin-label acms-admin-label-success"><!-- T -->.env 設定済み<!-- /T --></span>
           <!-- ELSE -->
+          <!-- BEGIN_IF [{ai_gemini_api_key}/nem/] -->
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->設定済み<!-- /T --></span>
           <input
             type="text"
             name="ai_gemini_api_key"
-            value="{ai_gemini_api_key}"
+            value=""
+            class="acms-admin-form-width-full acms-admin-margin-top-mini"
+            placeholder="変更する場合のみ新しい API KEY を入力（空欄なら現在のキーを維持）"
+            autocomplete="off"
+          />
+          <div class="acms-admin-form-checkbox acms-admin-margin-top-mini">
+            <input type="checkbox" name="ai_gemini_api_key_delete" value="on" id="input-checkbox-ai_gemini_api_key_delete" />
+            <label for="input-checkbox-ai_gemini_api_key_delete"><i class="acms-admin-ico-checkbox"></i><!-- T -->保存時にキーを削除する<!-- /T --></label>
+          </div>
+          <!-- ELSE -->
+          <input
+            type="text"
+            name="ai_gemini_api_key"
+            value=""
             class="acms-admin-form-width-full"
             placeholder="AIzaXxxxxxxxxxxxxxxxxxxxxxxx"
+            autocomplete="off"
           />
+          <!-- END_IF -->
           <input type="hidden" name="config[]" value="ai_gemini_api_key" />
           <!-- END_IF -->
         </td>
@@ -203,13 +254,30 @@
           <!-- BEGIN_IF [%{AI_COMPAT_API_KEY_FROM_ENV}/eq/1] -->
           <span class="acms-admin-label acms-admin-label-success"><!-- T -->.env 設定済み<!-- /T --></span>
           <!-- ELSE -->
+          <!-- BEGIN_IF [{ai_compat_api_key}/nem/] -->
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->設定済み<!-- /T --></span>
           <input
             type="text"
             name="ai_compat_api_key"
-            value="{ai_compat_api_key}"
+            value=""
+            class="acms-admin-form-width-full acms-admin-margin-top-mini"
+            placeholder="変更する場合のみ新しい API KEY を入力（空欄なら現在のキーを維持）"
+            autocomplete="off"
+          />
+          <div class="acms-admin-form-checkbox acms-admin-margin-top-mini">
+            <input type="checkbox" name="ai_compat_api_key_delete" value="on" id="input-checkbox-ai_compat_api_key_delete" />
+            <label for="input-checkbox-ai_compat_api_key_delete"><i class="acms-admin-ico-checkbox"></i><!-- T -->保存時にキーを削除する<!-- /T --></label>
+          </div>
+          <!-- ELSE -->
+          <input
+            type="text"
+            name="ai_compat_api_key"
+            value=""
             class="acms-admin-form-width-full"
             placeholder="xxxxxxxxxxxxxxxxxxxxxxxx"
+            autocomplete="off"
           />
+          <!-- END_IF -->
           <input type="hidden" name="config[]" value="ai_compat_api_key" />
           <!-- END_IF -->
         </td>
