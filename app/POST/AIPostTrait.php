@@ -5,6 +5,7 @@ namespace Acms\Plugins\AI\POST;
 use Acms\Services\Facades\Common;
 use Acms\Services\Facades\Logger;
 use Acms\Plugins\AI\Services\AI as ServicesAI;
+use Acms\Plugins\AI\Services\AI\Logging\AuditLogSanitizer;
 use Acms\Plugins\AI\Services\AI\ProviderRegistry;
 use Acms\Plugins\AI\Services\AI\Contracts\AiProvider;
 use Acms\Plugins\AI\Services\AI\Contracts\ContentPart;
@@ -25,6 +26,9 @@ trait AIPostTrait
 
     protected function initAiConfig(): void
     {
+        // 監査ログの req_body へ記事本文・チャット入力等が平文で残らないようにする
+        // （本体ロガーは notice 以上のログで $_POST を保存する。処理は Field を使うため影響なし）
+        AuditLogSanitizer::protectRequestBody();
         try {
             $ServiceAI = new ServicesAI();
             $config = $ServiceAI->getConfig();

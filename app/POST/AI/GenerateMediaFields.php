@@ -7,6 +7,7 @@ use Acms\Services\Facades\Common;
 use Acms\Services\Facades\Logger;
 use Acms\Plugins\AI\Services\AI as ServicesAI;
 use Acms\Plugins\AI\Services\AI\Contracts\Capability;
+use Acms\Plugins\AI\Services\AI\Logging\AuditLogSanitizer;
 use Acms\Plugins\AI\Services\AI\ProviderRegistry;
 use Acms\Plugins\AI\Services\AI\Vision\ImageFetcher;
 use Acms\Plugins\AI\Services\AI\Vision\MediaFieldGenerator;
@@ -27,6 +28,9 @@ class GenerateMediaFields extends ACMS_POST
 {
     public function post()
     {
+        // 監査ログの req_body へ画像 URL 等が平文で残らないようにする
+        AuditLogSanitizer::protectRequestBody();
+
         // 管理者のみ
         if (!sessionWithAdministration()) {
             $this->respond(403, '権限がありません', ['reason' => 'permission_denied']);
