@@ -6,6 +6,7 @@ namespace Acms\Plugins\AI\Tests\Unit\Services;
 
 use Acms\Plugins\AI\Services\AI\Contracts\AiProvider;
 use Acms\Plugins\AI\Services\AI\Providers\Anthropic\AnthropicProvider;
+use Acms\Plugins\AI\Services\AI\Providers\Gemini\GeminiProvider;
 use Acms\Plugins\AI\Services\AI\Providers\OpenAi\OpenAiProvider;
 use Acms\Plugins\AI\Services\AI\ProviderRegistry;
 use Acms\TestingFramework\TestCase;
@@ -60,6 +61,16 @@ final class ProviderRegistryTest extends TestCase
 
         self::assertInstanceOf(AnthropicProvider::class, $provider);
         self::assertSame('anthropic', $provider->id());
+    }
+
+    #[Test]
+    #[TestDox('ai_provider に gemini を指定すると Gemini プロバイダを返す')]
+    public function resolvesGeminiProvider(): void
+    {
+        $provider = ProviderRegistry::withDefaults()->resolve($this->config(['ai_provider' => 'gemini']));
+
+        self::assertInstanceOf(GeminiProvider::class, $provider);
+        self::assertSame('gemini', $provider->id());
     }
 
     #[Test]

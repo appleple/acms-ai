@@ -46,6 +46,7 @@
           <select name="ai_provider" class="acms-admin-form-width-full">
             <option value="openai" <!-- BEGIN_IF [{ai_provider}/eq/openai] -->selected<!-- END_IF -->>OpenAI</option>
             <option value="anthropic" <!-- BEGIN_IF [{ai_provider}/eq/anthropic] -->selected<!-- END_IF -->>Anthropic (Claude)</option>
+            <option value="gemini" <!-- BEGIN_IF [{ai_provider}/eq/gemini] -->selected<!-- END_IF -->>Google (Gemini)</option>
           </select>
           <input type="hidden" name="config[]" value="ai_provider" />
         </td>
@@ -112,6 +113,22 @@
             placeholder="sk-ant-xxxxxxxxxxxxxxxxxxxxxxxx"
           />
           <input type="hidden" name="config[]" value="ai_anthropic_api_key" />
+        </td>
+      </tr>
+      <tr>
+        <th>
+          <!-- T -->Gemini API KEY<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="Google AI Studio で取得する API KEY を入力してください。"></i>
+        </th>
+        <td>
+          <input
+            type="text"
+            name="ai_gemini_api_key"
+            value="{ai_gemini_api_key}"
+            class="acms-admin-form-width-full"
+            placeholder="AIzaXxxxxxxxxxxxxxxxxxxxxxxx"
+          />
+          <input type="hidden" name="config[]" value="ai_gemini_api_key" />
         </td>
       </tr>
 
