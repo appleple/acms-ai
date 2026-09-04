@@ -5,7 +5,8 @@ declare global {
       Config: {
         root: string,
         bid?: string | number,
-        LiteEditorConf: {
+        // ライトエディタを使わない管理画面には存在しない
+        LiteEditorConf?: {
           btnOptions: {
             label: string,
             group: string,

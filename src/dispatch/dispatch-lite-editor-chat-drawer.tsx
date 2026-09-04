@@ -27,7 +27,11 @@ function insertToLiteEditor(liteEditorInstance: any, content: string): void {
 }
 
 export function DispatchLiteEditorChatDrawer(): void {
-  const liteEditorConfBtnOptions = window.ACMS.Config.LiteEditorConf.btnOptions
+  // ライトエディタを使わない管理画面では設定が存在しないため何もしない
+  const liteEditorConfBtnOptions = window.ACMS.Config.LiteEditorConf?.btnOptions
+  if (!liteEditorConfBtnOptions) {
+    return
+  }
   liteEditorConfBtnOptions.push({
     label: 'AIアシスタント',
     group: 'mark',

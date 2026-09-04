@@ -56,6 +56,13 @@ class ServiceProvider extends ACMS_App
         $inject->add('admin-module-config-Sample', PLUGIN_DIR . 'AI/template/config.html');
         $inject->add('admin-entry-field', PLUGIN_DIR . 'AI/template/admin/entry/edit.html');
 
+        // 全管理画面共通ローダー。<acms-ai-assistant-button> がある画面だけ本体バンドルを
+        // 遅延ロードし、エントリー編集以外の管理画面でも AI アシスタントボタンを使えるようにする。
+        // 認証情報・モデルが未設定なら注入しない（判定は PHP 側に閉じる）。
+        if ($this->assistantReady()) {
+            $inject->add('admin-main', PLUGIN_DIR . 'AI/template/admin/loader.html');
+        }
+
         // メディア管理画面では、画像から各フィールドを生成する AI 生成 UI を注入する。
         // 選択中のプロバイダが vision に対応し、設定が揃っている場合のみ（判定は PHP 側に閉じる）。
         if (ADMIN === 'media_index' && $this->visionReady()) {
@@ -64,6 +71,23 @@ class ServiceProvider extends ACMS_App
 
         if (ADMIN === 'app_' . $this->menu) {
             $inject->add('admin-main', PLUGIN_DIR . 'AI/template/admin/main.html');
+        }
+    }
+
+    /**
+     * AI アシスタント（テキスト生成）が利用できる状態か（認証情報・モデル）。
+     *
+     * @return bool
+     */
+    private function assistantReady()
+    {
+        try {
+            $config = (new Services\AI())->getConfig();
+            $provider = Services\AI\ProviderRegistry::withDefaults()->resolve($config);
+
+            return $provider->isConfigured() && $config->get('ai_model') !== '';
+        } catch (\Throwable $e) {
+            return false;
         }
     }
 
