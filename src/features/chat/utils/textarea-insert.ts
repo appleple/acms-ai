@@ -1,6 +1,7 @@
 // テキストユニットの textarea は値に `<br />` を含んで保存される。
 // 表示用に改行へ、挿入時に再び `<br />` へ相互変換する。
 const BR_TAG_REGEX = /<br\s*\/?>/gi
+const TEXT_UNIT_SOURCE_MODE_TAGS = /^(ul|ol|dl|pre|blockquote|none|markdown|table|template|div)/
 
 export function brToNewline(value: string): string {
   return value.replace(BR_TAG_REGEX, '\n')
@@ -8,6 +9,39 @@ export function brToNewline(value: string): string {
 
 export function newlineToBr(value: string): string {
   return value.replace(/\r\n|\r|\n/g, '<br />')
+}
+
+function normalizeNewlines(value: string): string {
+  return value.replace(/\r\n|\r/g, '\n')
+}
+
+function dispatchTextareaEvents(textarea: HTMLTextAreaElement): void {
+  textarea.dispatchEvent(new Event('input', { bubbles: true }))
+  textarea.dispatchEvent(new Event('change', { bubbles: true }))
+}
+
+function getTextUnitTag(textarea: HTMLTextAreaElement): string | null {
+  const name = textarea.getAttribute('name')
+  const match = name?.match(/^text_text_(.+)$/)
+  if (!match) return null
+
+  const tagSelectName = `text_tag_${match[1]}`
+  const tagSelect = Array.from(document.querySelectorAll<HTMLSelectElement>('select[name^="text_tag_"]'))
+    .find((select) => select.name === tagSelectName)
+
+  return tagSelect?.value ?? null
+}
+
+export function shouldPreserveTextareaNewlines(textarea: HTMLTextAreaElement): boolean {
+  const explicitFormat = textarea.dataset.acmsAiInsertFormat
+  if (explicitFormat === 'plain') return true
+  if (explicitFormat === 'html') return false
+
+  const textUnitTag = getTextUnitTag(textarea)
+  if (!textUnitTag) return false
+
+  const sourceModeTags = window.ACMS?.Config?.LiteEditorSourceModeTags ?? TEXT_UNIT_SOURCE_MODE_TAGS
+  return sourceModeTags.test(textUnitTag)
 }
 
 /**
@@ -21,12 +55,16 @@ export function insertToTextarea(
   content: string
 ): void {
   const target = insertTextarea ?? textarea
-  const normalized = newlineToBr(content)
+  const normalized = shouldPreserveTextareaNewlines(target)
+    ? normalizeNewlines(content)
+    : newlineToBr(content)
   target.focus()
   target.select()
   // execCommand はundo履歴を保持するため、value の直接書き換えより優先する
   // eslint-disable-next-line deprecation/deprecation
-  const succeeded = document.execCommand('insertText', false, normalized)
+  const succeeded = typeof document.execCommand === 'function'
+    ? document.execCommand('insertText', false, normalized)
+    : false
   if (!succeeded) {
     // フォールバック: execCommand が無効な環境では直接セット
     const nativeValueSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set
@@ -35,9 +73,8 @@ export function insertToTextarea(
     } else {
       target.value = normalized
     }
-    target.dispatchEvent(new Event('input', { bubbles: true }))
-    target.dispatchEvent(new Event('change', { bubbles: true }))
   }
+  dispatchTextareaEvents(target)
 }
 
 /**
