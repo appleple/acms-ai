@@ -24,12 +24,16 @@ final class FakeOpenAiProvider extends OpenAiProvider
     /** @var string|null 最後に呼ばれた URL（呼び出し検証用） */
     public ?string $requestedUrl = null;
 
+    /** @var list<string>|null 最後に送られたヘッダー（任意ヘッダーの付与検証用） */
+    public ?array $requestedHeaders = null;
+
     /**
      * @param list<string> $headers
      */
     protected function httpGetJson(string $url, array $headers): string
     {
         $this->requestedUrl = $url;
+        $this->requestedHeaders = $headers;
         if ($this->fail) {
             throw new \Exception('cURL Error: simulated transport failure');
         }

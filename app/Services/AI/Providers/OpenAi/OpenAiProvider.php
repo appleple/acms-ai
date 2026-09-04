@@ -74,15 +74,17 @@ class OpenAiProvider implements AiProvider, ModelListingProvider
 
     public function isConfigured(): bool
     {
-        return $this->credentials->apiKey() !== ''
-            && $this->credentials->attribute('organizationId') !== ''
-            && $this->credentials->attribute('projectId') !== '';
+        // Organization ID / Project ID は任意。sk-proj- 形式のキーはプロジェクト情報を
+        // 内包しており、通常は API キーだけで認証できる（マルチ組織アカウント等で
+        // 明示したい場合のみ設定する）。
+        return $this->credentials->apiKey() !== '';
     }
 
     /**
      * OpenAI の /v1/models を叩き、利用可能なモデル名を返す。
      * 絞り込みは行わない（config `ai_openai_allowed_models` による絞り込みは消費側で行う）。
-     * 認証情報（API キー・Organization ID・Project ID）が未充足なら通信せず null。
+     * API キーが未設定なら通信せず null。Organization ID / Project ID は任意で、
+     * 設定されている場合のみヘッダーへ付与する（空のヘッダーは送らない）。
      *
      * @return list<string>|null
      */
@@ -99,9 +101,13 @@ class OpenAiProvider implements AiProvider, ModelListingProvider
         $headers = [
             "Content-Type: application/json",
             "Authorization: Bearer {$apiKey}",
-            "OpenAI-Organization: {$organizationId}",
-            "OpenAI-Project: {$projectId}",
         ];
+        if ($organizationId !== '') {
+            $headers[] = "OpenAI-Organization: {$organizationId}";
+        }
+        if ($projectId !== '') {
+            $headers[] = "OpenAI-Project: {$projectId}";
+        }
 
         try {
             $result = $this->httpGetJson(self::MODELS_ENDPOINT, $headers);
