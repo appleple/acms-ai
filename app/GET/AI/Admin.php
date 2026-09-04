@@ -7,6 +7,7 @@ use Template;
 use ACMS_Corrector;
 use Acms\Plugins\AI\GET\AI;
 use Acms\Plugins\AI\Services\AI as ServiceAI;
+use Acms\Plugins\AI\Services\AI\ModelFilter;
 use Acms\Plugins\AI\Services\AI\ProviderRegistry;
 use Acms\Plugins\AI\Services\AI\Contracts\ModelListingProvider;
 
@@ -37,6 +38,7 @@ class Admin extends AI
         $models = [];
         $configured = false;
         $providerStatus = [];
+        $visionModels = [];
 
         try {
             $ServiceAI = new ServiceAI();
@@ -72,10 +74,21 @@ class Admin extends AI
             $visionModelCur = $config->get('ai_vision_model');
 
             if (is_array($models) && $models !== []) {
-                foreach ($models as $model) {
+                // 選択肢の絞り込みは config（既定は config.system.yaml）で行う。
+                // 画像解析（vision）用は別パターンを指定でき、未指定なら通常と同じ一覧を使う
+                $textPatterns = $config->get('ai_' . $provider->id() . '_allowed_models');
+                $visionPatterns = $config->get('ai_' . $provider->id() . '_allowed_vision_models');
+                $textList = ModelFilter::filter($models, $textPatterns);
+                $visionList = $visionPatterns !== '' ? ModelFilter::filter($models, $visionPatterns) : $textList;
+                foreach ($textList as $model) {
                     $this->authorizedModels[] = [
                         'model' => $model,
                         'model_cur' => $this->modelCur,
+                    ];
+                }
+                foreach ($visionList as $model) {
+                    $visionModels[] = [
+                        'model' => $model,
                         'vision_model_cur' => $visionModelCur,
                     ];
                 }
@@ -87,6 +100,7 @@ class Admin extends AI
 
         $obj = array_merge(
             ['model' => $this->authorizedModels],
+            ['vision_model' => $visionModels],
             ['provider_status' => $providerStatus],
             ['authorized' => $this->authorized ? 'true' : 'false'],
             ['configured' => $configured ? 'true' : 'false'],

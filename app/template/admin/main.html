@@ -278,13 +278,13 @@
           <!-- ELSE -->
           <select name="ai_vision_model" class="acms-admin-form-width-full">
             <option value="">---（通常モデルと同じ）</option>
-            <!-- BEGIN model:loop -->
+            <!-- BEGIN vision_model:loop -->
             <option
               value="{model}"
               <!-- BEGIN_IF [{model}/eq/{vision_model_cur}] -->selected<!-- END_IF -->>
               {model}
             </option>
-            <!-- END model:loop -->
+            <!-- END vision_model:loop -->
           </select>
           <input type="hidden" name="config[]" value="ai_vision_model" />
           <!-- END_IF -->
