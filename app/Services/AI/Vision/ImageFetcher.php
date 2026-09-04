@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Acms\Plugins\AI\Services\AI\Vision;
 
+use Acms\Plugins\AI\Services\AI\EnvCredential;
+
 /**
  * 同一サイト上のメディア画像 URL を取得し、vision 用の data URL へ変換する。
  *
@@ -20,6 +22,12 @@ class ImageFetcher
     private const MAX_BYTES = 8 * 1024 * 1024;
 
     /**
+     * TLS 証明書検証をスキップする環境変数（ローカル開発の自己署名証明書用）。
+     * 本番で無効化しないよう、既定は検証有効。
+     */
+    public const ENV_INSECURE_SSL = 'ACMS_AI_INSECURE_LOCAL_SSL';
+
+    /**
      * 画像 URL を取得して data URL を返す。
      *
      * @throws \RuntimeException 取得失敗・リダイレクト・非対応形式・サイズ超過時
@@ -34,6 +42,7 @@ class ImageFetcher
         if ($status >= 400 || $body === '') {
             throw new \RuntimeException('画像の取得に失敗しました (HTTP ' . $status . ')');
         }
+        // 受信中の中断（httpGetBinary 内）に加えた最終防衛。テスト差し替え時にも上限を保証する
         if (strlen($body) > self::MAX_BYTES) {
             throw new \RuntimeException('画像サイズが大きすぎます（8MB 以下にしてください）');
         }
@@ -70,8 +79,9 @@ class ImageFetcher
      * テストではこのメソッドを差し替えて取得後の検証ロジックを検証する。
      *
      * 同一オリジン（自サイト）の画像取得専用のため、リダイレクトは追わない。
-     * SSL 検証はローカル開発（自己署名証明書）でも動作するよう無効化している
-     * （取得対象は自サイトの公開画像に限定され、応答は MIME 判定・サイズ上限で検証される）。
+     * TLS 証明書は既定で検証する。ローカル開発（自己署名証明書）では
+     * .env の {@see self::ENV_INSECURE_SSL} を 1 にした場合のみ検証をスキップできる。
+     * 受信中に MAX_BYTES を超えた時点で転送を中断し、巨大応答によるメモリ消費を防ぐ。
      *
      * @return array{0: int, 1: string}
      * @throws \RuntimeException cURL 実行に失敗した場合
@@ -79,17 +89,33 @@ class ImageFetcher
      */
     protected function httpGetBinary(string $url): array
     {
+        $insecureLocal = EnvCredential::get(self::ENV_INSECURE_SSL) === '1';
+        $body = '';
+        $overflow = false;
+
         $ch = curl_init();
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_RETURNTRANSFER => false,
             CURLOPT_FOLLOWLOCATION => false,
             CURLOPT_TIMEOUT => 30,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => 0,
+            CURLOPT_SSL_VERIFYPEER => !$insecureLocal,
+            CURLOPT_SSL_VERIFYHOST => $insecureLocal ? 0 : 2,
+            // 受信中に上限を超えたら中断する（全量受信によるメモリ消費を防ぐ）
+            CURLOPT_WRITEFUNCTION => function ($ch, string $chunk) use (&$body, &$overflow): int {
+                $body .= $chunk;
+                if (strlen($body) > self::MAX_BYTES) {
+                    $overflow = true;
+                    return -1;
+                }
+                return strlen($chunk);
+            },
         ]);
-        $body = curl_exec($ch);
-        if (!is_string($body)) {
+        $succeeded = curl_exec($ch);
+        if ($overflow) {
+            throw new \RuntimeException('画像サイズが大きすぎます（8MB 以下にしてください）');
+        }
+        if ($succeeded !== true) {
             throw new \RuntimeException('画像の取得に失敗しました: ' . curl_error($ch));
         }
         $status = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
