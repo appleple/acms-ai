@@ -34,6 +34,14 @@
       </div>
     </div>
 
+    <div class="acms-admin-tabs">
+      <ul class="js-acms_admin_tabs">
+        <li><a href="#ai-main" class="js-ready-acms_tabs"><!-- T -->プロンプト設定<!-- /T --></a></li>
+        <li><a href="#ai-keys"><!-- T -->API設定<!-- /T --></a></li>
+      </ul>
+
+      <!-- ================= API設定タブ ================= -->
+      <div class="acms-admin-tabs-panel" id="ai-keys">
     <h2 class="acms-admin-admin-title2"><!-- T -->認証<!-- /T --></h2>
 
     <table class="acms-admin-table-admin-edit">
@@ -224,8 +232,11 @@
         </td>
       </tr>
     </table>
+      </div>
 
-    <h2 class="acms-admin-admin-title2"><!-- T -->プロンプト設定<!-- /T --></h2>
+      <!-- ================= プロンプト設定タブ ================= -->
+      <div class="acms-admin-tabs-panel" id="ai-main">
+    <h2 class="acms-admin-admin-title2"><!-- T -->エントリー プロンプト設定<!-- /T --></h2>
     <table class="acms-admin-table-admin-edit">
       <tbody>
         <tr>
@@ -415,6 +426,8 @@
         </tr>
       </tbody>
     </table>
+      </div>
+    </div>
   </form>
 </section>
 <!-- END_MODULE Admin_Config -->
