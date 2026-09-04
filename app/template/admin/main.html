@@ -246,6 +246,146 @@
         </tr>
       </tbody>
     </table>
+
+    <h2 class="acms-admin-admin-title2"><!-- T -->メディア プロンプト設定<!-- /T --></h2>
+    <table class="acms-admin-table-admin-edit">
+      <tbody>
+        <tr>
+          <th><!-- T -->メディアAI生成<!-- /T --></th>
+          <td>
+            <div class="acms-admin-form-checkbox">
+              <input
+                type="checkbox"
+                name="ai_vision_valid[]"
+                {ai_vision_valid:checked#on}
+                id="input-checkbox-ai_vision_valid-on"
+                value="on" />
+              <label for="input-checkbox-ai_vision_valid-on"><i class="acms-admin-ico-checkbox"></i>有効</label>
+              <p class="acms-admin-text-helper acms-admin-margin-top-mini">
+                有効にすることで、メディア管理画面に「AI生成」ボタンが表示され、画像から以下の各フィールドを生成できます。
+              </p>
+            </div>
+            <input type="hidden" name="config[]" value="ai_vision_valid" />
+          </td>
+        </tr>
+        <tr>
+          <th><!-- T -->システムプロンプト<!-- /T --></th>
+          <td>
+            <textarea
+              name="ai_vision_system_prompt"
+              class="acms-admin-form-width-full"
+              placeholder="空欄の場合は既定のプロンプトを使用します"
+            >{ai_vision_system_prompt}</textarea>
+            <input type="hidden" name="config[]" value="ai_vision_system_prompt" />
+          </td>
+        </tr>
+        <tr>
+          <th><!-- T -->代替テキスト<!-- /T --></th>
+          <td>
+            <div class="acms-admin-form-checkbox">
+              <input
+                type="checkbox"
+                name="ai_vision_valid_alt[]"
+                {ai_vision_valid_alt:checked#on}
+                id="input-checkbox-ai_vision_valid_alt-on"
+                value="on" />
+              <label for="input-checkbox-ai_vision_valid_alt-on"><i class="acms-admin-ico-checkbox"></i>有効</label>
+            </div>
+            <input type="hidden" name="config[]" value="ai_vision_valid_alt" />
+            <textarea
+              name="ai_vision_prompt_alt"
+              class="acms-admin-form-width-full acms-admin-margin-top-mini"
+              placeholder="空欄の場合は既定のプロンプトを使用します"
+            >{ai_vision_prompt_alt}</textarea>
+            <input type="hidden" name="config[]" value="ai_vision_prompt_alt" />
+          </td>
+        </tr>
+        <tr>
+          <th><!-- T -->キャプション<!-- /T --></th>
+          <td>
+            <div class="acms-admin-form-checkbox">
+              <input
+                type="checkbox"
+                name="ai_vision_valid_caption[]"
+                {ai_vision_valid_caption:checked#on}
+                id="input-checkbox-ai_vision_valid_caption-on"
+                value="on" />
+              <label for="input-checkbox-ai_vision_valid_caption-on"><i class="acms-admin-ico-checkbox"></i>有効</label>
+            </div>
+            <input type="hidden" name="config[]" value="ai_vision_valid_caption" />
+            <textarea
+              name="ai_vision_prompt_caption"
+              class="acms-admin-form-width-full acms-admin-margin-top-mini"
+              placeholder="空欄の場合は既定のプロンプトを使用します"
+            >{ai_vision_prompt_caption}</textarea>
+            <input type="hidden" name="config[]" value="ai_vision_prompt_caption" />
+          </td>
+        </tr>
+        <tr>
+          <th><!-- T -->メモ<!-- /T --></th>
+          <td>
+            <div class="acms-admin-form-checkbox">
+              <input
+                type="checkbox"
+                name="ai_vision_valid_memo[]"
+                {ai_vision_valid_memo:checked#on}
+                id="input-checkbox-ai_vision_valid_memo-on"
+                value="on" />
+              <label for="input-checkbox-ai_vision_valid_memo-on"><i class="acms-admin-ico-checkbox"></i>有効</label>
+            </div>
+            <input type="hidden" name="config[]" value="ai_vision_valid_memo" />
+            <textarea
+              name="ai_vision_prompt_memo"
+              class="acms-admin-form-width-full acms-admin-margin-top-mini"
+              placeholder="空欄の場合は既定のプロンプトを使用します"
+            >{ai_vision_prompt_memo}</textarea>
+            <input type="hidden" name="config[]" value="ai_vision_prompt_memo" />
+          </td>
+        </tr>
+        <tr>
+          <th><!-- T -->ファイル名<!-- /T --></th>
+          <td>
+            <div class="acms-admin-form-checkbox">
+              <input
+                type="checkbox"
+                name="ai_vision_valid_filename[]"
+                {ai_vision_valid_filename:checked#on}
+                id="input-checkbox-ai_vision_valid_filename-on"
+                value="on" />
+              <label for="input-checkbox-ai_vision_valid_filename-on"><i class="acms-admin-ico-checkbox"></i>有効</label>
+            </div>
+            <input type="hidden" name="config[]" value="ai_vision_valid_filename" />
+            <textarea
+              name="ai_vision_prompt_filename"
+              class="acms-admin-form-width-full acms-admin-margin-top-mini"
+              placeholder="空欄の場合は既定のプロンプトを使用します"
+            >{ai_vision_prompt_filename}</textarea>
+            <input type="hidden" name="config[]" value="ai_vision_prompt_filename" />
+          </td>
+        </tr>
+        <tr>
+          <th><!-- T -->タグ<!-- /T --></th>
+          <td>
+            <div class="acms-admin-form-checkbox">
+              <input
+                type="checkbox"
+                name="ai_vision_valid_tags[]"
+                {ai_vision_valid_tags:checked#on}
+                id="input-checkbox-ai_vision_valid_tags-on"
+                value="on" />
+              <label for="input-checkbox-ai_vision_valid_tags-on"><i class="acms-admin-ico-checkbox"></i>有効</label>
+            </div>
+            <input type="hidden" name="config[]" value="ai_vision_valid_tags" />
+            <textarea
+              name="ai_vision_prompt_tags"
+              class="acms-admin-form-width-full acms-admin-margin-top-mini"
+              placeholder="空欄の場合は既定のプロンプトを使用します"
+            >{ai_vision_prompt_tags}</textarea>
+            <input type="hidden" name="config[]" value="ai_vision_prompt_tags" />
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </form>
 </section>
 <!-- END_MODULE Admin_Config -->

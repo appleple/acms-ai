@@ -180,6 +180,25 @@ final class AnthropicProviderTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('data URL の画像パートは base64 ソースの image ブロックへ変換する')]
+    public function dataUrlImagePartBecomesBase64Block(): void
+    {
+        $provider = $this->provider();
+        $provider->stubPostResult = '{"content":[{"type":"text","text":"ok"}]}';
+
+        $provider->generateText(new GenerationRequest(
+            'claude-sonnet-5',
+            [Message::user(ContentPart::image('data:image/png;base64,aW1n'))],
+        ));
+
+        $payload = $provider->capturedPayload();
+        self::assertSame(
+            [['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => 'image/png', 'data' => 'aW1n']]],
+            $payload['messages'][0]['content']
+        );
+    }
+
+    #[Test]
     #[TestDox('エラー応答は日本語メッセージ付きの失敗結果になる')]
     public function errorResponseBecomesFailureResult(): void
     {

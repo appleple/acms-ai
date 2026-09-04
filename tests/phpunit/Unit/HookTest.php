@@ -31,4 +31,25 @@ final class HookTest extends TestCase
         self::assertStringContainsString('extension/plugins/AI/bundle/acms-ai.js', $js);
         self::assertStringContainsString('extension/plugins/AI/bundle/acms-ai.css', $css);
     }
+
+    #[Test]
+    #[TestDox('メディア AI 生成の有効フラグ（AI_VISION_VALID / AI_VISION_VALID_*）を 1/0 でセットする')]
+    public function setsVisionFlagsIntoGlobalVars(): void
+    {
+        $globalVars = new Field();
+        (new Hook())->extendsGlobalVars($globalVars);
+
+        $keys = [
+            'AI_VISION_VALID',
+            'AI_VISION_VALID_ALT',
+            'AI_VISION_VALID_CAPTION',
+            'AI_VISION_VALID_MEMO',
+            'AI_VISION_VALID_FILENAME',
+            'AI_VISION_VALID_TAGS',
+        ];
+        foreach ($keys as $key) {
+            // 値は config に依存するため '1' か '0' のどちらか（キーが確実に入ること）を保証する。
+            self::assertContains($globalVars->get($key), ['1', '0'], $key);
+        }
+    }
 }

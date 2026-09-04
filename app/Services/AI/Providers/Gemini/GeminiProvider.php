@@ -15,6 +15,7 @@ use Acms\Plugins\AI\Services\AI\Contracts\ModelListingProvider;
 use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
 use Acms\Plugins\AI\Services\AI\Contracts\TokenUsage;
 use Acms\Plugins\AI\Services\AI\Conversation\ConversationStore;
+use Acms\Plugins\AI\Services\AI\Vision\DataUrl;
 use Acms\Services\Facades\Common;
 use Acms\Services\Facades\Logger;
 use Field;
@@ -236,8 +237,9 @@ class GeminiProvider implements AiProvider, ModelListingProvider
 
     /**
      * 1 メッセージ分のコンテンツ断片を generateContent の parts 配列へ変換する。
-     * テキストは text パートに、画像は URL を取得して inlineData（base64）パートに振り分ける
-     * （Gemini は任意 URL の直接参照に対応しないため、取得と base64 化をプロバイダ内で吸収する）。
+     * テキストは text パートに、画像は inlineData（base64）パートに振り分ける。
+     * 画像が data URL（サーバー側で取得済みのメディア画像など）ならそのまま分解し、
+     * 通常の URL なら取得して base64 化する（Gemini は任意 URL の直接参照に対応しないため）。
      *
      * @return list<array<string, mixed>>
      */
@@ -246,7 +248,7 @@ class GeminiProvider implements AiProvider, ModelListingProvider
         $parts = [];
         foreach ($message->parts as $part) {
             if ($part->type === ContentPart::TYPE_IMAGE) {
-                $inline = $this->fetchInlineImage($part->value);
+                $inline = DataUrl::parse($part->value) ?? $this->fetchInlineImage($part->value);
                 if ($inline === null) {
                     throw new \RuntimeException('画像を取得できませんでした: ' . $part->value);
                 }

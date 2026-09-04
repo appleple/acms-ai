@@ -1,0 +1,339 @@
+<!--
+  メディア編集モーダルに「AI生成の操作列」を追加する（メディア管理画面 media_index 用）。
+  MediaAISupport の inject.html を acms-ai のプロバイダ抽象/エンドポイントへ移植したもの。
+  - 「メディアを変更」行の行末セルに「AI生成」ボタン
+  - ファイル名 / キャプション / 代替テキスト / メモ / タグ の各行末セルにチェックボックス
+  - チェック状態は localStorage に保存・復元（初回は代替テキストのみ ON）
+  - ボタンでチェック項目を 1 回の vision 呼び出しでまとめて生成・セット（ACMS_POST_AI_GenerateMediaFields）
+  - タグは react-select のため、既存を全消去してから生成タグを擬似入力(値→Enter)で順次追加
+  プロバイダ未設定(authorized=false)のときは ServiceProvider 側で注入自体を行わない。
+  ai_vision_valid=false のときは、この JS 内で何も追加せず終了する。
+
+  ※ BEGIN_MODULE で包むと Template::render() が走り、JS 内の「同一行で開閉する中身ありの
+     波括弧 {...}」を変数とみなして削除してしまう（object リテラルや new Event(..,{...}) が
+     壊れる）。そのためモジュール化せず素の <script> として注入する。親スイッチと各フィールドの
+     有効フラグは Hook が設定するグローバル変数 %{AI_VISION_VALID} / %{AI_VISION_VALID_*}
+     （'1'/'0'）で受け取る。
+-->
+<script>
+(function () {
+  'use strict';
+
+  var STORE_KEY = 'acmsAiMediaTargets';
+  var CELL_CLASS = 'js-acms-ai-media-cell';
+  var BTN_CLASS = 'js-acms-ai-media-gen-btn';
+  var VISION_ENABLED = '%{AI_VISION_VALID}' === '1';
+
+  if (!VISION_ENABLED) { return; }
+
+  // 管理者が「メディア プロンプト設定」で有効化した項目のみ提供する（Hook がグローバル変数で出力）
+  var ADMIN_ENABLED = {
+    file_name: '%{AI_VISION_VALID_FILENAME}' === '1',
+    caption:   '%{AI_VISION_VALID_CAPTION}' === '1',
+    alt:       '%{AI_VISION_VALID_ALT}' === '1',
+    memo:      '%{AI_VISION_VALID_MEMO}' === '1',
+    tags:      '%{AI_VISION_VALID_TAGS}' === '1'
+  };
+
+  // 生成対象フィールド定義（key・行内のフィールド要素を返す find）
+  var FIELDS = [
+    { key: 'file_name', find: function (mid, modal) { return document.getElementById('media-modal-filename-' + mid); } },
+    { key: 'caption',   find: function (mid, modal) { return document.getElementById('media-modal-caption-' + mid); } },
+    { key: 'alt',       find: function (mid, modal) { return document.getElementById('media-modal-alt-' + mid); } },
+    { key: 'memo',      find: function (mid, modal) { return document.getElementById('media-modal-memo-' + mid); } },
+    { key: 'tags',      find: function (mid, modal) { return (modal || document).querySelector('input[id^="react-select"]'); } }
+  ].filter(function (f) { return ADMIN_ENABLED[f.key]; });
+
+  // 管理者が有効化した項目が無ければ、メディア画面に何も追加しない
+  if (FIELDS.length === 0) { return; }
+
+  /* ------- localStorage（チェック状態の永続化） ------- */
+  function loadTargets() {
+    var def = { file_name: false, caption: false, alt: true, memo: false, tags: false };
+    try {
+      var raw = window.localStorage.getItem(STORE_KEY);
+      if (!raw) { return def; }
+      var obj = JSON.parse(raw);
+      var out = {};
+      for (var i = 0; i < FIELDS.length; i++) {
+        var k = FIELDS[i].key;
+        out[k] = !!obj[k];
+      }
+      return out;
+    } catch (e) {
+      return def;
+    }
+  }
+  function saveTargets(targets) {
+    try { window.localStorage.setItem(STORE_KEY, JSON.stringify(targets)); } catch (e) {}
+  }
+
+  /* ------- 画像 URL の検出（モーダル内の img / 背景画像） ------- */
+  function isContentImage(url) {
+    if (url.indexOf('/themes/') !== -1) { return false; }
+    if (url.indexOf('/admin/') !== -1) { return false; }
+    return /\.(jpe?g|png|gif|webp)(\?|#|$)/i.test(url);
+  }
+  function absoluteUrl(url) { var a = document.createElement('a'); a.href = url; return a.href; }
+  function findImageUrl(modal) {
+    var i;
+    var imgs = modal.querySelectorAll('img');
+    for (i = 0; i < imgs.length; i++) {
+      var src = imgs[i].getAttribute('src') || '';
+      if (src && src.indexOf('data:') !== 0 && isContentImage(src)) { return absoluteUrl(src); }
+    }
+    var all = modal.querySelectorAll('*');
+    for (i = 0; i < all.length; i++) {
+      var bg = window.getComputedStyle(all[i]).backgroundImage || '';
+      var m = bg.match(/url\((['"]?)(.*?)\1\)/);
+      if (m && m[2] && m[2].indexOf('data:') !== 0 && isContentImage(m[2])) { return absoluteUrl(m[2]); }
+    }
+    return '';
+  }
+
+  /* ------- React 制御 input/textarea への値書き込み ------- */
+  function setNativeValue(el, value) {
+    var proto = el.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+    var desc = Object.getOwnPropertyDescriptor(proto, 'value');
+    if (desc && desc.set) { desc.set.call(el, value); } else { el.value = value; }
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function midFromId(id) { var m = id.match(/(\d+)$/); return m ? m[1] : ''; }
+
+  /* ------- ボタンの活性制御 ------- */
+  var generating = false;
+  function anyChecked(mid) {
+    for (var i = 0; i < FIELDS.length; i++) {
+      var cb = document.getElementById('acms-ai-media-cb-' + FIELDS[i].key + '-' + mid);
+      if (cb && cb.checked) { return true; }
+    }
+    return false;
+  }
+  function updateGenBtn(mid) {
+    if (generating) { return; }
+    var btn = document.getElementById('acms-ai-media-gen-btn-' + mid);
+    if (btn) { btn.disabled = !anyChecked(mid); }
+  }
+
+  /* ------- 生成実行 ------- */
+  function generate(mid, button, modal) {
+    var targets = [];
+    for (var i = 0; i < FIELDS.length; i++) {
+      var cb = document.getElementById('acms-ai-media-cb-' + FIELDS[i].key + '-' + mid);
+      if (cb && cb.checked) { targets.push(FIELDS[i].key); }
+    }
+    if (targets.length === 0) {
+      window.alert('生成する項目をチェックしてください。');
+      return;
+    }
+    var imageUrl = findImageUrl(modal);
+    if (!imageUrl) {
+      window.alert('対象の画像が見つかりませんでした。');
+      return;
+    }
+    var fnInput = document.getElementById('media-modal-filename-' + mid);
+    var currentName = fnInput ? fnInput.value : '';
+
+    var original = button.textContent;
+    generating = true;
+    button.disabled = true;
+    button.textContent = '…';
+    function restore() { generating = false; button.textContent = original; updateGenBtn(mid); }
+
+    var fd = new FormData();
+    fd.append('ACMS_POST_AI_GenerateMediaFields', '1');
+    fd.append('formToken', window.csrfToken || '');
+    fd.append('image_url', imageUrl);
+    fd.append('targets', targets.join(','));
+
+    fetch(window.location.href, { method: 'POST', credentials: 'same-origin', body: fd })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data && data.error) { restore(); window.alert('生成エラー: ' + data.error); return; }
+        var fields = data && data.fields ? data.fields : null;
+        if (!fields) { restore(); window.alert('生成結果を取得できませんでした。'); return; }
+        applyFields(mid, fields, currentName, modal).then(restore, restore);
+      })
+      .catch(function () {
+        restore();
+        window.alert('通信エラーが発生しました。');
+      });
+  }
+
+  /* チェック項目を各欄へ反映。tags は react-select のため非同期。Promise を返す。 */
+  function applyFields(mid, fields, currentName, modal) {
+    if (typeof fields.file_name === 'string' && fields.file_name !== '') {
+      var ext = '';
+      var dot = currentName.lastIndexOf('.');
+      if (dot > -1) { ext = currentName.slice(dot); }
+      var el = document.getElementById('media-modal-filename-' + mid);
+      if (el) { setNativeValue(el, fields.file_name + ext); }
+    }
+    var map = { caption: 'media-modal-caption-', alt: 'media-modal-alt-', memo: 'media-modal-memo-' };
+    for (var key in map) {
+      if (!map.hasOwnProperty(key)) { continue; }
+      if (typeof fields[key] === 'string' && fields[key] !== '') {
+        var node = document.getElementById(map[key] + mid);
+        if (node) { setNativeValue(node, fields[key]); }
+      }
+    }
+    if (fields.tags && fields.tags.length) {
+      return setTags(modal, fields.tags);
+    }
+    return Promise.resolve();
+  }
+
+  /* ------- タグ（react-select）操作 ------- */
+  function reactSelectInput(modal) { return (modal || document).querySelector('input[id^="react-select"]'); }
+
+  function fireKey(el, key, keyCode) {
+    ['keydown', 'keyup'].forEach(function (t) {
+      el.dispatchEvent(new KeyboardEvent(t, { key: key, code: key, keyCode: keyCode, which: keyCode, bubbles: true }));
+    });
+  }
+
+  function clearTags(modal) {
+    return new Promise(function (resolve) {
+      var input = reactSelectInput(modal);
+      var hid = modal.querySelector('input[name="media_label"]');
+      if (!input) { resolve(); return; }
+      var tries = 0;
+      function step() {
+        var has = hid ? (hid.value.replace(/^\s+|\s+$/g, '') !== '') : !!modal.querySelector('[class*="multiValue"]');
+        if (!has || tries > 30) { resolve(); return; }
+        tries++;
+        input.focus();
+        fireKey(input, 'Backspace', 8);
+        window.setTimeout(step, 60);
+      }
+      step();
+    });
+  }
+
+  function addOneTag(input, tag) {
+    return new Promise(function (resolve) {
+      input.focus();
+      var setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      setter.call(input, tag);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      window.setTimeout(function () {
+        fireKey(input, 'Enter', 13);
+        window.setTimeout(resolve, 120);
+      }, 120);
+    });
+  }
+
+  function setTags(modal, tags) {
+    var input = reactSelectInput(modal);
+    if (!input) { return Promise.resolve(); }
+    stopObserver();
+    function done() {
+      if (input.blur) { input.blur(); }
+      input.dispatchEvent(new Event('blur', { bubbles: true }));
+      startObserver();
+    }
+    return clearTags(modal).then(function () {
+      return tags.reduce(function (p, tag) {
+        return p.then(function () { return addOneTag(input, tag); });
+      }, Promise.resolve());
+    }).then(done, function (err) { done(); throw err; });
+  }
+
+  /* ------- 操作列（行末 td）の構築 ------- */
+  function ensureCell(tr) {
+    var existing = tr.querySelector('.' + CELL_CLASS);
+    if (existing) { return existing; }
+    var td = document.createElement('td');
+    td.className = CELL_CLASS + ' acms-admin-text-center';
+    td.style.whiteSpace = 'nowrap';
+    tr.appendChild(td);
+    return td;
+  }
+
+  function buildUI(mid) {
+    var fnInput = document.getElementById('media-modal-filename-' + mid);
+    if (!fnInput) { return; }
+    var table = fnInput.closest('table');
+    var modal = fnInput.closest('.acms-admin-modal-content') || document;
+    if (!table) { return; }
+
+    var targets = loadTargets();
+
+    var fileInput = table.querySelector('input[type="file"]');
+    var btnRow = fileInput ? fileInput.closest('tr') : table.querySelector('tr');
+    if (btnRow && !btnRow.querySelector('.' + BTN_CLASS)) {
+      var btnCell = ensureCell(btnRow);
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.id = 'acms-ai-media-gen-btn-' + mid;
+      button.className = BTN_CLASS + ' acms-admin-btn acms-admin-btn-admin';
+      button.textContent = 'AI生成';
+      button.title = 'AIで生成';
+      button.addEventListener('click', function () { generate(mid, button, modal); });
+      btnCell.appendChild(button);
+    }
+
+    for (var i = 0; i < FIELDS.length; i++) {
+      var def = FIELDS[i];
+      var field = def.find(mid, modal);
+      if (!field) { continue; }
+      var tr = field.closest('tr');
+      if (!tr) { continue; }
+      var cbId = 'acms-ai-media-cb-' + def.key + '-' + mid;
+      if (document.getElementById(cbId)) { continue; }
+      var cell = ensureCell(tr);
+      var wrap = document.createElement('label');
+      wrap.className = 'acms-admin-form-checkbox acms-admin-m-0';
+      wrap.setAttribute('for', cbId);
+      wrap.title = 'AIで生成する';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.id = cbId;
+      cb.className = 'js-acms-ai-media-checkbox';
+      cb.setAttribute('data-key', def.key);
+      cb.checked = !!targets[def.key];
+      cb.addEventListener('change', onCheckboxChange);
+      var ico = document.createElement('i');
+      ico.className = 'acms-admin-ico-checkbox';
+      wrap.appendChild(cb);
+      wrap.appendChild(ico);
+      cell.appendChild(wrap);
+    }
+
+    updateGenBtn(mid);
+  }
+
+  function onCheckboxChange() {
+    var targets = loadTargets();
+    var boxes = document.querySelectorAll('.js-acms-ai-media-checkbox');
+    for (var i = 0; i < boxes.length; i++) {
+      targets[boxes[i].getAttribute('data-key')] = boxes[i].checked;
+    }
+    saveTargets(targets);
+    updateGenBtn(midFromId(this.id));
+  }
+
+  function scan() {
+    var inputs = document.querySelectorAll('input[id^="media-modal-filename-"]');
+    for (var i = 0; i < inputs.length; i++) {
+      buildUI(midFromId(inputs[i].id));
+    }
+  }
+
+  var observer = new MutationObserver(function () { scan(); });
+  var observing = false;
+  function startObserver() {
+    if (observing) { return; }
+    observer.observe(document.body, { childList: true, subtree: true });
+    observing = true;
+    scan();
+  }
+  function stopObserver() {
+    if (!observing) { return; }
+    observer.disconnect();
+    observing = false;
+  }
+  startObserver();
+})();
+</script>
