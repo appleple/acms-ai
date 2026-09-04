@@ -47,6 +47,7 @@
             <option value="openai" <!-- BEGIN_IF [{ai_provider}/eq/openai] -->selected<!-- END_IF -->>OpenAI</option>
             <option value="anthropic" <!-- BEGIN_IF [{ai_provider}/eq/anthropic] -->selected<!-- END_IF -->>Anthropic (Claude)</option>
             <option value="gemini" <!-- BEGIN_IF [{ai_provider}/eq/gemini] -->selected<!-- END_IF -->>Google (Gemini)</option>
+            <option value="compat" <!-- BEGIN_IF [{ai_provider}/eq/compat] -->selected<!-- END_IF -->>OpenAI互換（さくらのAI Engine など）</option>
           </select>
           <input type="hidden" name="config[]" value="ai_provider" />
         </td>
@@ -129,6 +130,38 @@
             placeholder="AIzaXxxxxxxxxxxxxxxxxxxxxxxx"
           />
           <input type="hidden" name="config[]" value="ai_gemini_api_key" />
+        </td>
+      </tr>
+      <tr>
+        <th>
+          <!-- T -->OpenAI互換 API KEY<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI互換エンドポイント（さくらのAI Engine など）の API KEY を入力してください。"></i>
+        </th>
+        <td>
+          <input
+            type="text"
+            name="ai_compat_api_key"
+            value="{ai_compat_api_key}"
+            class="acms-admin-form-width-full"
+            placeholder="xxxxxxxxxxxxxxxxxxxxxxxx"
+          />
+          <input type="hidden" name="config[]" value="ai_compat_api_key" />
+        </td>
+      </tr>
+      <tr>
+        <th>
+          <!-- T -->OpenAI互換 Base URL<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI互換エンドポイントの Base URL。空欄の場合はさくらのAI Engine（https://api.ai.sakura.ad.jp/v1）を使用します。"></i>
+        </th>
+        <td>
+          <input
+            type="text"
+            name="ai_compat_base_url"
+            value="{ai_compat_base_url}"
+            class="acms-admin-form-width-full"
+            placeholder="https://api.ai.sakura.ad.jp/v1"
+          />
+          <input type="hidden" name="config[]" value="ai_compat_base_url" />
         </td>
       </tr>
 
