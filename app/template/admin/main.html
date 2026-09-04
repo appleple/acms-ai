@@ -58,16 +58,32 @@
             <option value="compat" <!-- BEGIN_IF [{ai_provider}/eq/compat] -->selected<!-- END_IF -->>OpenAI互換（さくらのAI Engine など）</option>
           </select>
           <input type="hidden" name="config[]" value="ai_provider" />
+          <!-- BEGIN_MODULE AI_Admin -->
+          <p class="acms-admin-margin-top-mini">
+            <!-- BEGIN provider_status:loop -->
+            <!-- BEGIN_IF [{provider_configured}/eq/true] -->
+            <span class="acms-admin-label acms-admin-label-success">{provider_label}: 設定済み</span>
+            <!-- ELSE -->
+            <span class="acms-admin-label">{provider_label}: 未設定</span>
+            <!-- END_IF -->
+            <!-- END provider_status:loop -->
+          </p>
+          <!-- END_MODULE AI_Admin -->
         </td>
       </tr>
+    </table>
+
+    <div data-ai-provider="openai">
+      <h3 class="acms-admin-admin-title3">OpenAI</h3>
+      <table class="acms-admin-table-admin-edit">
       <tr>
         <th>
-          <!-- T -->OpenAI Organization ID<!-- /T -->
-          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="ChatGPT API で取得する Organization ID を入力してください。"></i>
+          <!-- T -->Organization ID<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI API の Organization ID（通常は不要）。.env の ACMS_AI_OPENAI_ORGANIZATION_ID でも設定できます。"></i>
         </th>
         <td>
           <!-- BEGIN_IF [%{AI_OPENAI_ORGANIZATION_ID_FROM_ENV}/eq/1] -->
-          <p class="acms-admin-text-helper">.env（ACMS_AI_OPENAI_ORGANIZATION_ID）で設定済みのため、ここでの入力は不要です。</p>
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->.env 設定済み<!-- /T --></span>
           <!-- ELSE -->
           <input
             type="text"
@@ -82,12 +98,12 @@
       </tr>
       <tr>
         <th>
-          <!-- T -->OpenAI Project ID<!-- /T -->
-          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="ChatGPT API で取得する Project ID を入力してください。"></i>
+          <!-- T -->Project ID<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI API の Project ID（通常は不要）。.env の ACMS_AI_OPENAI_PROJECT_ID でも設定できます。"></i>
         </th>
         <td>
           <!-- BEGIN_IF [%{AI_OPENAI_PROJECT_ID_FROM_ENV}/eq/1] -->
-          <p class="acms-admin-text-helper">.env（ACMS_AI_OPENAI_PROJECT_ID）で設定済みのため、ここでの入力は不要です。</p>
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->.env 設定済み<!-- /T --></span>
           <!-- ELSE -->
           <input
             type="text"
@@ -102,12 +118,12 @@
       </tr>
       <tr>
         <th>
-          <!-- T -->OpenAI API KEY<!-- /T -->
-          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="ChatGPT API で取得する API KEY を入力してください。"></i>
+          <!-- T -->API KEY<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI Platform で取得する API KEY を入力してください。.env の ACMS_AI_OPENAI_API_KEY でも設定できます。"></i>
         </th>
         <td>
           <!-- BEGIN_IF [%{AI_OPENAI_API_KEY_FROM_ENV}/eq/1] -->
-          <p class="acms-admin-text-helper">.env（ACMS_AI_OPENAI_API_KEY）で設定済みのため、ここでの入力は不要です。</p>
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->.env 設定済み<!-- /T --></span>
           <!-- ELSE -->
           <input
             type="text"
@@ -120,14 +136,20 @@
           <!-- END_IF -->
         </td>
       </tr>
+      </table>
+    </div>
+
+    <div data-ai-provider="anthropic">
+      <h3 class="acms-admin-admin-title3">Anthropic (Claude)</h3>
+      <table class="acms-admin-table-admin-edit">
       <tr>
         <th>
-          <!-- T -->Anthropic API KEY<!-- /T -->
-          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="Anthropic Console で取得する API KEY を入力してください。"></i>
+          <!-- T -->API KEY<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="Anthropic Console で取得する API KEY を入力してください。.env の ACMS_AI_ANTHROPIC_API_KEY でも設定できます。"></i>
         </th>
         <td>
           <!-- BEGIN_IF [%{AI_ANTHROPIC_API_KEY_FROM_ENV}/eq/1] -->
-          <p class="acms-admin-text-helper">.env（ACMS_AI_ANTHROPIC_API_KEY）で設定済みのため、ここでの入力は不要です。</p>
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->.env 設定済み<!-- /T --></span>
           <!-- ELSE -->
           <input
             type="text"
@@ -140,14 +162,20 @@
           <!-- END_IF -->
         </td>
       </tr>
+      </table>
+    </div>
+
+    <div data-ai-provider="gemini">
+      <h3 class="acms-admin-admin-title3">Google (Gemini)</h3>
+      <table class="acms-admin-table-admin-edit">
       <tr>
         <th>
-          <!-- T -->Gemini API KEY<!-- /T -->
-          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="Google AI Studio で取得する API KEY を入力してください。"></i>
+          <!-- T -->API KEY<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="Google AI Studio で取得する API KEY を入力してください。.env の ACMS_AI_GEMINI_API_KEY でも設定できます。"></i>
         </th>
         <td>
           <!-- BEGIN_IF [%{AI_GEMINI_API_KEY_FROM_ENV}/eq/1] -->
-          <p class="acms-admin-text-helper">.env（ACMS_AI_GEMINI_API_KEY）で設定済みのため、ここでの入力は不要です。</p>
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->.env 設定済み<!-- /T --></span>
           <!-- ELSE -->
           <input
             type="text"
@@ -160,14 +188,20 @@
           <!-- END_IF -->
         </td>
       </tr>
+      </table>
+    </div>
+
+    <div data-ai-provider="compat">
+      <h3 class="acms-admin-admin-title3"><!-- T -->OpenAI互換（さくらのAI Engine など）<!-- /T --></h3>
+      <table class="acms-admin-table-admin-edit">
       <tr>
         <th>
-          <!-- T -->OpenAI互換 API KEY<!-- /T -->
-          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI互換エンドポイント（さくらのAI Engine など）の API KEY を入力してください。"></i>
+          <!-- T -->API KEY<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI互換エンドポイント（さくらのAI Engine など）の API KEY を入力してください。.env の ACMS_AI_SAKURA_API_KEY でも設定できます。"></i>
         </th>
         <td>
           <!-- BEGIN_IF [%{AI_COMPAT_API_KEY_FROM_ENV}/eq/1] -->
-          <p class="acms-admin-text-helper">.env（ACMS_AI_SAKURA_API_KEY）で設定済みのため、ここでの入力は不要です。</p>
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->.env 設定済み<!-- /T --></span>
           <!-- ELSE -->
           <input
             type="text"
@@ -182,7 +216,7 @@
       </tr>
       <tr>
         <th>
-          <!-- T -->OpenAI互換 Base URL<!-- /T -->
+          <!-- T -->Base URL<!-- /T -->
           <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI互換エンドポイントの Base URL。空欄の場合はさくらのAI Engine（https://api.ai.sakura.ad.jp/v1）を使用します。"></i>
         </th>
         <td>
@@ -196,7 +230,10 @@
           <input type="hidden" name="config[]" value="ai_compat_base_url" />
         </td>
       </tr>
+      </table>
+    </div>
 
+    <table class="acms-admin-table-admin-edit">
       <tr>
         <th>
           <!-- T -->モデル<!-- /T -->
@@ -205,7 +242,7 @@
         <td>
           <!-- BEGIN_MODULE AI_Admin -->
           <!-- BEGIN_IF [{configured}/eq/false] -->
-          <p>選択中のプロバイダの認証情報を保存してください。</p>
+          <p>API KEY を入力して保存すると、モデルを選択できるようになります。</p>
           <!-- ELSE -->
           <!-- BEGIN_IF [{authorized}/eq/false] -->
           <p>認証に失敗または、API KEY に使用できるモデルがない可能性があります。</p>
@@ -229,12 +266,12 @@
       <tr>
         <th>
           <!-- T -->画像解析モデル<!-- /T -->
-          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="メディアの画像解析（AI生成）で使うモデル。未選択の場合は上のモデルを使用します。"></i>
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="メディアの画像解析（AI生成）で使うモデル。画像解析（vision）に対応したモデルを選択してください。未選択の場合は上のモデルを使用します。"></i>
         </th>
         <td>
           <!-- BEGIN_MODULE AI_Admin -->
           <!-- BEGIN_IF [{configured}/eq/false] -->
-          <p>選択中のプロバイダの認証情報を保存してください。</p>
+          <p>API KEY を入力して保存すると、モデルを選択できるようになります。</p>
           <!-- ELSE -->
           <!-- BEGIN_IF [{authorized}/eq/false] -->
           <p>認証に失敗または、API KEY に使用できるモデルがない可能性があります。</p>
@@ -455,3 +492,35 @@
   </form>
 </section>
 <!-- END_MODULE Admin_Config -->
+
+<!--
+  プロバイダ選択に応じて、該当プロバイダの設定グループ（[data-ai-provider]）だけを
+  表示する。表示切り替えのみで input は DOM に残るため、保存時に他プロバイダの設定値が
+  失われることはない。
+  ※ BEGIN_MODULE の外に置くこと（モジュール内は Template::render() が同一行の波括弧を
+     変数とみなして削除し、JS が構文崩壊する。loader.html の注記参照）。
+-->
+<script>
+(function () {
+  function setup() {
+    var select = document.querySelector('select[name="ai_provider"]');
+    if (!select) {
+      return;
+    }
+    var rows = document.querySelectorAll('[data-ai-provider]');
+    function apply() {
+      var current = select.value;
+      for (var i = 0; i < rows.length; i++) {
+        rows[i].style.display = rows[i].getAttribute('data-ai-provider') === current ? '' : 'none';
+      }
+    }
+    select.addEventListener('change', apply);
+    apply();
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setup);
+  } else {
+    setup();
+  }
+})();
+</script>

@@ -94,6 +94,35 @@ final class ProviderRegistryTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('ids は登録済みプロバイダ id を登録順で返す')]
+    public function idsReturnsRegisteredProviderIds(): void
+    {
+        self::assertSame(
+            ['openai', 'anthropic', 'gemini', 'compat'],
+            ProviderRegistry::withDefaults()->ids()
+        );
+    }
+
+    #[Test]
+    #[TestDox('resolveById は指定 id のプロバイダを返す（フォールバックなし）')]
+    public function resolveByIdReturnsSpecifiedProvider(): void
+    {
+        $provider = ProviderRegistry::withDefaults()->resolveById('gemini', $this->config());
+
+        self::assertInstanceOf(GeminiProvider::class, $provider);
+        self::assertSame('gemini', $provider->id());
+    }
+
+    #[Test]
+    #[TestDox('resolveById は未登録の id で例外を投げる')]
+    public function resolveByIdThrowsForUnknownProvider(): void
+    {
+        $this->expectException(\RuntimeException::class);
+
+        ProviderRegistry::withDefaults()->resolveById('unknown-xyz', $this->config());
+    }
+
+    #[Test]
     #[TestDox('register で追加したプロバイダを解決できる')]
     public function customRegistrationResolves(): void
     {
