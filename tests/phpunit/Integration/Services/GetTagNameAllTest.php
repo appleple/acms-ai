@@ -27,16 +27,26 @@ final class GetTagNameAllTest extends DatabaseTestCase
         TagSeeder::seed(1, 1, 'a-blog cms', 2);
         TagSeeder::seed(2, 1, 'PHP', 1);
 
-        $tags = AI::getTagNameAll();
+        $tags = AI::getTagNameAll(1);
 
         sort($tags);
         self::assertSame(['PHP', 'a-blog cms'], $tags);
     }
 
     #[Test]
+    #[TestDox('指定したブログのタグだけを返す（別ブログのタグは AI へ送らない）')]
+    public function excludesTagsFromOtherBlogs(): void
+    {
+        TagSeeder::seed(1, 1, 'PHP', 1);
+        TagSeeder::seed(3, 2, '社外秘プロジェクト', 1);
+
+        self::assertSame(['PHP'], AI::getTagNameAll(1));
+    }
+
+    #[Test]
     #[TestDox('タグが 1 件も無ければ空配列を返す')]
     public function returnsEmptyArrayWhenNoTags(): void
     {
-        self::assertSame([], AI::getTagNameAll());
+        self::assertSame([], AI::getTagNameAll(1));
     }
 }

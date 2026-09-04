@@ -50,6 +50,23 @@ trait AIPostTrait
     }
 
     /**
+     * AI 機能の利用権限を検証し、権限が無ければエラー応答を返す（あれば null）。
+     *
+     * CSRF は ACMS_POST 基底が検証するが、それはログイン済みなら誰でも通る。
+     * サーバーに設定された API キーの消費を伴うため、現在のブログでエントリーを
+     * 作成できる権限（投稿者以上）を明示的に要求する。
+     */
+    protected function denyUnlessContribution(): mixed
+    {
+        if (sessionWithContribution()) {
+            return null;
+        }
+        $response = ['message' => 'AI 機能を利用する権限がありません。', 'errorCode' => 403];
+        Logger::notice('【AI plugin】 権限のないユーザーからの AI リクエストを拒否しました', $response);
+        return Common::responseJson($response);
+    }
+
+    /**
      * @param array<string, mixed> $logContext
      */
     private function errorResponse(string $message, array $logContext = []): mixed

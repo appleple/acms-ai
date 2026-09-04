@@ -22,7 +22,7 @@ class Tag extends ACMS_POST
      */
     protected function additionalMessages(): array
     {
-        $tagNameAll = ServiceAI::getTagNameAll();
+        $tagNameAll = ServiceAI::getTagNameAll(BID);
         $tagStr = implode(", ", $tagNameAll);
 
         if ($tagStr === '') {
@@ -45,6 +45,10 @@ class Tag extends ACMS_POST
     public function post(): mixed
     {
         $this->initAiConfig();
+
+        if (($denied = $this->denyUnlessContribution()) !== null) {
+            return $denied;
+        }
 
         $article = $this->Post->get('article');
         $addPrompt = $this->Post->get('addPrompt');

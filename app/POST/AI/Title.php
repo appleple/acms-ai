@@ -17,6 +17,10 @@ class Title extends ACMS_POST
     {
         $this->initAiConfig();
 
+        if (($denied = $this->denyUnlessContribution()) !== null) {
+            return $denied;
+        }
+
         $article = $this->Post->get('article');
 
         $serviceAI = new ServicesAI();

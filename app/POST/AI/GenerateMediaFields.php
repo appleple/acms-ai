@@ -31,8 +31,8 @@ class GenerateMediaFields extends ACMS_POST
         // 監査ログの req_body へ画像 URL 等が平文で残らないようにする
         AuditLogSanitizer::protectRequestBody();
 
-        // 管理者のみ
-        if (!sessionWithAdministration()) {
+        // 投稿者以上（メディア管理は投稿者から利用できるため、他の AI エンドポイントと同じ基準に揃える）
+        if (!sessionWithContribution()) {
             $this->respond(403, '権限がありません', ['reason' => 'permission_denied']);
             return $this->Post;
         }

@@ -44,15 +44,21 @@ class AI
     }
 
     /**
+     * 指定ブログのタグ名一覧を返す。
+     *
+     * ブログを絞らないと別ブログ（別テナント）のタグ名まで AI プロバイダへ
+     * 送信してしまうため、現在のブログに限定する。
+     *
      * @return list<string> $result タグの配列
      */
-    public static function getTagNameAll(): array
+    public static function getTagNameAll(int $blogId): array
     {
         $result = [];
         try {
             $DB = Database::singleton(dsn());
             $SQL = SQL::newSelect('tag');
             $SQL->addSelect('tag_name');
+            $SQL->addWhereOpr('tag_blog_id', $blogId);
             $q = $SQL->get(dsn());
             $tagNameArr = $DB->query($q, 'all');
             if (is_iterable($tagNameArr)) {
