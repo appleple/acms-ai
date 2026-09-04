@@ -74,7 +74,8 @@ class GenerateMediaFields extends ACMS_POST
 
         try {
             $provider = ProviderRegistry::withDefaults()->resolve($config);
-            $model = $config->get('ai_model');
+            // 画像解析モデル（ai_vision_model）優先・空なら通常モデル（ai_model）へフォールバック。
+            $model = (new ServicesAI())->visionModel($config);
             if (!$provider->isConfigured() || $model === '') {
                 $this->respond(400, 'APIキーまたはモデルの設定がありません。', ['reason' => 'not_configured']);
                 return $this->Post;

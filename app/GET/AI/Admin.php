@@ -34,12 +34,14 @@ class Admin extends AI
             if ($selectedModel !== '') {
                 $this->modelCur = $selectedModel;
             }
+            $visionModelCur = $config->get('ai_vision_model');
 
             if (is_array($models) && $models !== []) {
                 foreach ($models as $model) {
                     $this->authorizedModels[] = [
                         'model' => $model,
-                        'model_cur' => $this->modelCur
+                        'model_cur' => $this->modelCur,
+                        'vision_model_cur' => $visionModelCur,
                     ];
                 }
             }
