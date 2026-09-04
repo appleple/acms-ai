@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Acms\Plugins\AI\Tests\Unit\Services;
 
 use Acms\Plugins\AI\Services\AI\Contracts\AiProvider;
+use Acms\Plugins\AI\Services\AI\Providers\Anthropic\AnthropicProvider;
 use Acms\Plugins\AI\Services\AI\Providers\OpenAi\OpenAiProvider;
 use Acms\Plugins\AI\Services\AI\ProviderRegistry;
 use Acms\TestingFramework\TestCase;
@@ -49,6 +50,16 @@ final class ProviderRegistryTest extends TestCase
         $provider = ProviderRegistry::withDefaults()->resolve($this->config(['ai_provider' => 'openai']));
 
         self::assertSame('openai', $provider->id());
+    }
+
+    #[Test]
+    #[TestDox('ai_provider に anthropic を指定すると Anthropic プロバイダを返す')]
+    public function resolvesAnthropicProvider(): void
+    {
+        $provider = ProviderRegistry::withDefaults()->resolve($this->config(['ai_provider' => 'anthropic']));
+
+        self::assertInstanceOf(AnthropicProvider::class, $provider);
+        self::assertSame('anthropic', $provider->id());
     }
 
     #[Test]
