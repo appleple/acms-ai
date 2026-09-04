@@ -110,7 +110,16 @@ trait AIPostTrait
 
         $decoded = json_decode($text, true);
         if (!is_array($decoded) || !isset($decoded['items'])) {
-            return $this->errorResponse('有効な形式のデータを取得できませんでした。', ['response' => $text]);
+            // AI 応答の全文はログへ残さない。応答には記事本文が再出力され得るため、
+            // リクエスト側（AuditLogSanitizer）のマスクを応答経由で迂回してしまう。
+            // 調査にはサイズ・ハッシュ・JSON エラー種別で応答の同一性と失敗原因を追う
+            return $this->errorResponse('有効な形式のデータを取得できませんでした。', [
+                'provider' => $this->provider->id(),
+                'model' => $this->model,
+                'response_bytes' => strlen($text),
+                'response_sha1' => sha1($text),
+                'json_last_error' => json_last_error_msg(),
+            ]);
         }
 
         return Common::responseJson($decoded['items']);
