@@ -1,6 +1,7 @@
 import { ChangeEvent, memo, useCallback } from 'react'
 import type { PromptResultType, PromptResponseType } from '../../../types/prompt-type'
 import { useEntryContext } from '../../../stores/use-entry'
+import styles from '../../../css/styles.module.css'
 
 interface Props {
   result: PromptResultType
@@ -21,7 +22,7 @@ const Result = memo(({ result: { id, data } }: Props) => {
   return (
     <>
       {data && (
-        <ul>
+        <ul className={`${styles.entryAiResultList} ${styles.entryAiResultListInline}`}>
           {data
             .filter((object: PromptResponseType) => object.content.trim() !== '')
             .map((object: PromptResponseType) => {

@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 
-const Insert = ({ data }: { data: string }) => {
+interface InsertProps {
+  data: string
+  onInserted?: () => void
+}
+
+const Insert = ({ data, onInserted }: InsertProps) => {
   const [selectedElement, setSelectedElement] = useState<HTMLInputElement | null>(null)
 
   useEffect(() => {
@@ -13,22 +18,28 @@ const Insert = ({ data }: { data: string }) => {
 
   const onInsertHandler = useCallback((e: { preventDefault: () => void }) => {
     e.preventDefault()
+    // 未選択（空）のときは適用しない（タイトルを空で上書きしないため）
+    if (!data) return
     if (selectedElement && selectedElement.tagName.toLowerCase() === 'input') {
       selectedElement.value = data
+      selectedElement.dispatchEvent(new Event('input', { bubbles: true }))
+      selectedElement.dispatchEvent(new Event('change', { bubbles: true }))
       const entryTitleDisplay = document.getElementById('entryForm')
       if (entryTitleDisplay) {
         entryTitleDisplay.scrollIntoView({ behavior: 'smooth' })
       }
+      onInserted?.()
     }
-  }, [selectedElement, data])
+  }, [selectedElement, data, onInserted])
 
   return (
     <button
       type='button'
-      className='acms-admin-btn acms-admin-inline-block'
+      className='acms-admin-btn acms-admin-btn-admin-info acms-admin-inline-block'
       onClick={onInsertHandler}
+      disabled={!data}
     >
-      適応
+      このタイトルにする
     </button>
   )
 }
