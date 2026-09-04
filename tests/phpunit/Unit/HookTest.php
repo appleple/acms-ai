@@ -52,4 +52,29 @@ final class HookTest extends TestCase
             self::assertContains($globalVars->get($key), ['1', '0'], $key);
         }
     }
+
+    #[Test]
+    #[TestDox('.env 供給フラグ（AI_*_FROM_ENV）を 1/0 でセットする')]
+    public function setsEnvFlagsIntoGlobalVars(): void
+    {
+        $_ENV['ACMS_AI_ANTHROPIC_API_KEY'] = 'sk-ant-env';
+        try {
+            $globalVars = new Field();
+            (new Hook())->extendsGlobalVars($globalVars);
+
+            self::assertSame('1', $globalVars->get('AI_ANTHROPIC_API_KEY_FROM_ENV'));
+            $keys = [
+                'AI_OPENAI_API_KEY_FROM_ENV',
+                'AI_OPENAI_ORGANIZATION_ID_FROM_ENV',
+                'AI_OPENAI_PROJECT_ID_FROM_ENV',
+                'AI_GEMINI_API_KEY_FROM_ENV',
+                'AI_COMPAT_API_KEY_FROM_ENV',
+            ];
+            foreach ($keys as $key) {
+                self::assertContains($globalVars->get($key), ['1', '0'], $key);
+            }
+        } finally {
+            unset($_ENV['ACMS_AI_ANTHROPIC_API_KEY']);
+        }
+    }
 }

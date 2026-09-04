@@ -15,6 +15,7 @@ use Acms\Plugins\AI\Services\AI\Contracts\ModelListingProvider;
 use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
 use Acms\Plugins\AI\Services\AI\Contracts\TokenUsage;
 use Acms\Plugins\AI\Services\AI\Conversation\ConversationStore;
+use Acms\Plugins\AI\Services\AI\EnvCredential;
 use Acms\Plugins\AI\Services\AI\Vision\DataUrl;
 use Acms\Services\Facades\Common;
 use Acms\Services\Facades\Logger;
@@ -40,6 +41,10 @@ use Field;
 class AnthropicProvider implements AiProvider, ModelListingProvider
 {
     public const ID = 'anthropic';
+
+    /** API キーを供給できる環境変数名（.env）。設定されていれば config より優先する。 */
+    public const ENV_API_KEY = 'ACMS_AI_ANTHROPIC_API_KEY';
+
     private const MESSAGES_ENDPOINT = 'https://api.anthropic.com/v1/messages';
     private const MODELS_ENDPOINT = 'https://api.anthropic.com/v1/models?limit=100';
 
@@ -56,12 +61,14 @@ class AnthropicProvider implements AiProvider, ModelListingProvider
     }
 
     /**
-     * config（`ai_anthropic_api_key`）から生成する。
-     * モデルはリクエストごとに与えられるためここでは読まない。
+     * config（`ai_anthropic_api_key`）から生成する。環境変数（{@see self::ENV_API_KEY}）が
+     * 設定されていればそちらを優先する。モデルはリクエストごとに与えられるためここでは読まない。
      */
     public static function fromConfig(Field $config): self
     {
-        return new self(new Credentials($config->get('ai_anthropic_api_key')));
+        return new self(new Credentials(
+            EnvCredential::get(self::ENV_API_KEY, $config->get('ai_anthropic_api_key'))
+        ));
     }
 
     public function id(): string
