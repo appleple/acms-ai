@@ -116,4 +116,29 @@ final class CredentialFieldFilterTest extends TestCase
 
         self::assertSame('', $post->get('ai_api_key'));
     }
+
+    #[Test]
+    #[TestDox('環境変数で管理中のAPIキーはDB上の保存済み値を維持せず削除する')]
+    public function environmentManagedKeyClearsSavedValue(): void
+    {
+        $key = 'ACMS_AI_ANTHROPIC_API_KEY';
+        $exists = array_key_exists($key, $_ENV);
+        $original = $_ENV[$key] ?? null;
+        $_ENV[$key] = 'sk-ant-env';
+
+        try {
+            $post = $this->field(['ai_anthropic_api_key' => '']);
+            $saved = $this->field(['ai_anthropic_api_key' => 'sk-ant-saved']);
+
+            (new CredentialFieldFilter())->apply($post, $saved);
+
+            self::assertSame('', $post->get('ai_anthropic_api_key'));
+        } finally {
+            if ($exists) {
+                $_ENV[$key] = $original;
+            } else {
+                unset($_ENV[$key]);
+            }
+        }
+    }
 }

@@ -31,4 +31,29 @@ final class HookTest extends TestCase
         self::assertStringContainsString('extension/plugins/AI/bundle/acms-ai.js', $js);
         self::assertStringContainsString('extension/plugins/AI/bundle/acms-ai.css', $css);
     }
+
+    #[Test]
+    #[TestDox('環境変数で供給された認証情報の管理画面フラグをセットする')]
+    public function setsEnvironmentCredentialFlags(): void
+    {
+        $key = 'ACMS_AI_ANTHROPIC_API_KEY';
+        $exists = array_key_exists($key, $_ENV);
+        $original = $_ENV[$key] ?? null;
+        $_ENV[$key] = 'sk-ant-env';
+
+        try {
+            $globalVars = new Field();
+            (new Hook())->extendsGlobalVars($globalVars);
+
+            self::assertSame('1', $globalVars->get('AI_ANTHROPIC_API_KEY_FROM_ENV'));
+            self::assertContains($globalVars->get('AI_OPENAI_API_KEY_FROM_ENV'), ['0', '1']);
+            self::assertContains($globalVars->get('AI_COMPAT_API_KEY_FROM_ENV'), ['0', '1']);
+        } finally {
+            if ($exists) {
+                $_ENV[$key] = $original;
+            } else {
+                unset($_ENV[$key]);
+            }
+        }
+    }
 }

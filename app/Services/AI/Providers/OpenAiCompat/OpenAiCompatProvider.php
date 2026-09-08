@@ -15,6 +15,7 @@ use Acms\Plugins\AI\Services\AI\Contracts\ManualModelProvider;
 use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
 use Acms\Plugins\AI\Services\AI\Contracts\TokenUsage;
 use Acms\Plugins\AI\Services\AI\Conversation\ConversationStore;
+use Acms\Plugins\AI\Services\AI\EnvCredential;
 use Acms\Services\Facades\Logger;
 use Field;
 
@@ -42,6 +43,12 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
 {
     public const ID = 'compat';
 
+    /** OpenAI 互換 API キーの正式な環境変数名。 */
+    public const ENV_API_KEY = 'ACMS_AI_COMPAT_API_KEY';
+
+    /** 旧PRで案内していた、さくらのAI Engine向け互換エイリアス。 */
+    public const ENV_API_KEY_SAKURA = 'ACMS_AI_SAKURA_API_KEY';
+
     /** base URL 未設定時の既定（さくらのAI Engine）。 */
     public const DEFAULT_BASE_URL = 'https://api.ai.sakura.ad.jp/v1';
 
@@ -63,7 +70,7 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
     }
 
     /**
-     * config（`ai_compat_api_key` / `ai_compat_base_url`）から生成する。
+     * config（`ai_compat_api_key` / `ai_compat_base_url`）から生成する。APIキーは環境変数を優先する。
      * base URL が空なら既定（さくらのAI Engine）を使う。モデルはリクエストごとに与えられる。
      */
     public static function fromConfig(Field $config): self
@@ -74,7 +81,7 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
         }
 
         return new self(new Credentials(
-            $config->get('ai_compat_api_key'),
+            EnvCredential::getForConfig('ai_compat_api_key', $config->get('ai_compat_api_key')),
             [self::ATTR_BASE_URL => $baseUrl]
         ));
     }

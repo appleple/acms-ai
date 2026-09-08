@@ -31,6 +31,12 @@ final class CredentialFieldFilter
     public function apply(Field $post, Field $saved): void
     {
         foreach (self::SECRET_KEYS as $key) {
+            if (EnvCredential::isSetForConfig($key)) {
+                // env 管理へ切り替えたキーは、次回保存時にDB上の旧値も消す。
+                $post->set($key, '');
+                continue;
+            }
+
             $input = trim($post->get($key));
             if ($input !== '') {
                 $post->set($key, $input);

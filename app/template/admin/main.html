@@ -66,6 +66,12 @@
           <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="ChatGPT API で取得する Organization ID を入力してください。"></i>
         </th>
         <td>
+          <!-- BEGIN_IF [%{AI_OPENAI_ORGANIZATION_ID_FROM_ENV}/eq/1] -->
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->.env で設定済み<!-- /T --></span>
+          <p class="acms-admin-text-helper">ACMS_AI_OPENAI_ORGANIZATION_ID を使用します。保存するとDB上の旧値は削除されます。</p>
+          <input type="hidden" name="ai_organization_id" value="" />
+          <input type="hidden" name="config[]" value="ai_organization_id" />
+          <!-- ELSE -->
           <input
             type="text"
             name="ai_organization_id"
@@ -74,6 +80,7 @@
             placeholder="org-xxxxxxxxxxxxxxxxxxxxxxxx"
           />
           <input type="hidden" name="config[]" value="ai_organization_id" />
+          <!-- END_IF -->
         </td>
       </tr>
       <tr>
@@ -82,6 +89,12 @@
           <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="ChatGPT API で取得する Project ID を入力してください。"></i>
         </th>
         <td>
+          <!-- BEGIN_IF [%{AI_OPENAI_PROJECT_ID_FROM_ENV}/eq/1] -->
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->.env で設定済み<!-- /T --></span>
+          <p class="acms-admin-text-helper">ACMS_AI_OPENAI_PROJECT_ID を使用します。保存するとDB上の旧値は削除されます。</p>
+          <input type="hidden" name="ai_project_id" value="" />
+          <input type="hidden" name="config[]" value="ai_project_id" />
+          <!-- ELSE -->
           <input
             type="text"
             name="ai_project_id"
@@ -90,6 +103,7 @@
             placeholder="proj-xxxxxxxxxxxxxxxxxxxxxxxx"
           />
           <input type="hidden" name="config[]" value="ai_project_id" />
+          <!-- END_IF -->
         </td>
       </tr>
       <tr>
@@ -98,6 +112,12 @@
           <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="ChatGPT API で取得する API KEY を入力してください。"></i>
         </th>
         <td>
+          <!-- BEGIN_IF [%{AI_OPENAI_API_KEY_FROM_ENV}/eq/1] -->
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->.env で設定済み<!-- /T --></span>
+          <p class="acms-admin-text-helper">ACMS_AI_OPENAI_API_KEY を使用します。保存するとDB上の旧キーは削除されます。</p>
+          <input type="hidden" name="ai_api_key" value="" />
+          <input type="hidden" name="config[]" value="ai_api_key" />
+          <!-- ELSE -->
           <!-- BEGIN_IF [{ai_api_key}/nem/] -->
           <span class="acms-admin-label acms-admin-label-success"><!-- T -->設定済み<!-- /T --></span>
           <input
@@ -123,6 +143,7 @@
           />
           <!-- END_IF -->
           <input type="hidden" name="config[]" value="ai_api_key" />
+          <!-- END_IF -->
         </td>
       </tr>
       <tr>
@@ -131,6 +152,12 @@
           <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="Anthropic Console で取得する API KEY を入力してください。"></i>
         </th>
         <td>
+          <!-- BEGIN_IF [%{AI_ANTHROPIC_API_KEY_FROM_ENV}/eq/1] -->
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->.env で設定済み<!-- /T --></span>
+          <p class="acms-admin-text-helper">ACMS_AI_ANTHROPIC_API_KEY を使用します。保存するとDB上の旧キーは削除されます。</p>
+          <input type="hidden" name="ai_anthropic_api_key" value="" />
+          <input type="hidden" name="config[]" value="ai_anthropic_api_key" />
+          <!-- ELSE -->
           <!-- BEGIN_IF [{ai_anthropic_api_key}/nem/] -->
           <span class="acms-admin-label acms-admin-label-success"><!-- T -->設定済み<!-- /T --></span>
           <input
@@ -156,6 +183,7 @@
           />
           <!-- END_IF -->
           <input type="hidden" name="config[]" value="ai_anthropic_api_key" />
+          <!-- END_IF -->
         </td>
       </tr>
       <tr>
@@ -164,6 +192,12 @@
           <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="Google AI Studio で取得する API KEY を入力してください。"></i>
         </th>
         <td>
+          <!-- BEGIN_IF [%{AI_GEMINI_API_KEY_FROM_ENV}/eq/1] -->
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->.env で設定済み<!-- /T --></span>
+          <p class="acms-admin-text-helper">ACMS_AI_GEMINI_API_KEY を使用します。保存するとDB上の旧キーは削除されます。</p>
+          <input type="hidden" name="ai_gemini_api_key" value="" />
+          <input type="hidden" name="config[]" value="ai_gemini_api_key" />
+          <!-- ELSE -->
           <!-- BEGIN_IF [{ai_gemini_api_key}/nem/] -->
           <span class="acms-admin-label acms-admin-label-success"><!-- T -->設定済み<!-- /T --></span>
           <input
@@ -189,6 +223,7 @@
           />
           <!-- END_IF -->
           <input type="hidden" name="config[]" value="ai_gemini_api_key" />
+          <!-- END_IF -->
         </td>
       </tr>
       <tr>
@@ -197,6 +232,12 @@
           <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI互換エンドポイント（さくらのAI Engine など）の API KEY を入力してください。"></i>
         </th>
         <td>
+          <!-- BEGIN_IF [%{AI_COMPAT_API_KEY_FROM_ENV}/eq/1] -->
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->.env で設定済み<!-- /T --></span>
+          <p class="acms-admin-text-helper">ACMS_AI_COMPAT_API_KEY（または互換名 ACMS_AI_SAKURA_API_KEY）を使用します。保存するとDB上の旧キーは削除されます。</p>
+          <input type="hidden" name="ai_compat_api_key" value="" />
+          <input type="hidden" name="config[]" value="ai_compat_api_key" />
+          <!-- ELSE -->
           <!-- BEGIN_IF [{ai_compat_api_key}/nem/] -->
           <span class="acms-admin-label acms-admin-label-success"><!-- T -->設定済み<!-- /T --></span>
           <input
@@ -222,6 +263,7 @@
           />
           <!-- END_IF -->
           <input type="hidden" name="config[]" value="ai_compat_api_key" />
+          <!-- END_IF -->
         </td>
       </tr>
       <tr>

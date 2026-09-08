@@ -59,6 +59,32 @@ Bearer トークン、チャットモデル名を入力してください。Base
 チャット内容が送信されるため、信頼できる接続先だけを指定してください。HTTPS を必須とし、ローカル
 開発用の `localhost` / ループバックだけ HTTP を許可します。
 
+### 認証情報を `.env` で管理する
+
+本番環境では、APIキーをa-blog cms設置ディレクトリ直下の `.env` から供給できます。環境変数は
+管理画面に保存された値より優先され、管理画面のHTMLにも値を出力しません。
+
+```dotenv
+ACMS_AI_OPENAI_API_KEY=sk-...
+ACMS_AI_OPENAI_ORGANIZATION_ID=org-...
+ACMS_AI_OPENAI_PROJECT_ID=proj-...
+ACMS_AI_ANTHROPIC_API_KEY=sk-ant-...
+ACMS_AI_GEMINI_API_KEY=AIza...
+ACMS_AI_COMPAT_API_KEY=...
+```
+
+OpenAI互換APIキーには `ACMS_AI_COMPAT_API_KEY` を使用してください。以前案内していた
+`ACMS_AI_SAKURA_API_KEY` も互換名として利用できます。両方がある場合は
+`ACMS_AI_COMPAT_API_KEY` が優先されます。
+
+環境変数を追加した後にAI設定画面を一度保存すると、対応するDB上の旧認証情報が削除されます。
+その後 `.env` から変数を削除した場合は自動的にDB値へ戻らないため、管理画面で認証情報を再設定してください。
+
+`.env` には秘密情報が含まれます。ファイル権限を必要最小限（例: 所有者のみ読み書き可能）にし、
+Webサーバーから `.env` へアクセスしたときに必ず `403` または `404` になることを確認してください。
+a-blog cms同梱の `.htaccess` にはドットファイルのアクセス拒否がありますが、Nginxなど `.htaccess` を
+使用しない構成ではWebサーバー側に同等の拒否設定が必要です。
+
 #### Organization ID
 `Setting > Organization > General` から取得できます。
 

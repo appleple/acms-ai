@@ -15,6 +15,7 @@ use Acms\Plugins\AI\Services\AI\Contracts\ModelListingProvider;
 use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
 use Acms\Plugins\AI\Services\AI\Contracts\TokenUsage;
 use Acms\Plugins\AI\Services\AI\Conversation\ConversationStore;
+use Acms\Plugins\AI\Services\AI\EnvCredential;
 use Acms\Services\Facades\Common;
 use Acms\Services\Facades\Logger;
 use Field;
@@ -44,6 +45,9 @@ use Field;
 class GeminiProvider implements AiProvider, ModelListingProvider
 {
     public const ID = 'gemini';
+
+    /** API キーを供給できる環境変数名（.env）。設定されていれば config より優先する。 */
+    public const ENV_API_KEY = 'ACMS_AI_GEMINI_API_KEY';
     private const BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
     private const CONNECT_TIMEOUT = 10;
@@ -59,12 +63,14 @@ class GeminiProvider implements AiProvider, ModelListingProvider
     }
 
     /**
-     * config（`ai_gemini_api_key`）から生成する。
+     * config（`ai_gemini_api_key`）から生成する。環境変数があればそちらを優先する。
      * モデルはリクエストごとに与えられるためここでは読まない。
      */
     public static function fromConfig(Field $config): self
     {
-        return new self(new Credentials($config->get('ai_gemini_api_key')));
+        return new self(new Credentials(
+            EnvCredential::getForConfig('ai_gemini_api_key', $config->get('ai_gemini_api_key'))
+        ));
     }
 
     public function id(): string
