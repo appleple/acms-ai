@@ -52,10 +52,13 @@ class OpenAiProvider implements AiProvider, ModelListingProvider
     public static function fromConfig(Field $config): self
     {
         return new self(new Credentials(
-            EnvCredential::get(self::ENV_API_KEY, $config->get('ai_api_key')),
+            EnvCredential::getForConfig('ai_api_key', $config->get('ai_api_key')),
             [
-                'organizationId' => EnvCredential::get(self::ENV_ORGANIZATION_ID, $config->get('ai_organization_id')),
-                'projectId' => EnvCredential::get(self::ENV_PROJECT_ID, $config->get('ai_project_id')),
+                'organizationId' => EnvCredential::getForConfig(
+                    'ai_organization_id',
+                    $config->get('ai_organization_id')
+                ),
+                'projectId' => EnvCredential::getForConfig('ai_project_id', $config->get('ai_project_id')),
             ]
         ));
     }

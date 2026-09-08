@@ -9,9 +9,9 @@ use Acms\Plugins\AI\Services\AI\Providers\Gemini\GeminiProvider;
 /**
  * GeminiProvider の検証用ダブル。
  *
- * curl 依存の I/O 境界（httpGetJson / httpPostJson / httpPostStream / fetchInlineImage）を
+ * curl 依存の I/O 境界（httpGetJson / httpPostJson / httpPostStream）を
  * 実通信しない実装へ差し替え、リクエスト変換（メッセージ → contents/parts、outputSchema →
- * responseSchema、継続トークン → 履歴復元、画像 → inlineData）を記録済みペイロードから検証できるようにする。
+ * responseJsonSchema、継続トークン → 履歴復元）を記録済みペイロードから検証できるようにする。
  */
 final class StubGeminiProvider extends GeminiProvider
 {
@@ -24,9 +24,6 @@ final class StubGeminiProvider extends GeminiProvider
     /** @var list<string> httpPostStream が $onBytes へ流すバイト列（チャンク分割を模す） */
     public array $stubStreamChunks = [];
 
-    /** @var array{mimeType: string, data: string}|null fetchInlineImage が返す値 */
-    public ?array $stubInlineImage = ['mimeType' => 'image/jpeg', 'data' => 'c3R1Yg=='];
-
     /** @var string|null 直近に送信した POST ボディ（ペイロード検証用） */
     public ?string $lastPostBody = null;
 
@@ -35,9 +32,6 @@ final class StubGeminiProvider extends GeminiProvider
 
     /** @var string|null 直近にアクセスした URL */
     public ?string $lastUrl = null;
-
-    /** @var list<string> fetchInlineImage に渡された URL の記録 */
-    public array $fetchedImageUrls = [];
 
     protected function httpGetJson(string $url, array $headers): string
     {
@@ -65,13 +59,6 @@ final class StubGeminiProvider extends GeminiProvider
         foreach ($this->stubStreamChunks as $chunk) {
             $onBytes($chunk);
         }
-    }
-
-    protected function fetchInlineImage(string $url): ?array
-    {
-        $this->fetchedImageUrls[] = $url;
-
-        return $this->stubInlineImage;
     }
 
     /**
