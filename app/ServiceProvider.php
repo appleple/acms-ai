@@ -63,12 +63,6 @@ class ServiceProvider extends ACMS_App
             $inject->add('admin-main', PLUGIN_DIR . 'AI/template/admin/loader.html');
         }
 
-        // メディア管理画面では、画像から各フィールドを生成する AI 生成 UI を注入する。
-        // 選択中のプロバイダが vision に対応し、設定が揃っている場合のみ（判定は PHP 側に閉じる）。
-        if (ADMIN === 'media_index' && $this->visionReady()) {
-            $inject->add('admin-main', PLUGIN_DIR . 'AI/template/admin/media/inject.html');
-        }
-
         if (ADMIN === 'app_' . $this->menu) {
             $inject->add('admin-main', PLUGIN_DIR . 'AI/template/admin/main.html');
         }
@@ -86,29 +80,6 @@ class ServiceProvider extends ACMS_App
             $provider = Services\AI\ProviderRegistry::withDefaults()->resolve($config);
 
             return $provider->isConfigured() && $config->get('ai_model') !== '';
-        } catch (\Throwable $e) {
-            return false;
-        }
-    }
-
-    /**
-     * メディア AI 生成が利用できる状態か（親スイッチ・認証情報・モデル・vision 対応）。
-     *
-     * @return bool
-     */
-    private function visionReady()
-    {
-        try {
-            $serviceAi = new Services\AI();
-            $config = $serviceAi->getConfig();
-            if ($config->get('ai_vision_valid') === '') {
-                return false;
-            }
-            $provider = Services\AI\ProviderRegistry::withDefaults()->resolve($config);
-
-            return $provider->isConfigured()
-                && $serviceAi->visionModel($config) !== ''
-                && $provider->supports(Services\AI\Contracts\Capability::VisionInput);
         } catch (\Throwable $e) {
             return false;
         }
@@ -135,20 +106,7 @@ class ServiceProvider extends ACMS_App
      */
     public function install()
     {
-        $config = Storage::get(CONFIG_FILE);
-        $pluginConfig = Storage::get(PLUGIN_LIB_DIR . $this->name . '/config.system.yaml');
-        if (!$pluginConfig) {
-            return;
-        }
-        if (preg_match('/(#BEGIN_AIConfig)[\s\S]*(#END_AIConfig)/', $config)) {
-            // 既存ブロックを置換（再インストール時の二重記述を防ぐ）
-            Storage::put(
-                CONFIG_FILE,
-                preg_replace('/(#BEGIN_AIConfig)[\s\S]*(#END_AIConfig)/', $pluginConfig, $config)
-            );
-        } else {
-            Storage::put(CONFIG_FILE, $config . "\n" . $pluginConfig);
-        }
+        $this->putConfig();
     }
 
     /**
@@ -160,11 +118,13 @@ class ServiceProvider extends ACMS_App
     public function uninstall()
     {
         $config = Storage::get(CONFIG_FILE);
-        if ($config && preg_match('/(#BEGIN_AIConfig)[\s\S]*(#END_AIConfig)/', $config)) {
-            Storage::put(
-                CONFIG_FILE,
-                preg_replace('/\n?(#BEGIN_AIConfig)[\s\S]*(#END_AIConfig)\n?/', "\n", $config)
-            );
+        if (!is_string($config)) {
+            return;
+        }
+
+        $updated = Services\ConfigSystemBlock::remove($config);
+        if ($updated !== $config) {
+            Storage::put(CONFIG_FILE, $updated);
         }
     }
 
@@ -175,6 +135,8 @@ class ServiceProvider extends ACMS_App
      */
     public function update()
     {
+        $this->putConfig();
+
         return true;
     }
 
@@ -196,5 +158,23 @@ class ServiceProvider extends ACMS_App
     public function deactivate()
     {
         return true;
+    }
+
+    /**
+     * 拡張アプリの既定設定を private/config.system.yaml へ反映する。
+     */
+    private function putConfig(): void
+    {
+        $config = Storage::get(CONFIG_FILE);
+        $pluginConfig = Storage::get(PLUGIN_LIB_DIR . $this->name . '/config.system.yaml');
+        if (!is_string($pluginConfig) || trim($pluginConfig) === '') {
+            return;
+        }
+
+        $config = is_string($config) ? $config : '';
+        $updated = Services\ConfigSystemBlock::upsert($config, $pluginConfig);
+        if ($updated !== $config) {
+            Storage::put(CONFIG_FILE, $updated);
+        }
     }
 }

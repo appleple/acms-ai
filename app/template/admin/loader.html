@@ -28,10 +28,10 @@
 
   function loadBundle() {
     if (!document.querySelector('acms-ai-assistant-button')) {
-      return; // コンポーネントが無い画面では何もしない
+      return false; // 現時点では未検出。遅延挿入を監視する
     }
     if (bundleAlreadyPresent()) {
-      return; // 二重ロード防止（エントリー編集など）
+      return true; // 二重ロード防止（エントリー編集など）
     }
     if (CSS_URL) {
       var link = document.createElement('link');
@@ -44,13 +44,31 @@
     script.crossOrigin = 'anonymous';
     script.setAttribute('data-acms-ai-bundle', '');
     document.body.appendChild(script);
+    return true;
   }
 
-  // loadBundle は冪等（bundleAlreadyPresent でガード）なので once オプションは不要。
+  function startLoader() {
+    if (loadBundle()) {
+      return;
+    }
+
+    // Ajax・モーダル等で後から追加されるボタンも検出する。
+    // バンドルの読み込み予約ができた時点で監視を終了する。
+    if (!window.MutationObserver || !document.documentElement) {
+      return;
+    }
+    var observer = new MutationObserver(function () {
+      if (loadBundle()) {
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', loadBundle);
+    document.addEventListener('DOMContentLoaded', startLoader, { once: true });
   } else {
-    loadBundle();
+    startLoader();
   }
 })();
 </script>

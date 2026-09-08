@@ -43,4 +43,59 @@ final class GeminiErrorMessage
                 => 'AI からの応答取得に失敗しました。設定や Gemini の状態をご確認ください。',
         };
     }
+
+    /**
+     * 正常な HTTP 応答に含まれる promptFeedback / finishReason を失敗理由へ変換する。
+     * STOP または終了理由なしはエラーではないため null を返す。
+     */
+    public static function fromResponse(mixed $response): ?string
+    {
+        if (!$response instanceof \stdClass) {
+            return null;
+        }
+
+        if (isset($response->promptFeedback) && $response->promptFeedback instanceof \stdClass) {
+            $reason = $response->promptFeedback->blockReason ?? null;
+            if (is_string($reason) && $reason !== '' && $reason !== 'BLOCK_REASON_UNSPECIFIED') {
+                return self::fromBlockReason($reason);
+            }
+        }
+
+        if (!isset($response->candidates) || !is_array($response->candidates) || $response->candidates === []) {
+            return null;
+        }
+
+        $candidate = $response->candidates[0];
+        if (!$candidate instanceof \stdClass) {
+            return null;
+        }
+
+        $reason = $candidate->finishReason ?? null;
+        if (!is_string($reason) || $reason === '' || $reason === 'STOP') {
+            return null;
+        }
+
+        return match ($reason) {
+            'MAX_TOKENS'
+                => 'AI の応答が出力上限に達しました。内容を短くして再試行してください。',
+            'SAFETY', 'IMAGE_SAFETY', 'BLOCKLIST', 'PROHIBITED_CONTENT', 'SPII'
+                => '安全性の判定により AI の応答がブロックされました。入力内容を見直してください。',
+            'RECITATION'
+                => '引用・著作物に関する判定により AI の応答が停止しました。入力内容を見直してください。',
+            'LANGUAGE'
+                => '対応していない言語として AI の応答が停止しました。入力言語を見直してください。',
+            default
+                => 'AI が応答を完了できませんでした。入力内容を見直して再試行してください。',
+        };
+    }
+
+    private static function fromBlockReason(string $reason): string
+    {
+        return match ($reason) {
+            'SAFETY', 'BLOCKLIST', 'PROHIBITED_CONTENT'
+                => '安全性の判定により入力がブロックされました。入力内容を見直してください。',
+            default
+                => 'AI が入力を処理できませんでした。入力内容を見直して再試行してください。',
+        };
+    }
 }
