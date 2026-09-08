@@ -12,6 +12,7 @@ app/Services/AI/
 ├── Contracts/                     … コントラクト層（安定・プロバイダ非依存）
 │   ├── AiProvider.php             … プロバイダが実装する統一インターフェース
 │   ├── ModelListingProvider.php   … 利用可能モデルを列挙できるプロバイダの追加契約（能力別・任意）
+│   ├── ManualModelProvider.php    … 管理画面でモデル名を手入力するプロバイダの追加契約（任意）
 │   ├── Capability.php             … 機能種別（TextGeneration / StructuredOutput / VisionInput / Streaming）
 │   ├── Credentials.php            … 認証情報バッグ（apiKey ＋ プロバイダ固有 attributes）
 │   ├── Message.php / ContentPart.php … 会話メッセージ（role ＋ text/image）
@@ -32,6 +33,10 @@ app/Services/AI/
     │   ├── GeminiProvider.php
     │   ├── GeminiErrorMessage.php
     │   └── GeminiStreamParser.php
+    ├── OpenAiCompat/              … OpenAI 互換 Chat Completions API 実装
+    │   ├── OpenAiCompatProvider.php
+    │   ├── OpenAiCompatErrorMessage.php
+    │   └── ChatCompletionsStreamParser.php
     └── OpenAi/                    … OpenAI Responses API 実装
         ├── OpenAiProvider.php
         ├── EndpointTrait.php
@@ -158,6 +163,9 @@ $registry->register(
   `listModels()` の戻り値で自動生成されます。利用可能という理由だけで全モデルを返さず、このプラグインが
   必須とする機能（構造化出力など）に対応したモデルへ絞ります。「有効表示」（`GET/AI/Config`）は
   `isConfigured()` で判定します。
+- 接続先がモデル一覧 API を保証しない場合は、存在しない `/models` を推測して呼び出さず
+  `ManualModelProvider` を実装します。管理画面はモデル名の手入力へ切り替わるため、利用者向けドキュメントに
+  モデル名の確認方法を記載してください。
 
 ### 7. テスト
 

@@ -21,6 +21,7 @@ a-blog cms の AI機能を拡張するアプリです。
 - OpenAI: gpt-5.4, gpt-5.4-pro, gpt-5.4-mini, gpt-5.4-nano
 - Anthropic: API が返す利用可能モデルのうち、構造化出力に対応する Claude モデル
 - Google Gemini: API が返す利用可能モデルのうち、構造化出力に対応する Gemini 2.5 / 3 系の Pro、Flash、Flash-Lite モデル
+- OpenAI互換: 接続先が Chat Completions API で提供するモデル（モデル名は管理画面で手入力）
 
 ## 注意点
 
@@ -47,6 +48,17 @@ Google Gemini を利用する場合は `https://ai.google.dev/gemini-api/docs/ap
 
 有料枠へアップグレードする場合は、Google AI Studio の API Keys または Projects 画面にある `Set up billing` から請求情報を設定してください。詳細は `https://ai.google.dev/gemini-api/docs/billing` を参照してください。
 
+さくらのAI Engine を利用する場合は `https://manual.sakura.ad.jp/cloud/ai-engine/02-howto.html` の
+手順で利用開始後、左メニューの「アカウントトークン」からトークンを発行してください。発行された
+`<UUID>:<シークレット>` 全体を OpenAI互換 API KEY に入力します。Base URL は既定の
+`https://api.ai.sakura.ad.jp/v1` を使用し、モデル名はコントロールパネルの「利用可能なモデル」に
+表示されたチャットモデル名（例: `gpt-oss-120b`）を入力してください。
+
+その他の OpenAI 互換サービスでは、サービスが案内する Chat Completions の `/v1` 相当の Base URL、
+Bearer トークン、チャットモデル名を入力してください。Base URL に入力した接続先へ記事本文や
+チャット内容が送信されるため、信頼できる接続先だけを指定してください。HTTPS を必須とし、ローカル
+開発用の `localhost` / ループバックだけ HTTP を許可します。
+
 #### Organization ID
 `Setting > Organization > General` から取得できます。
 
@@ -59,11 +71,13 @@ Google Gemini を利用する場合は `https://ai.google.dev/gemini-api/docs/ap
 
 ### a-blog cms の管理画面設定
 利用するプロバイダを選択し、準備で取得した認証情報を AI管理画面で入力して保存してください。
-OpenAI は `Organization ID`、`Project ID`、`API KEY`、Anthropic と Google Gemini は `API KEY` を使用します。
+OpenAI は `Organization ID`、`Project ID`、`API KEY`、Anthropic と Google Gemini は `API KEY`、
+OpenAI互換は `API KEY` と `Base URL` を使用します。
 
 ![AI拡張アプリの管理画面でキーを入力し保存](images/acms-admin-key.png)
 
 キーが正しく設定できると、モデルが選択できるようになります。利用するモデルを選択し、再度保存してください。
+OpenAI互換ではモデル一覧 API が標準化されていないため、接続先で確認したモデル名を入力します。
 
 ![AI拡張アプリの管理画面でモデルを選択し保存](images/acms-admin-model.png)
 

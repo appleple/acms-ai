@@ -219,7 +219,7 @@
       <tr>
         <th>
           <!-- T -->OpenAI互換 Base URL<!-- /T -->
-          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI互換エンドポイント（例: https://api.ai.sakura.ad.jp/v1）を入力してください。"></i>
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI互換エンドポイント（例: https://api.ai.sakura.ad.jp/v1）を入力してください。空欄では例のURLを使用します。"></i>
         </th>
         <td>
           <input
@@ -229,6 +229,7 @@
             class="acms-admin-form-width-full"
             placeholder="https://api.ai.sakura.ad.jp/v1"
           />
+          <p class="acms-admin-text-helper">空欄の場合は、さくらのAI Engine のURLを使用します。</p>
           <input type="hidden" name="config[]" value="ai_compat_base_url" />
         </td>
       </tr>
@@ -236,12 +237,24 @@
       <tr>
         <th>
           <!-- T -->モデル<!-- /T -->
-          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="選択中のプロバイダで利用できるモデルが表示されます。"></i>
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="選択中のプロバイダに応じて、利用可能なモデルの選択またはモデル名の入力を行います。"></i>
         </th>
         <td>
           <!-- BEGIN_MODULE AI_Admin -->
           <!-- BEGIN_IF [{configured}/eq/false] -->
           <p>選択中のプロバイダの認証情報を保存してください。</p>
+          <!-- ELSE -->
+          <!-- BEGIN_IF [{manualModel}/eq/true] -->
+          <input
+            type="text"
+            name="ai_model"
+            value="{ai_model}"
+            class="acms-admin-form-width-full"
+            placeholder="例: gpt-oss-120b"
+            autocomplete="off"
+          />
+          <p class="acms-admin-text-helper">接続先で利用可能なチャットモデル名を入力してください。</p>
+          <input type="hidden" name="config[]" value="ai_model" />
           <!-- ELSE -->
           <!-- BEGIN_IF [{authorized}/eq/false] -->
           <p>認証に失敗または、API KEY に使用できるモデルがない可能性があります。</p>
@@ -257,6 +270,7 @@
             <!-- END model:loop -->
           </select>
           <input type="hidden" name="config[]" value="ai_model" />
+          <!-- END_IF -->
           <!-- END_IF -->
           <!-- END_IF -->
           <!-- END_MODULE AI_Admin -->

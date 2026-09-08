@@ -9,15 +9,12 @@ use Acms\Plugins\AI\Services\AI\Providers\OpenAiCompat\OpenAiCompatProvider;
 /**
  * OpenAiCompatProvider の検証用ダブル。
  *
- * curl 依存の I/O 境界（httpGetJson / httpPostJson / httpPostStream）を実通信しない実装へ差し替え、
+ * curl 依存の I/O 境界（httpPostJson / httpPostStream）を実通信しない実装へ差し替え、
  * リクエスト変換（メッセージ → messages、outputSchema → response_format＋プロンプト指示、
  * 継続トークン → 履歴復元）と json_object フォールバックを記録済みペイロードから検証できるようにする。
  */
 final class StubOpenAiCompatProvider extends OpenAiCompatProvider
 {
-    /** @var string httpGetJson（モデル一覧）が返す応答ボディ */
-    public string $stubGetResult = '{}';
-
     /** @var list<string> httpPostJson が呼び出し順に返す応答ボディ（フォールバック再試行の検証用） */
     public array $stubPostResults = ['{}'];
 
@@ -32,14 +29,6 @@ final class StubOpenAiCompatProvider extends OpenAiCompatProvider
 
     /** @var string|null 直近にアクセスした URL */
     public ?string $lastUrl = null;
-
-    protected function httpGetJson(string $url, array $headers): string
-    {
-        $this->lastUrl = $url;
-        $this->lastHeaders = $headers;
-
-        return $this->stubGetResult;
-    }
 
     protected function httpPostJson(string $url, array $headers, string $body): string
     {

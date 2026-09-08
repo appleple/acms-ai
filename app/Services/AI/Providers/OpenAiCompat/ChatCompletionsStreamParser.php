@@ -20,8 +20,8 @@ final class ChatCompletionsStreamParser
 {
     private string $buffer = '';
 
-    /** [DONE] を受け取ったか（重複 completed の防止用）。 */
-    private bool $done = false;
+    /** completed / error を受け取ったか（終端後のイベント発行防止用）。 */
+    private bool $terminated = false;
 
     /**
      * 受信バイト列を与えるたびに、完成した SSE 行を解析して StreamEvent を $onEvent へ渡す。
@@ -46,6 +46,9 @@ final class ChatCompletionsStreamParser
      */
     private function parseLine(string $line, callable $onEvent): void
     {
+        if ($this->terminated) {
+            return;
+        }
         if (!str_starts_with($line, 'data:')) {
             return;
         }
@@ -54,10 +57,8 @@ final class ChatCompletionsStreamParser
             return;
         }
         if ($payload === '[DONE]') {
-            if (!$this->done) {
-                $this->done = true;
-                $onEvent(StreamEvent::completed(null));
-            }
+            $this->terminated = true;
+            $onEvent(StreamEvent::completed(null));
             return;
         }
 
@@ -68,6 +69,7 @@ final class ChatCompletionsStreamParser
 
         // ストリーム途中でもエラーがチャンクとして届くことがある。
         if (isset($chunk->error)) {
+            $this->terminated = true;
             $onEvent(StreamEvent::error(OpenAiCompatErrorMessage::fromError($chunk->error)));
             return;
         }
