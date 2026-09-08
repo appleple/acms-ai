@@ -19,9 +19,20 @@ app/Services/AI/
 │   ├── GenerationResult.php       … 生成結果（text / usage / finishReason / continuationToken / raw）
 │   ├── TokenUsage.php             … トークン使用量（prompt / completion / total）
 │   └── StreamEvent.php            … ストリーミングの中立イベント（delta / completed / error）
+├── Conversation/
+│   └── ConversationStore.php      … 履歴を保持しないプロバイダ向けの一時会話ストア
+├── CredentialFieldFilter.php      … API キーを管理画面へ再表示しない保存前フィルタ
 ├── ProviderRegistry.php           … id → プロバイダの登録・解決（config の ai_provider で選択）
 └── Providers/
-    └── OpenAi/                    … 実装層（OpenAI 固有。差し替え・再生成可能）
+    ├── Anthropic/                 … Anthropic Messages API 実装
+    │   ├── AnthropicProvider.php
+    │   ├── AnthropicErrorMessage.php
+    │   └── AnthropicStreamParser.php
+    ├── Gemini/                    … Google Gemini generateContent API 実装
+    │   ├── GeminiProvider.php
+    │   ├── GeminiErrorMessage.php
+    │   └── GeminiStreamParser.php
+    └── OpenAi/                    … OpenAI Responses API 実装
         ├── OpenAiProvider.php
         ├── EndpointTrait.php
         ├── ResponsesClient.php
@@ -60,7 +71,6 @@ class AnthropicProvider implements AiProvider, ModelListingProvider
     public function __construct(private readonly Credentials $credentials) {}
 
     public static function fromConfig(Field $config): self
-    {
         // このプロバイダが必要とする config キーだけをここで読む（固有概念を契約へ漏らさない）。
         return new self(new Credentials($config->get('ai_anthropic_api_key')));
     }
@@ -83,6 +93,11 @@ class AnthropicProvider implements AiProvider, ModelListingProvider
 }
 ```
 
+`supports()` は、安全に実装できている能力だけを返します。特に `ContentPart::image()` は URL を保持するため、
+ベンダへ URL を直接渡せずサーバー側取得が必要な場合、任意 URL をそのまま取得してはいけません。SSRF、
+リダイレクト、名前解決後のプライベート IP、Content-Type、容量上限まで検証できる共通境界を用意するまでは、
+`VisionInput` を非対応にします。
+
 ### 2. リクエスト／レスポンスを変換する
 
 `generateText()` は、プロバイダ非依存の `GenerationRequest` を自ベンダの API 形式へ変換し、応答から
@@ -90,7 +105,9 @@ class AnthropicProvider implements AiProvider, ModelListingProvider
 
 - `$request->messages`（`Message` / `ContentPart`）→ ベンダのメッセージ配列。role は user/assistant。
 - `$request->instructions` → system 指示。
-- `$request->outputSchema` / `$request->outputSchemaName` → 構造化出力（JSON Schema / tool use など）。
+- `$request->outputSchema` / `$request->outputSchemaName` → 構造化出力。
+  ベンダがネイティブの JSON Schema 出力を提供する場合はそれを優先します。tool use で代替する場合は、
+  スキーマ検証を有効にし、選択可能な全モデルがその tool choice に対応することを確認してください。
 - `$request->continuationToken` → 会話継続（下記）。
 - 応答本文 → `GenerationResult::$text`、継続識別子 → `$continuationToken`、終了理由 → `$finishReason`、
   トークン使用量 → `$usage`（`TokenUsage`。取得できなければ null）。生応答をデバッグ用に載せるなら `$raw`。
@@ -134,9 +151,13 @@ $registry->register(
 
 - 認証情報の config キー（例 `ai_anthropic_api_key`）を `app/template/admin/main.html` に
   `<input type="hidden" name="config[]" value="...">` で宣言します。
+- API キーはテンプレートの `value` に再表示しません。`CredentialFieldFilter::SECRET_KEYS` へ追加し、
+  空欄なら既存値を維持、入力時だけ差し替え、削除は明示チェックで行う write-only 方式にします。
 - プロバイダ選択セレクト（`name="ai_provider"`）に `<option value="anthropic">Anthropic</option>` を追加します。
 - モデル選択（`GET/AI/Admin`）は、プロバイダが `ModelListingProvider` を実装していれば
-  `listModels()` の戻り値で自動生成されます。「有効表示」（`GET/AI/Config`）は `isConfigured()` で判定します。
+  `listModels()` の戻り値で自動生成されます。利用可能という理由だけで全モデルを返さず、このプラグインが
+  必須とする機能（構造化出力など）に対応したモデルへ絞ります。「有効表示」（`GET/AI/Config`）は
+  `isConfigured()` で判定します。
 
 ### 7. テスト
 
@@ -145,5 +166,6 @@ $registry->register(
 OpenAI 実装のテスト（`tests/phpunit/Unit/Services/Providers/OpenAi/`）と `tests/phpunit/Support/` の
 ダブルが参考になります。ストリームのデコードは、ワイヤ列を直接与える純粋パーサ
 （`ResponsesStreamParserTest` を参照）としてユニット検証できます。
-```
 
+テストダブルは実装内の変換を固定するものであり、外部 API の現行契約との一致までは証明しません。
+リリース前には実キーでモデル一覧、構造化出力、通常生成、ストリーミングを少なくとも1回確認します。
