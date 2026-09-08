@@ -23,7 +23,7 @@ use Field;
  * Anthropic Claude（Messages API）向けの {@see AiProvider} 実装。
  *
  * プロバイダ非依存の {@see GenerationRequest} を Messages API のペイロードへ変換する処理を内包する。
- * Anthropic 固有のワイヤ形状（x-api-key / anthropic-version ヘッダー、content ブロック、tool use に
+ * Anthropic 固有のワイヤ形状（x-api-key / anthropic-version ヘッダー、content ブロック、JSON Schema に
  * よる構造化出力、SSE イベント名、/v1/models 応答）はすべてこのクラス配下（本クラスと
  * {@see AnthropicStreamParser} / {@see AnthropicErrorMessage}）に閉じる。
  *
@@ -31,10 +31,9 @@ use Field;
  * {@see ConversationStore} で履歴を復元・保存してプロバイダ内部で吸収する
  * （docs/adding-a-provider.md「会話継続トークンの扱い」参照）。
  *
- * 構造化出力: Messages API にネイティブの JSON Schema 出力は無いため、outputSchema を
- * input_schema とする単一ツールを定義し tool_choice で強制する（tool use 方式）。
- * 応答の tool_use ブロックの input を JSON テキストとして返すので、消費側からは
- * OpenAI の json_schema 出力と同じ「JSON 文字列の text」に見える。
+ * 構造化出力: outputSchema を Messages API の output_config.format へ変換する。
+ * Anthropic の制約付きデコードにより JSON Schema 準拠を保証し、消費側には OpenAI と同じ
+ * 「JSON 文字列の text」を返す。
  */
 class AnthropicProvider implements AiProvider, ModelListingProvider
 {
@@ -47,6 +46,12 @@ class AnthropicProvider implements AiProvider, ModelListingProvider
 
     /** max_tokens は必須項目。全モデルで受理される安全側の上限を使う。 */
     private const MAX_TOKENS = 4096;
+
+    private const CONNECT_TIMEOUT = 10;
+    private const REQUEST_TIMEOUT = 180;
+    private const MODEL_LIST_TIMEOUT = 30;
+    private const STREAM_LOW_SPEED_LIMIT = 1;
+    private const STREAM_LOW_SPEED_TIME = 120;
 
     public function __construct(
         private readonly Credentials $credentials,
@@ -128,10 +133,33 @@ class AnthropicProvider implements AiProvider, ModelListingProvider
         }
 
         $structured = $request->outputSchema !== null;
-        $text = $this->extractText($raw, $structured);
+        $text = $this->extractText($raw);
         $finishReason = ($raw instanceof \stdClass && isset($raw->stop_reason) && is_string($raw->stop_reason))
             ? $raw->stop_reason
             : null;
+
+        // 構造化出力でも拒否・上限到達時はスキーマ外の本文や不完全な JSON が返り得る。
+        // 下流へ不正な構造を渡さず、利用者が再試行方針を判断できるメッセージへ変換する。
+        if ($structured && $finishReason === 'refusal') {
+            return new GenerationResult(
+                null,
+                $raw,
+                null,
+                $finishReason,
+                $this->usageFromResponse($raw),
+                '安全上の理由により Anthropic が生成を拒否しました。入力内容を見直してください。'
+            );
+        }
+        if ($structured && $finishReason === 'max_tokens') {
+            return new GenerationResult(
+                null,
+                $raw,
+                null,
+                $finishReason,
+                $this->usageFromResponse($raw),
+                'Anthropic の出力上限に達したため、構造化データを完成できませんでした。'
+            );
+        }
 
         // エラーではないが本文が取れないケース（max_tokens 到達・空出力など）。原因切り分けのため
         // モデルと終了理由を残す。
@@ -231,17 +259,14 @@ class AnthropicProvider implements AiProvider, ModelListingProvider
         }
 
         if ($request->outputSchema !== null) {
-            // tool use による構造化出力の強制。スキーマを input_schema とする単一ツールを
-            // 定義し、tool_choice でその呼び出しを強制する。
-            $name = $request->outputSchemaName ?? 'response';
-            $payload['tools'] = [
-                [
-                    'name' => $name,
-                    'description' => 'Return the structured result.',
-                    'input_schema' => $request->outputSchema,
+            // ネイティブの JSON 出力を使い、構文だけでなく必須項目・型もスキーマで拘束する。
+            // outputSchemaName は Anthropic の output_config には対応項目がないため送信しない。
+            $payload['output_config'] = [
+                'format' => [
+                    'type' => 'json_schema',
+                    'schema' => $request->outputSchema,
                 ],
             ];
-            $payload['tool_choice'] = ['type' => 'tool', 'name' => $name];
         }
 
         if ($stream) {
@@ -271,27 +296,13 @@ class AnthropicProvider implements AiProvider, ModelListingProvider
 
     /**
      * 応答の content ブロックから本文を取り出す。
-     * 構造化出力（tool use 強制）時は tool_use ブロックの input を JSON テキストへ戻し、
-     * 自由文のときは text ブロックを連結する。
+     * 自由文・構造化出力ともに text ブロックを連結する。構造化出力では
+     * output_config.format により text 自体が JSON 文字列になる。
      */
-    private function extractText(mixed $raw, bool $structured): ?string
+    private function extractText(mixed $raw): ?string
     {
         if (!$raw instanceof \stdClass || !isset($raw->content) || !is_array($raw->content)) {
             return null;
-        }
-
-        if ($structured) {
-            foreach ($raw->content as $block) {
-                if (
-                    $block instanceof \stdClass
-                    && isset($block->type) && $block->type === 'tool_use'
-                    && isset($block->input)
-                ) {
-                    $encoded = json_encode($block->input, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                    return $encoded === false ? null : $encoded;
-                }
-            }
-            // tool_choice を強制しても稀に自由文で返ることがあるため、text ブロックへフォールバックする。
         }
 
         $texts = [];
@@ -320,12 +331,28 @@ class AnthropicProvider implements AiProvider, ModelListingProvider
             return $models;
         }
         foreach ($result->data as $datum) {
-            if ($datum instanceof \stdClass && isset($datum->id) && is_string($datum->id) && $datum->id !== '') {
+            if (
+                $datum instanceof \stdClass
+                && isset($datum->id) && is_string($datum->id) && $datum->id !== ''
+                && $this->supportsStructuredOutput($datum)
+            ) {
                 $models[] = $datum->id;
             }
         }
 
         return $models;
+    }
+
+    /**
+     * タイトル・タグ生成が必要とするネイティブ構造化出力に対応したモデルだけを許可する。
+     */
+    private function supportsStructuredOutput(\stdClass $model): bool
+    {
+        return isset($model->capabilities)
+            && $model->capabilities instanceof \stdClass
+            && isset($model->capabilities->structured_outputs)
+            && $model->capabilities->structured_outputs instanceof \stdClass
+            && ($model->capabilities->structured_outputs->supported ?? false) === true;
     }
 
     /**
@@ -427,8 +454,8 @@ class AnthropicProvider implements AiProvider, ModelListingProvider
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => $headers,
-            CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_TIMEOUT => 30,
+            CURLOPT_CONNECTTIMEOUT => self::CONNECT_TIMEOUT,
+            CURLOPT_TIMEOUT => self::MODEL_LIST_TIMEOUT,
         ]);
         $result = curl_exec($ch);
         if (!is_string($result)) {
@@ -454,9 +481,8 @@ class AnthropicProvider implements AiProvider, ModelListingProvider
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_POSTFIELDS => $body,
-            CURLOPT_CONNECTTIMEOUT => 10,
-            // 重量級モデルの生成は分単位になり得るため長めに取る（無期限ハングだけを防ぐ）。
-            CURLOPT_TIMEOUT => 180,
+            CURLOPT_CONNECTTIMEOUT => self::CONNECT_TIMEOUT,
+            CURLOPT_TIMEOUT => self::REQUEST_TIMEOUT,
         ]);
         $result = curl_exec($ch);
         if (!is_string($result)) {
@@ -488,10 +514,10 @@ class AnthropicProvider implements AiProvider, ModelListingProvider
                 $onBytes($data);
                 return strlen($data);
             },
-            CURLOPT_CONNECTTIMEOUT => 10,
-            // ストリーミングは総時間ではなく「停止」を検出して打ち切る（120秒間 1B/s 未満で中断）。
-            CURLOPT_LOW_SPEED_LIMIT => 1,
-            CURLOPT_LOW_SPEED_TIME => 120,
+            CURLOPT_CONNECTTIMEOUT => self::CONNECT_TIMEOUT,
+            // 総時間ではなく応答停止を検出し、長い生成は許容しながら無期限ハングを防ぐ。
+            CURLOPT_LOW_SPEED_LIMIT => self::STREAM_LOW_SPEED_LIMIT,
+            CURLOPT_LOW_SPEED_TIME => self::STREAM_LOW_SPEED_TIME,
         ]);
         curl_exec($ch);
 
