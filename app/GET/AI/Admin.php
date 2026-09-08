@@ -16,12 +16,16 @@ class Admin extends AI
     {
         $Tpl = new Template($this->tpl, new ACMS_Corrector());
         $models = [];
+        $configured = false;
 
         try {
             $ServiceAI = new ServiceAI();
             $config = $ServiceAI->getConfig();
 
             $provider = ProviderRegistry::withDefaults()->resolve($config);
+            // 資格情報の充足はプロバイダ内の判定（isConfigured）に閉じ、テンプレート側が
+            // プロバイダ固有の config キー（ai_api_key / ai_anthropic_api_key 等）を知らずに済むようにする。
+            $configured = $provider->isConfigured();
             $models = $provider instanceof ModelListingProvider ? $provider->listModels() : null;
             if ($models !== null) {
                 $this->authorized = $models !== [] ? true : false;
@@ -47,6 +51,7 @@ class Admin extends AI
         $obj = array_merge(
             ['model' => $this->authorizedModels],
             ['authorized' => $this->authorized ? 'true' : 'false'],
+            ['configured' => $configured ? 'true' : 'false'],
             $this->configField
         );
 

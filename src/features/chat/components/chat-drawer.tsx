@@ -28,8 +28,11 @@ const ChatSession = memo(({
   isOpen,
   onInsert,
 }: ChatSessionProps) => {
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
   const onError = useCallback((message: string) => {
     console.error('Chat error:', message)
+    setErrorMessage(message)
   }, [])
 
   const { messages, streamingContent, isLoading, sendMessage } = useChat({
@@ -37,6 +40,11 @@ const ChatSession = memo(({
     chatId,
     initialContent,
   })
+
+  const handleSendMessage = useCallback((content: string) => {
+    setErrorMessage(null)
+    void sendMessage(content)
+  }, [sendMessage])
 
   const handleInsert = useCallback((content?: string) => {
     if (content) onInsert?.(content)
@@ -57,8 +65,9 @@ const ChatSession = memo(({
       messages={messages}
       streamingContent={streamingContent}
       isLoading={isLoading}
+      errorMessage={errorMessage}
       onClose={onClose}
-      onSendMessage={sendMessage}
+      onSendMessage={handleSendMessage}
       onInsert={onInsert ? handleInsert : undefined}
       onCopy={handleCopy}
       description={description}
