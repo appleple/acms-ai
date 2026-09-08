@@ -27,7 +27,7 @@
       <div class="acms_fix_bg_index">
         <input
           type="submit"
-          name="ACMS_POST_Config"
+          name="ACMS_POST_AI_Config"
           value="<!--T-->保存<!--/T-->"
           class="acms-admin-btn-admin acms-admin-btn-admin-primary acms-admin-btn-admin-save js-saving-splash"
         />
@@ -89,13 +89,30 @@
           <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="ChatGPT API で取得する API KEY を入力してください。"></i>
         </th>
         <td>
+          <!-- BEGIN_IF [{ai_api_key}/nem/] -->
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->設定済み<!-- /T --></span>
           <input
-            type="text"
+            type="password"
             name="ai_api_key"
-            value="{ai_api_key}"
+            value=""
+            class="acms-admin-form-width-full acms-admin-margin-top-mini"
+            placeholder="変更する場合のみ新しい API KEY を入力（空欄なら現在のキーを維持）"
+            autocomplete="new-password"
+          />
+          <div class="acms-admin-form-checkbox acms-admin-margin-top-mini">
+            <input type="checkbox" name="ai_api_key_delete" value="on" id="input-checkbox-ai_api_key_delete" />
+            <label for="input-checkbox-ai_api_key_delete"><i class="acms-admin-ico-checkbox"></i><!-- T -->保存時にキーを削除する<!-- /T --></label>
+          </div>
+          <!-- ELSE -->
+          <input
+            type="password"
+            name="ai_api_key"
+            value=""
             class="acms-admin-form-width-full"
             placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
+            autocomplete="new-password"
           />
+          <!-- END_IF -->
           <input type="hidden" name="config[]" value="ai_api_key" />
         </td>
       </tr>
@@ -105,13 +122,30 @@
           <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="Anthropic Console で取得する API KEY を入力してください。"></i>
         </th>
         <td>
+          <!-- BEGIN_IF [{ai_anthropic_api_key}/nem/] -->
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->設定済み<!-- /T --></span>
           <input
-            type="text"
+            type="password"
             name="ai_anthropic_api_key"
-            value="{ai_anthropic_api_key}"
+            value=""
+            class="acms-admin-form-width-full acms-admin-margin-top-mini"
+            placeholder="変更する場合のみ新しい API KEY を入力（空欄なら現在のキーを維持）"
+            autocomplete="new-password"
+          />
+          <div class="acms-admin-form-checkbox acms-admin-margin-top-mini">
+            <input type="checkbox" name="ai_anthropic_api_key_delete" value="on" id="input-checkbox-ai_anthropic_api_key_delete" />
+            <label for="input-checkbox-ai_anthropic_api_key_delete"><i class="acms-admin-ico-checkbox"></i><!-- T -->保存時にキーを削除する<!-- /T --></label>
+          </div>
+          <!-- ELSE -->
+          <input
+            type="password"
+            name="ai_anthropic_api_key"
+            value=""
             class="acms-admin-form-width-full"
             placeholder="sk-ant-xxxxxxxxxxxxxxxxxxxxxxxx"
+            autocomplete="new-password"
           />
+          <!-- END_IF -->
           <input type="hidden" name="config[]" value="ai_anthropic_api_key" />
         </td>
       </tr>
@@ -121,13 +155,30 @@
           <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="Google AI Studio で取得する API KEY を入力してください。"></i>
         </th>
         <td>
+          <!-- BEGIN_IF [{ai_gemini_api_key}/nem/] -->
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->設定済み<!-- /T --></span>
           <input
-            type="text"
+            type="password"
             name="ai_gemini_api_key"
-            value="{ai_gemini_api_key}"
+            value=""
+            class="acms-admin-form-width-full acms-admin-margin-top-mini"
+            placeholder="変更する場合のみ新しい API KEY を入力（空欄なら現在のキーを維持）"
+            autocomplete="new-password"
+          />
+          <div class="acms-admin-form-checkbox acms-admin-margin-top-mini">
+            <input type="checkbox" name="ai_gemini_api_key_delete" value="on" id="input-checkbox-ai_gemini_api_key_delete" />
+            <label for="input-checkbox-ai_gemini_api_key_delete"><i class="acms-admin-ico-checkbox"></i><!-- T -->保存時にキーを削除する<!-- /T --></label>
+          </div>
+          <!-- ELSE -->
+          <input
+            type="password"
+            name="ai_gemini_api_key"
+            value=""
             class="acms-admin-form-width-full"
             placeholder="AIzaXxxxxxxxxxxxxxxxxxxxxxxx"
+            autocomplete="new-password"
           />
+          <!-- END_IF -->
           <input type="hidden" name="config[]" value="ai_gemini_api_key" />
         </td>
       </tr>
