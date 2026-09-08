@@ -18,6 +18,7 @@ final class CredentialFieldFilter
     public const SECRET_KEYS = [
         'ai_api_key',
         'ai_anthropic_api_key',
+        'ai_gemini_api_key',
     ];
 
     public const DELETE_SUFFIX = '_delete';

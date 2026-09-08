@@ -53,6 +53,18 @@ final class CredentialFieldFilterTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('Gemini API キーも write-only の対象にする')]
+    public function geminiKeyKeepsSavedValueWhenInputIsEmpty(): void
+    {
+        $post = $this->field(['ai_gemini_api_key' => '']);
+        $saved = $this->field(['ai_gemini_api_key' => 'gemini-saved']);
+
+        (new CredentialFieldFilter())->apply($post, $saved);
+
+        self::assertSame('gemini-saved', $post->get('ai_gemini_api_key'));
+    }
+
+    #[Test]
     #[TestDox('削除チェック付きの空欄は保存済みキーを削除する')]
     public function deleteCheckboxClearsSavedKey(): void
     {

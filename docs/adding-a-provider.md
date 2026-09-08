@@ -28,6 +28,10 @@ app/Services/AI/
     │   ├── AnthropicProvider.php
     │   ├── AnthropicErrorMessage.php
     │   └── AnthropicStreamParser.php
+    ├── Gemini/                    … Google Gemini generateContent API 実装
+    │   ├── GeminiProvider.php
+    │   ├── GeminiErrorMessage.php
+    │   └── GeminiStreamParser.php
     └── OpenAi/                    … OpenAI Responses API 実装
         ├── OpenAiProvider.php
         ├── EndpointTrait.php
@@ -67,7 +71,6 @@ class AnthropicProvider implements AiProvider, ModelListingProvider
     public function __construct(private readonly Credentials $credentials) {}
 
     public static function fromConfig(Field $config): self
-    {
         // このプロバイダが必要とする config キーだけをここで読む（固有概念を契約へ漏らさない）。
         return new self(new Credentials($config->get('ai_anthropic_api_key')));
     }
@@ -89,6 +92,11 @@ class AnthropicProvider implements AiProvider, ModelListingProvider
     public function listModels(): ?array { /* 利用可能モデル名の配列。 */ }
 }
 ```
+
+`supports()` は、安全に実装できている能力だけを返します。特に `ContentPart::image()` は URL を保持するため、
+ベンダへ URL を直接渡せずサーバー側取得が必要な場合、任意 URL をそのまま取得してはいけません。SSRF、
+リダイレクト、名前解決後のプライベート IP、Content-Type、容量上限まで検証できる共通境界を用意するまでは、
+`VisionInput` を非対応にします。
 
 ### 2. リクエスト／レスポンスを変換する
 
