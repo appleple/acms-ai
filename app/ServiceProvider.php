@@ -82,20 +82,7 @@ class ServiceProvider extends ACMS_App
      */
     public function install()
     {
-        $config = Storage::get(CONFIG_FILE);
-        $pluginConfig = Storage::get(PLUGIN_LIB_DIR . $this->name . '/config.system.yaml');
-        if (!$pluginConfig) {
-            return;
-        }
-        if (preg_match('/(#BEGIN_AIConfig)[\s\S]*(#END_AIConfig)/', $config)) {
-            // 既存ブロックを置換（再インストール時の二重記述を防ぐ）
-            Storage::put(
-                CONFIG_FILE,
-                preg_replace('/(#BEGIN_AIConfig)[\s\S]*(#END_AIConfig)/', $pluginConfig, $config)
-            );
-        } else {
-            Storage::put(CONFIG_FILE, $config . "\n" . $pluginConfig);
-        }
+        $this->putConfig();
     }
 
     /**
@@ -107,11 +94,13 @@ class ServiceProvider extends ACMS_App
     public function uninstall()
     {
         $config = Storage::get(CONFIG_FILE);
-        if ($config && preg_match('/(#BEGIN_AIConfig)[\s\S]*(#END_AIConfig)/', $config)) {
-            Storage::put(
-                CONFIG_FILE,
-                preg_replace('/\n?(#BEGIN_AIConfig)[\s\S]*(#END_AIConfig)\n?/', "\n", $config)
-            );
+        if (!is_string($config)) {
+            return;
+        }
+
+        $updated = Services\ConfigSystemBlock::remove($config);
+        if ($updated !== $config) {
+            Storage::put(CONFIG_FILE, $updated);
         }
     }
 
@@ -122,6 +111,8 @@ class ServiceProvider extends ACMS_App
      */
     public function update()
     {
+        $this->putConfig();
+
         return true;
     }
 
@@ -143,5 +134,23 @@ class ServiceProvider extends ACMS_App
     public function deactivate()
     {
         return true;
+    }
+
+    /**
+     * 拡張アプリの既定設定を private/config.system.yaml へ反映する。
+     */
+    private function putConfig(): void
+    {
+        $config = Storage::get(CONFIG_FILE);
+        $pluginConfig = Storage::get(PLUGIN_LIB_DIR . $this->name . '/config.system.yaml');
+        if (!is_string($pluginConfig) || trim($pluginConfig) === '') {
+            return;
+        }
+
+        $config = is_string($config) ? $config : '';
+        $updated = Services\ConfigSystemBlock::upsert($config, $pluginConfig);
+        if ($updated !== $config) {
+            Storage::put(CONFIG_FILE, $updated);
+        }
     }
 }
