@@ -32,6 +32,22 @@ ACMS_ROOT=/var/www/html vendor/bin/acms-create-database # テスト用 DB スキ
 `docker-compose.yml` は `app/` を `extension/plugins/AI` へ、リポジトリ全体を `/workspace` へバインドマウントする。
 `composer` / `phpunit` / `phpstan` / `phpcs` はすべて `/workspace` から実行する。
 
+初回起動時は `http://localhost:8080/` がインストーラーへリダイレクトされるので、ブラウザでセットアップする。
+
+### 環境の永続化とリセット
+
+本体ルート（`/var/www/html`）と DB は名前付きボリュームに置いてあるため、`docker compose down` →
+`up` してもインストール済みの状態（`.htaccess`・リネーム済み `setup/`・アップロードファイル）が残る。
+ボリューム名には `ACMS_IMAGE_TAG` が含まれ、a-blog cms のバージョンごとに分かれる。
+
+```bash
+docker compose down          # コンテナのみ破棄（インストール済み状態は保持）
+docker compose down -v       # ボリュームも破棄（インストーラーからやり直す）
+```
+
+イメージを更新したとき（`docker compose pull`）は、既存ボリュームの本体ファイルは入れ替わらない。
+新しい本体で検証するには `docker compose down -v` でリセットする。
+
 ## 品質チェック
 
 ```bash
