@@ -1,0 +1,15 @@
+#BEGIN_AIConfig
+# acms-ai プラグインの既定設定。インストール時に private/config.system.yaml へ追記される。
+# #BEGIN_AIConfig 〜 #END_AIConfig で囲み、再インストール時の二重記述を防いでいるので削除しないこと。
+# ここに既定プロンプトを置くことで、管理画面の textarea に既定値が表示され（BEGIN_IF 不要）、
+# 未保存でも生成時に既定プロンプトが使われる。
+
+# エントリー: タイトル/タグ生成の既定プロンプト
+ai_title_prompt: |-
+  - Please give 5 suggestions.
+  - Please answer in Japanese.
+ai_tag_prompt: "Please answer in Japanese."
+
+# さくらのAI Engine（OpenAI互換）の既定エンドポイント
+ai_compat_base_url: "https://api.ai.sakura.ad.jp/v1"
+#END_AIConfig

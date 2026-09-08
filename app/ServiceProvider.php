@@ -3,6 +3,7 @@
 namespace Acms\Plugins\AI;
 
 use ACMS_App;
+use Storage;
 use Acms\Services\Common\HookFactory;
 use Acms\Services\Common\InjectTemplate;
 
@@ -71,23 +72,36 @@ class ServiceProvider extends ACMS_App
     }
 
     /**
-     * インストールするときの処理
-     * データベーステーブルの初期化など
+     * インストールするときの処理。
+     * 既定プロンプト等（app/config.system.yaml の #BEGIN_AIConfig〜#END_AIConfig）を
+     * 本体の設定ファイル（private/config.system.yaml）へ追記する。
+     * これにより管理画面の textarea に既定プロンプトが編集可能な形で表示され、
+     * 未保存でも生成時に既定値が使われる（Favorite プラグインと同じ方式）。
      *
      * @return void
      */
     public function install()
     {
+        $this->putConfig();
     }
 
     /**
-     * アンインストールするときの処理
-     * データベーステーブルの始末など
+     * アンインストールするときの処理。
+     * install() が本体の設定ファイルへ追記した設定ブロックを取り除く。
      *
      * @return void
      */
     public function uninstall()
     {
+        $config = Storage::get(CONFIG_FILE);
+        if (!is_string($config)) {
+            return;
+        }
+
+        $updated = Services\ConfigSystemBlock::remove($config);
+        if ($updated !== $config) {
+            Storage::put(CONFIG_FILE, $updated);
+        }
     }
 
     /**
@@ -97,6 +111,8 @@ class ServiceProvider extends ACMS_App
      */
     public function update()
     {
+        $this->putConfig();
+
         return true;
     }
 
@@ -118,5 +134,23 @@ class ServiceProvider extends ACMS_App
     public function deactivate()
     {
         return true;
+    }
+
+    /**
+     * 拡張アプリの既定設定を private/config.system.yaml へ反映する。
+     */
+    private function putConfig(): void
+    {
+        $config = Storage::get(CONFIG_FILE);
+        $pluginConfig = Storage::get(PLUGIN_LIB_DIR . $this->name . '/config.system.yaml');
+        if (!is_string($pluginConfig) || trim($pluginConfig) === '') {
+            return;
+        }
+
+        $config = is_string($config) ? $config : '';
+        $updated = Services\ConfigSystemBlock::upsert($config, $pluginConfig);
+        if ($updated !== $config) {
+            Storage::put(CONFIG_FILE, $updated);
+        }
     }
 }
