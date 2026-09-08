@@ -8,6 +8,7 @@ use Acms\Plugins\AI\Services\AI\Contracts\AiProvider;
 use Acms\Plugins\AI\Services\AI\Providers\Anthropic\AnthropicProvider;
 use Acms\Plugins\AI\Services\AI\Providers\Gemini\GeminiProvider;
 use Acms\Plugins\AI\Services\AI\Providers\OpenAi\OpenAiProvider;
+use Acms\Plugins\AI\Services\AI\Providers\OpenAiCompat\OpenAiCompatProvider;
 use Acms\Plugins\AI\Services\AI\ProviderRegistry;
 use Acms\TestingFramework\TestCase;
 use Field;
@@ -71,6 +72,16 @@ final class ProviderRegistryTest extends TestCase
 
         self::assertInstanceOf(GeminiProvider::class, $provider);
         self::assertSame('gemini', $provider->id());
+    }
+
+    #[Test]
+    #[TestDox('ai_provider に compat を指定すると OpenAI 互換プロバイダを返す')]
+    public function resolvesOpenAiCompatProvider(): void
+    {
+        $provider = ProviderRegistry::withDefaults()->resolve($this->config(['ai_provider' => 'compat']));
+
+        self::assertInstanceOf(OpenAiCompatProvider::class, $provider);
+        self::assertSame('compat', $provider->id());
     }
 
     #[Test]

@@ -65,6 +65,18 @@ final class CredentialFieldFilterTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('OpenAI 互換 API キーも write-only の対象にする')]
+    public function compatKeyKeepsSavedValueWhenInputIsEmpty(): void
+    {
+        $post = $this->field(['ai_compat_api_key' => '']);
+        $saved = $this->field(['ai_compat_api_key' => 'compat-saved']);
+
+        (new CredentialFieldFilter())->apply($post, $saved);
+
+        self::assertSame('compat-saved', $post->get('ai_compat_api_key'));
+    }
+
+    #[Test]
     #[TestDox('削除チェック付きの空欄は保存済みキーを削除する')]
     public function deleteCheckboxClearsSavedKey(): void
     {

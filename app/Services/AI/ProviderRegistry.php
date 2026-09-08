@@ -8,6 +8,7 @@ use Acms\Plugins\AI\Services\AI\Contracts\AiProvider;
 use Acms\Plugins\AI\Services\AI\Providers\Anthropic\AnthropicProvider;
 use Acms\Plugins\AI\Services\AI\Providers\Gemini\GeminiProvider;
 use Acms\Plugins\AI\Services\AI\Providers\OpenAi\OpenAiProvider;
+use Acms\Plugins\AI\Services\AI\Providers\OpenAiCompat\OpenAiCompatProvider;
 use Field;
 use RuntimeException;
 
@@ -72,6 +73,10 @@ final class ProviderRegistry
         $registry->register(
             GeminiProvider::ID,
             static fn(Field $config): AiProvider => GeminiProvider::fromConfig($config)
+        );
+        $registry->register(
+            OpenAiCompatProvider::ID,
+            static fn(Field $config): AiProvider => OpenAiCompatProvider::fromConfig($config)
         );
 
         return $registry;
