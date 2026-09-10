@@ -5,6 +5,7 @@ namespace Acms\Plugins\AI\POST\AI;
 use ACMS_POST;
 use Acms\Plugins\AI\POST\AIPostTrait;
 use Acms\Plugins\AI\Services\AI as ServicesAI;
+use Acms\Plugins\AI\Services\AI\EntryAiSettings;
 
 /**
  * ACMS_POST_AI_Title
@@ -21,11 +22,14 @@ class Title extends ACMS_POST
 
         $serviceAI = new ServicesAI();
         $config = $serviceAI->getConfig();
+        $settings = new EntryAiSettings($config);
 
-        $titleValid = $config->get('ai_title_valid');
-        $customPrompt = $titleValid !== ''
-            ? $config->get('ai_title_prompt')
-            : "- Please give 5 suggestions.\n- Please answer in Japanese.";
+        // 「有効」設定はフロントの表示制御に加えて、直接 POST への防御として二重に検査する
+        if (!$settings->titleEnabled()) {
+            return $this->errorResponse('タイトル生成は管理画面で有効化されていません。');
+        }
+
+        $customPrompt = $settings->titlePrompt();
 
         $promptMessages = [
             [

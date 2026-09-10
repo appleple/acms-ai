@@ -18,16 +18,20 @@ use PHPUnit\Framework\Attributes\TestDox;
  */
 final class GetTagNameAllTest extends DatabaseTestCase
 {
+    private const TEST_BLOG_ID = 2147483646;
+    private const TEST_ENTRY_ID = 2147483600;
+
     #[Test]
     #[TestDox('登録済みのタグ名を重複なく返す')]
     public function returnsDistinctTagNames(): void
     {
         // 同名タグ（PHP）を別エントリーにも紐付け、重複が畳まれることを確認する。
-        TagSeeder::seed(1, 1, 'PHP', 1);
-        TagSeeder::seed(1, 1, 'a-blog cms', 2);
-        TagSeeder::seed(2, 1, 'PHP', 1);
+        TagSeeder::seed(self::TEST_ENTRY_ID, self::TEST_BLOG_ID, 'PHP', 1);
+        TagSeeder::seed(self::TEST_ENTRY_ID, self::TEST_BLOG_ID, 'a-blog cms', 2);
+        TagSeeder::seed(self::TEST_ENTRY_ID + 1, self::TEST_BLOG_ID, 'PHP', 1);
+        TagSeeder::seed(self::TEST_ENTRY_ID + 2, self::TEST_BLOG_ID - 1, '別ブログのタグ', 1);
 
-        $tags = AI::getTagNameAll();
+        $tags = AI::getTagNameAll(self::TEST_BLOG_ID);
 
         sort($tags);
         self::assertSame(['PHP', 'a-blog cms'], $tags);
@@ -37,6 +41,6 @@ final class GetTagNameAllTest extends DatabaseTestCase
     #[TestDox('タグが 1 件も無ければ空配列を返す')]
     public function returnsEmptyArrayWhenNoTags(): void
     {
-        self::assertSame([], AI::getTagNameAll());
+        self::assertSame([], AI::getTagNameAll(self::TEST_BLOG_ID));
     }
 }

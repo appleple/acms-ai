@@ -23,7 +23,8 @@ const Create = memo(({ addPrompt, label }: Props) => {
       onClick={onClickHandler}
       disabled={status === 'loading'}
     >
-      {displayLabel}
+      {/* label 指定時は常にその文言を固定表示（生成後に文言を変えない） */}
+      {label ?? displayLabel}
     </button>
   )
 })

@@ -7,6 +7,7 @@ use Template;
 use ACMS_Corrector;
 use Acms\Plugins\AI\GET\AI;
 use Acms\Plugins\AI\Services\AI as ServiceAI;
+use Acms\Plugins\AI\Services\AI\EntryAiSettings;
 use Acms\Plugins\AI\Services\AI\ProviderRegistry;
 
 class Config extends AI
@@ -14,6 +15,9 @@ class Config extends AI
     public function get()
     {
         $Tpl = new Template($this->tpl, new ACMS_Corrector());
+        $entryEnabled = false;
+        $titleEnabled = false;
+        $tagEnabled = false;
 
         try {
             $ServiceAI = new ServiceAI();
@@ -28,14 +32,22 @@ class Config extends AI
             if ($provider->isConfigured() && $model !== '') {
                 $this->authorized = true;
             }
-        } catch (\Exception $e) {
+
+            $settings = new EntryAiSettings($config);
+            $entryEnabled = $settings->entryEnabled();
+            $titleEnabled = $settings->titleEnabled();
+            $tagEnabled = $settings->tagEnabled();
+        } catch (\Throwable $e) {
         }
 
         $obj = array_merge(
+            $this->configField,
             [
                 'authorized' => $this->authorized ? 'true' : 'false',
-            ],
-            $this->configField
+                'entry_ai_enabled' => $entryEnabled ? 'true' : 'false',
+                'title_enabled' => $titleEnabled ? 'true' : 'false',
+                'tag_enabled' => $tagEnabled ? 'true' : 'false',
+            ]
         );
 
         return $Tpl->render($obj);
