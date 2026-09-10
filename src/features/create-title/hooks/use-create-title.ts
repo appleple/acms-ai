@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { postRequest } from '../../../api/fetcher'
 import { usePromptContext } from '../../../stores/use-prompt'
-import { UnitJoin } from '../../../utils'
+import { collectEntryUnitHtml } from '../../../utils'
 import type { PromptResultType } from '../../../types/prompt-type'
 
 export function useCreateTitle(initialLabel = 'ユニットからタイトルを生成') {
@@ -12,11 +12,11 @@ export function useCreateTitle(initialLabel = 'ユニットからタイトルを
     setMode('createTitle')
     setError(null)
     setStatus('loading')
-    const unitJoin = UnitJoin()
+    const article = collectEntryUnitHtml()
 
     const postData = {
       mode: 'createTitle',
-      article: unitJoin
+      article
     }
 
     try {

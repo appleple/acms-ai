@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { postRequest } from '../../../api/fetcher'
 import { usePromptContext } from '../../../stores/use-prompt'
-import { UnitJoin } from '../../../utils'
+import { collectEntryUnitHtml } from '../../../utils'
 import type { PromptResponseType } from '../../../types/prompt-type'
 
 export function useCreateTag(addPrompt?: string, initialLabel = 'ユニットからタグを生成') {
@@ -12,7 +12,7 @@ export function useCreateTag(addPrompt?: string, initialLabel = 'ユニットか
     setMode('createTag')
     setError(null)
     setStatus('loading')
-    const unitJoin = UnitJoin()
+    const article = collectEntryUnitHtml()
 
     const createTagResults = promptResults.filter((r: { byMode: string }) => r.byMode === 'createTag')
     const alreadyGeneratedTags = createTagResults.reduce<PromptResponseType[]>((acc, r) => {
@@ -21,7 +21,7 @@ export function useCreateTag(addPrompt?: string, initialLabel = 'ユニットか
 
     const postData = {
       mode: 'createTag',
-      article: unitJoin,
+      article,
       addPrompt: addPrompt ?? '',
       alreadyGeneratedTags: JSON.stringify(alreadyGeneratedTags)
     }
