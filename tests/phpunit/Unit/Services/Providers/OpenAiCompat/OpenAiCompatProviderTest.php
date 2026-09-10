@@ -9,6 +9,7 @@ use Acms\Plugins\AI\Services\AI\Contracts\ContentPart;
 use Acms\Plugins\AI\Services\AI\Contracts\Credentials;
 use Acms\Plugins\AI\Services\AI\Contracts\GenerationRequest;
 use Acms\Plugins\AI\Services\AI\Contracts\Message;
+use Acms\Plugins\AI\Services\AI\Contracts\ManualModelProvider;
 use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
 use Acms\Plugins\AI\Services\AI\Providers\OpenAiCompat\OpenAiCompatProvider;
 use Acms\Plugins\AI\Tests\Support\FakeConversationStore;
@@ -39,7 +40,10 @@ final class OpenAiCompatProviderTest extends TestCase
     #[TestDox('id は compat を返す')]
     public function idReturnsCompat(): void
     {
-        self::assertSame('compat', $this->provider()->id());
+        $provider = $this->provider();
+
+        self::assertSame('compat', $provider->id());
+        self::assertInstanceOf(ManualModelProvider::class, $provider);
     }
 
     #[Test]
@@ -68,7 +72,7 @@ final class OpenAiCompatProviderTest extends TestCase
     }
 
     #[Test]
-    #[TestDox('base URL は https 以外（ループバック除く）・認証情報入り・不正形式を拒否する')]
+    #[TestDox('base URL は https 以外（ループバック除く）・認証情報やクエリ入り・不正形式を拒否する')]
     public function baseUrlValidationRejectsUnsafeUrls(): void
     {
         $reject = static fn(string $url): bool => (new StubOpenAiCompatProvider(
@@ -78,6 +82,8 @@ final class OpenAiCompatProviderTest extends TestCase
         self::assertFalse($reject('http://example.com/v1'));
         self::assertFalse($reject('ftp://example.com/v1'));
         self::assertFalse($reject('https://user:pass@example.com/v1'));
+        self::assertFalse($reject('https://example.com/v1?token=secret'));
+        self::assertFalse($reject('https://example.com/v1#fragment'));
         self::assertFalse($reject('not a url'));
 
         self::assertTrue($reject('https://api.ai.sakura.ad.jp/v1'));
@@ -180,6 +186,27 @@ final class OpenAiCompatProviderTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('response_format 以外のエラーでは再試行しない')]
+    public function doesNotRetryForUnrelatedErrors(): void
+    {
+        $provider = $this->provider();
+        $provider->stubPostResults = [
+            '{"error":{"message":"Incorrect API key","type":"authentication_error","code":"invalid_api_key"}}',
+        ];
+
+        $result = $provider->generateText(new GenerationRequest(
+            'gpt-oss-120b',
+            [Message::user(ContentPart::text('a'))],
+            null,
+            ['type' => 'object'],
+        ));
+
+        self::assertCount(1, $provider->postBodies);
+        self::assertNull($result->text);
+        self::assertStringContainsString('API キー', $result->errorMessage ?? '');
+    }
+
+    #[Test]
     #[TestDox('構造化出力の応答から最初の完全な JSON だけを切り出す（重複出力・コードフェンス対策）')]
     public function isolatesFirstCompleteJsonObject(): void
     {
@@ -219,6 +246,63 @@ final class OpenAiCompatProviderTest extends TestCase
         self::assertNull($result->text);
         self::assertIsString($result->errorMessage);
         self::assertStringContainsString('API キー', $result->errorMessage);
+    }
+
+    #[Test]
+    #[TestDox('壊れた応答と空の正常応答は利用者向けエラーになる')]
+    public function malformedOrEmptyResponseBecomesFailureResult(): void
+    {
+        $malformed = $this->provider();
+        $malformed->stubPostResults = ['not-json'];
+        $malformedResult = $malformed->generateText(
+            new GenerationRequest('gpt-oss-120b', [Message::user(ContentPart::text('a'))])
+        );
+
+        self::assertNull($malformedResult->text);
+        self::assertStringContainsString('解析', $malformedResult->errorMessage ?? '');
+
+        $empty = $this->provider();
+        $empty->stubPostResults = ['{"choices":[{"message":{"content":""},"finish_reason":"stop"}]}'];
+        $emptyResult = $empty->generateText(
+            new GenerationRequest('gpt-oss-120b', [Message::user(ContentPart::text('a'))])
+        );
+
+        self::assertNull($emptyResult->text);
+        self::assertStringContainsString('本文', $emptyResult->errorMessage ?? '');
+    }
+
+    #[Test]
+    #[TestDox('構造化出力の上限到達と不正 JSON は不完全な本文を返さない')]
+    public function incompleteStructuredOutputBecomesFailureResult(): void
+    {
+        $truncated = $this->provider();
+        $truncated->stubPostResults = [
+            '{"choices":[{"message":{"content":"{\\"items\\":["},"finish_reason":"length"}]}',
+        ];
+        $truncatedResult = $truncated->generateText(new GenerationRequest(
+            'gpt-oss-120b',
+            [Message::user(ContentPart::text('a'))],
+            null,
+            ['type' => 'object'],
+        ));
+
+        self::assertNull($truncatedResult->text);
+        self::assertSame('length', $truncatedResult->finishReason);
+        self::assertStringContainsString('出力上限', $truncatedResult->errorMessage ?? '');
+
+        $invalid = $this->provider();
+        $invalid->stubPostResults = [
+            '{"choices":[{"message":{"content":"not-json"},"finish_reason":"stop"}]}',
+        ];
+        $invalidResult = $invalid->generateText(new GenerationRequest(
+            'gpt-oss-120b',
+            [Message::user(ContentPart::text('a'))],
+            null,
+            ['type' => 'object'],
+        ));
+
+        self::assertNull($invalidResult->text);
+        self::assertStringContainsString('有効な形式', $invalidResult->errorMessage ?? '');
     }
 
     #[Test]
@@ -313,26 +397,47 @@ final class OpenAiCompatProviderTest extends TestCase
     }
 
     #[Test]
-    #[TestDox('listModels は /models 応答からモデル名を取り出す')]
-    public function listModelsParsesResponse(): void
+    #[TestDox('本文なしの完了は error を返し会話履歴を保存しない')]
+    public function emptyCompletedStreamBecomesError(): void
     {
-        $provider = $this->provider();
-        $provider->stubGetResult = '{"data":[{"id":"gpt-oss-120b"},{"id":"qwen3-coder-480b"}]}';
+        $store = new FakeConversationStore();
+        $provider = $this->provider($store);
+        $provider->stubStreamChunks = ["data: [DONE]\n\n"];
 
-        self::assertSame(['gpt-oss-120b', 'qwen3-coder-480b'], $provider->listModels());
-        self::assertSame('https://api.ai.sakura.ad.jp/v1/models', $provider->lastUrl);
+        $events = [];
+        $provider->streamText(
+            new GenerationRequest('gpt-oss-120b', [Message::user(ContentPart::text('a'))]),
+            static function (StreamEvent $event) use (&$events): void {
+                $events[] = $event;
+            }
+        );
+
+        self::assertCount(1, $events);
+        self::assertSame(StreamEvent::TYPE_ERROR, $events[0]->type);
+        self::assertStringContainsString('本文', $events[0]->message ?? '');
     }
 
     #[Test]
-    #[TestDox('listModels は認証情報未充足なら通信せず null、エラー応答でも null を返す')]
-    public function listModelsReturnsNullWithoutCredentialsOrOnError(): void
+    #[TestDox('完了通知なしで途切れたストリームは error を返す')]
+    public function incompleteStreamBecomesError(): void
     {
-        $unconfigured = new StubOpenAiCompatProvider(new Credentials('', ['baseUrl' => '']));
-        self::assertNull($unconfigured->listModels());
-        self::assertNull($unconfigured->lastUrl);
-
         $provider = $this->provider();
-        $provider->stubGetResult = '{"error":{"message":"bad key","type":"authentication_error"}}';
-        self::assertNull($provider->listModels());
+        $provider->stubStreamChunks = [
+            "data: {\"choices\":[{\"delta\":{\"content\":\"途中\"}}]}\n\n",
+        ];
+
+        $events = [];
+        $provider->streamText(
+            new GenerationRequest('gpt-oss-120b', [Message::user(ContentPart::text('a'))]),
+            static function (StreamEvent $event) use (&$events): void {
+                $events[] = $event;
+            }
+        );
+
+        self::assertSame(
+            [StreamEvent::TYPE_DELTA, StreamEvent::TYPE_ERROR],
+            array_map(static fn(StreamEvent $event): string => $event->type, $events)
+        );
+        self::assertStringContainsString('途中', $events[1]->message ?? '');
     }
 }

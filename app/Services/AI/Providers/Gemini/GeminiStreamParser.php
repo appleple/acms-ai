@@ -21,6 +21,7 @@ use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
 final class GeminiStreamParser
 {
     private string $buffer = '';
+    private bool $terminated = false;
 
     /**
      * 受信バイト列を与えるたびに、完成した SSE 行を解析して StreamEvent を $onEvent へ渡す。
@@ -29,6 +30,10 @@ final class GeminiStreamParser
      */
     public function feed(string $bytes, callable $onEvent): void
     {
+        if ($this->terminated) {
+            return;
+        }
+
         $this->buffer .= $bytes;
         $lines = explode("\n", $this->buffer);
         // explode は必ず 1 要素以上を返すため array_pop は string。末尾は未完了行（次チャンクへ
@@ -45,6 +50,10 @@ final class GeminiStreamParser
      */
     private function parseLine(string $line, callable $onEvent): void
     {
+        if ($this->terminated) {
+            return;
+        }
+
         if (!str_starts_with($line, 'data:')) {
             return;
         }
@@ -60,7 +69,15 @@ final class GeminiStreamParser
 
         // ストリーム途中でもエラーがチャンクとして届くことがある。
         if (isset($chunk->error)) {
+            $this->terminated = true;
             $onEvent(StreamEvent::error(GeminiErrorMessage::fromError($chunk->error)));
+            return;
+        }
+
+        $responseError = GeminiErrorMessage::fromResponse($chunk);
+        if ($responseError !== null) {
+            $this->terminated = true;
+            $onEvent(StreamEvent::error($responseError));
             return;
         }
 
@@ -73,7 +90,8 @@ final class GeminiStreamParser
             $onEvent(StreamEvent::delta($text));
         }
 
-        if (isset($candidate->finishReason) && is_string($candidate->finishReason) && $candidate->finishReason !== '') {
+        if (isset($candidate->finishReason) && $candidate->finishReason === 'STOP') {
+            $this->terminated = true;
             $onEvent(StreamEvent::completed(null));
         }
     }

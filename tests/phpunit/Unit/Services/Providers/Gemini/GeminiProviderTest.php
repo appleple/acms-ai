@@ -38,14 +38,14 @@ final class GeminiProviderTest extends TestCase
     }
 
     #[Test]
-    #[TestDox('テキスト生成・構造化出力・画像入力・ストリーミングのすべてに対応する')]
+    #[TestDox('テキスト生成・構造化出力・ストリーミングに対応し、URL画像入力は提供しない')]
     public function supportsAllCapabilities(): void
     {
         $provider = $this->provider();
 
         self::assertTrue($provider->supports(Capability::TextGeneration));
         self::assertTrue($provider->supports(Capability::StructuredOutput));
-        self::assertTrue($provider->supports(Capability::VisionInput));
+        self::assertFalse($provider->supports(Capability::VisionInput));
         self::assertTrue($provider->supports(Capability::Streaming));
     }
 
@@ -109,8 +109,8 @@ final class GeminiProviderTest extends TestCase
     }
 
     #[Test]
-    #[TestDox('outputSchema は responseSchema（大文字 type・additionalProperties 除去）へ変換する')]
-    public function outputSchemaBecomesResponseSchema(): void
+    #[TestDox('outputSchema は制約を保持した responseJsonSchema として送信する')]
+    public function outputSchemaBecomesResponseJsonSchema(): void
     {
         $provider = $this->provider();
         $provider->stubPostResult = json_encode([
@@ -146,12 +146,8 @@ final class GeminiProviderTest extends TestCase
         $payload = $provider->capturedPayload();
         $config = $payload['generationConfig'];
         self::assertSame('application/json', $config['responseMimeType']);
-        self::assertSame('OBJECT', $config['responseSchema']['type']);
-        self::assertSame('ARRAY', $config['responseSchema']['properties']['items']['type']);
-        self::assertSame('STRING', $config['responseSchema']['properties']['items']['items']['properties']['content']['type']);
-        self::assertSame(['items'], $config['responseSchema']['required']);
-        self::assertArrayNotHasKey('additionalProperties', $config['responseSchema']);
-        self::assertArrayNotHasKey('additionalProperties', $config['responseSchema']['properties']['items']['items']);
+        self::assertSame($schema, $config['responseJsonSchema']);
+        self::assertArrayNotHasKey('responseSchema', $config);
 
         // 応答テキストは JSON 文字列のまま返る（消費側が decode する）。
         self::assertIsString($result->text);
@@ -160,45 +156,51 @@ final class GeminiProviderTest extends TestCase
     }
 
     #[Test]
-    #[TestDox('画像パートは URL を取得して inlineData（base64）へ変換する')]
-    public function imagePartBecomesInlineData(): void
+    #[TestDox('画像 URL は外部取得せず拒否する')]
+    public function imagePartIsRejected(): void
     {
         $provider = $this->provider();
-        $provider->stubPostResult = '{"candidates":[{"content":{"parts":[{"text":"猫"}]}}]}';
-        $provider->stubInlineImage = ['mimeType' => 'image/png', 'data' => 'aW1n'];
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('画像 URL 入力に対応していません');
 
         $provider->generateText(new GenerationRequest(
             'gemini-2.5-flash',
             [Message::user(ContentPart::text('説明して'), ContentPart::image('https://example.com/cat.png'))],
         ));
-
-        self::assertSame(['https://example.com/cat.png'], $provider->fetchedImageUrls);
-        $payload = $provider->capturedPayload();
-        self::assertSame([
-            ['text' => '説明して'],
-            ['inlineData' => ['mimeType' => 'image/png', 'data' => 'aW1n']],
-        ], $payload['contents'][0]['parts']);
     }
 
     #[Test]
-    #[TestDox('data URL の画像パートは取得せずにそのまま inlineData へ変換する')]
-    public function dataUrlImagePartSkipsFetch(): void
+    #[TestDox('安全性でブロックされた応答は本文なしの失敗結果になる')]
+    public function safetyBlockedResponseBecomesFailureResult(): void
     {
         $provider = $this->provider();
-        $provider->stubPostResult = '{"candidates":[{"content":{"parts":[{"text":"ok"}]}}]}';
+        $provider->stubPostResult = '{"promptFeedback":{"blockReason":"SAFETY"}}';
 
-        $provider->generateText(new GenerationRequest(
-            'gemini-2.5-flash',
-            [Message::user(ContentPart::image('data:image/jpeg;base64,ZGF0YQ=='))],
-        ));
-
-        // フェッチは呼ばれない。
-        self::assertSame([], $provider->fetchedImageUrls);
-        $payload = $provider->capturedPayload();
-        self::assertSame(
-            [['inlineData' => ['mimeType' => 'image/jpeg', 'data' => 'ZGF0YQ==']]],
-            $payload['contents'][0]['parts']
+        $result = $provider->generateText(
+            new GenerationRequest('gemini-2.5-flash', [Message::user(ContentPart::text('a'))])
         );
+
+        self::assertNull($result->text);
+        self::assertIsString($result->errorMessage);
+        self::assertStringContainsString('ブロック', $result->errorMessage);
+    }
+
+    #[Test]
+    #[TestDox('出力上限で終了した構造化応答は不完全な本文を返さず失敗結果になる')]
+    public function maxTokensResponseBecomesFailureResult(): void
+    {
+        $provider = $this->provider();
+        $provider->stubPostResult = '{"candidates":[{"content":{"parts":[{"text":"{\\"items\\":["}]},"finishReason":"MAX_TOKENS"}]}';
+
+        $result = $provider->generateText(
+            new GenerationRequest('gemini-2.5-flash', [Message::user(ContentPart::text('a'))])
+        );
+
+        self::assertNull($result->text);
+        self::assertSame('MAX_TOKENS', $result->finishReason);
+        self::assertIsString($result->errorMessage);
+        self::assertStringContainsString('出力上限', $result->errorMessage);
     }
 
     #[Test]
@@ -306,6 +308,55 @@ final class GeminiProviderTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('本文なしの STOP は error を返し、空の応答を会話履歴へ保存しない')]
+    public function emptyCompletedStreamBecomesError(): void
+    {
+        $provider = $this->provider();
+        $provider->stubStreamChunks = [
+            "data: {\"candidates\":[{\"content\":{\"parts\":[]},\"finishReason\":\"STOP\"}]}\n\n",
+        ];
+
+        $events = [];
+        $provider->streamText(
+            new GenerationRequest('gemini-2.5-flash', [Message::user(ContentPart::text('a'))]),
+            static function (StreamEvent $event) use (&$events): void {
+                $events[] = $event;
+            }
+        );
+
+        self::assertCount(1, $events);
+        self::assertSame(StreamEvent::TYPE_ERROR, $events[0]->type);
+        self::assertIsString($events[0]->message);
+        self::assertStringContainsString('本文', $events[0]->message);
+    }
+
+    #[Test]
+    #[TestDox('ストリームが完了通知なしで途切れると error を返し会話履歴を保存しない')]
+    public function incompleteStreamBecomesErrorWithoutSavingHistory(): void
+    {
+        $store = new FakeConversationStore();
+        $provider = $this->provider($store);
+        $provider->stubStreamChunks = [
+            "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"途中\"}]}}]}\n\n",
+        ];
+
+        $events = [];
+        $provider->streamText(
+            new GenerationRequest('gemini-2.5-flash', [Message::user(ContentPart::text('a'))]),
+            static function (StreamEvent $event) use (&$events): void {
+                $events[] = $event;
+            }
+        );
+
+        self::assertSame(
+            [StreamEvent::TYPE_DELTA, StreamEvent::TYPE_ERROR],
+            array_map(static fn(StreamEvent $event): string => $event->type, $events)
+        );
+        self::assertIsString($events[1]->message);
+        self::assertStringContainsString('途中', $events[1]->message);
+    }
+
+    #[Test]
     #[TestDox('listModels は generateContent 対応モデルだけを models/ 接頭辞なしで返す')]
     public function listModelsFiltersAndStripsPrefix(): void
     {
@@ -315,10 +366,17 @@ final class GeminiProviderTest extends TestCase
                 ['name' => 'models/gemini-2.5-flash', 'supportedGenerationMethods' => ['generateContent', 'countTokens']],
                 ['name' => 'models/embedding-001', 'supportedGenerationMethods' => ['embedContent']],
                 ['name' => 'models/gemini-2.5-pro', 'supportedGenerationMethods' => ['generateContent']],
+                ['name' => 'models/gemini-2.5-flash-preview-tts', 'supportedGenerationMethods' => ['generateContent']],
+                ['name' => 'models/gemini-2.0-flash', 'supportedGenerationMethods' => ['generateContent']],
+                ['name' => 'models/gemini-3.1-flash-lite-preview', 'supportedGenerationMethods' => ['generateContent']],
+                ['name' => 'models/gemini-3.1-pro-preview'],
             ],
         ]);
 
-        self::assertSame(['gemini-2.5-flash', 'gemini-2.5-pro'], $provider->listModels());
+        self::assertSame(
+            ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-3.1-flash-lite-preview'],
+            $provider->listModels()
+        );
     }
 
     #[Test]
