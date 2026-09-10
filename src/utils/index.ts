@@ -1,15 +1,28 @@
 export const isScrollable = (el: Element) => el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth;
 
-export const UnitJoin = () => {
-  const units = document.querySelectorAll('.entryFormLiteEditor');
-  let text = '';
-  units.forEach((item) => {
-    if (!item.closest('.entryFormColumnItem-hidden')) {
-      text += `${item.innerHTML}\n`;
-    }
-  });
+const HIDDEN_UNIT_SELECTOR = '[data-unit-status="close"], .entryFormColumnItem-hidden';
 
-  return text;
+export const collectEntryUnitHtml = () => {
+  const fragments: string[] = [];
+
+  // 旧ライトエディタとブロックエディタを一度に取得し、画面上のユニット順を維持する。
+  // ブロックエディタは ProseMirror の表示 DOM ではなく、同期済みの hidden input を読む。
+  document
+    .querySelectorAll<HTMLElement>(
+      '.entryFormLiteEditor, input[type="hidden"][name^="block-editor_html_"]'
+    )
+    .forEach((element) => {
+      if (element.closest(HIDDEN_UNIT_SELECTOR)) {
+        return;
+      }
+
+      const html = element instanceof HTMLInputElement ? element.value : element.innerHTML;
+      if (html) {
+        fragments.push(html);
+      }
+    });
+
+  return fragments.length > 0 ? `${fragments.join('\n')}\n` : '';
 };
 
 export const tagAdd = (tagString: string) => {
