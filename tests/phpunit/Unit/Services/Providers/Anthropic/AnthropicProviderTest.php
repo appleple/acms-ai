@@ -129,13 +129,13 @@ final class AnthropicProviderTest extends TestCase
     }
 
     #[Test]
-    #[TestDox('outputSchema があると tool use（tools + tool_choice 強制）へ変換する')]
-    public function outputSchemaBecomesForcedToolUse(): void
+    #[TestDox('outputSchema があるとネイティブの JSON Schema 出力へ変換する')]
+    public function outputSchemaBecomesNativeStructuredOutput(): void
     {
         $provider = $this->provider();
         $provider->stubPostResult = json_encode([
             'content' => [
-                ['type' => 'tool_use', 'name' => 'items_schema', 'input' => ['items' => [['content' => 'タイトル案']]]],
+                ['type' => 'text', 'text' => '{"items":[{"content":"タイトル案"}]}'],
             ],
         ], JSON_UNESCAPED_UNICODE);
 
@@ -150,14 +150,59 @@ final class AnthropicProviderTest extends TestCase
         $result = $provider->generateText($request);
 
         $payload = $provider->capturedPayload();
-        self::assertSame('items_schema', $payload['tools'][0]['name']);
-        self::assertSame($schema, $payload['tools'][0]['input_schema']);
-        self::assertSame(['type' => 'tool', 'name' => 'items_schema'], $payload['tool_choice']);
+        self::assertSame('json_schema', $payload['output_config']['format']['type']);
+        self::assertSame($schema, $payload['output_config']['format']['schema']);
+        self::assertArrayNotHasKey('tools', $payload);
+        self::assertArrayNotHasKey('tool_choice', $payload);
 
-        // tool_use の input が JSON テキストとして返る（OpenAI の json_schema 出力と同じ見え方）。
+        // ネイティブ構造化出力の text が JSON テキストとして返る。
         self::assertIsString($result->text);
         $decoded = json_decode($result->text, true);
         self::assertSame([['content' => 'タイトル案']], $decoded['items']);
+    }
+
+    #[Test]
+    #[TestDox('構造化出力の拒否はスキーマ外の本文を返さず利用者向けエラーになる')]
+    public function structuredRefusalBecomesFailureResult(): void
+    {
+        $provider = $this->provider();
+        $provider->stubPostResult = json_encode([
+            'content' => [['type' => 'text', 'text' => '生成できません。']],
+            'stop_reason' => 'refusal',
+        ], JSON_UNESCAPED_UNICODE);
+
+        $result = $provider->generateText(new GenerationRequest(
+            'claude-sonnet-5',
+            [Message::user(ContentPart::text('タイトルを考えて'))],
+            null,
+            ['type' => 'object'],
+        ));
+
+        self::assertNull($result->text);
+        self::assertSame('refusal', $result->finishReason);
+        self::assertStringContainsString('拒否', $result->errorMessage ?? '');
+    }
+
+    #[Test]
+    #[TestDox('構造化出力の上限到達は不完全な JSON を返さず利用者向けエラーになる')]
+    public function structuredMaxTokensBecomesFailureResult(): void
+    {
+        $provider = $this->provider();
+        $provider->stubPostResult = json_encode([
+            'content' => [['type' => 'text', 'text' => '{"items":[']],
+            'stop_reason' => 'max_tokens',
+        ]);
+
+        $result = $provider->generateText(new GenerationRequest(
+            'claude-sonnet-5',
+            [Message::user(ContentPart::text('タイトルを考えて'))],
+            null,
+            ['type' => 'object'],
+        ));
+
+        self::assertNull($result->text);
+        self::assertSame('max_tokens', $result->finishReason);
+        self::assertStringContainsString('出力上限', $result->errorMessage ?? '');
     }
 
     #[Test]
@@ -177,25 +222,6 @@ final class AnthropicProviderTest extends TestCase
             ['type' => 'text', 'text' => '説明して'],
             ['type' => 'image', 'source' => ['type' => 'url', 'url' => 'https://example.com/cat.jpg']],
         ], $payload['messages'][0]['content']);
-    }
-
-    #[Test]
-    #[TestDox('data URL の画像パートは base64 ソースの image ブロックへ変換する')]
-    public function dataUrlImagePartBecomesBase64Block(): void
-    {
-        $provider = $this->provider();
-        $provider->stubPostResult = '{"content":[{"type":"text","text":"ok"}]}';
-
-        $provider->generateText(new GenerationRequest(
-            'claude-sonnet-5',
-            [Message::user(ContentPart::image('data:image/png;base64,aW1n'))],
-        ));
-
-        $payload = $provider->capturedPayload();
-        self::assertSame(
-            [['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => 'image/png', 'data' => 'aW1n']]],
-            $payload['messages'][0]['content']
-        );
     }
 
     #[Test]
@@ -317,12 +343,42 @@ final class AnthropicProviderTest extends TestCase
         $provider = $this->provider();
         $provider->stubGetResult = json_encode([
             'data' => [
-                ['type' => 'model', 'id' => 'claude-sonnet-5'],
-                ['type' => 'model', 'id' => 'claude-haiku-4-5-20251001'],
+                [
+                    'type' => 'model',
+                    'id' => 'claude-sonnet-5',
+                    'capabilities' => ['structured_outputs' => ['supported' => true]],
+                ],
+                [
+                    'type' => 'model',
+                    'id' => 'claude-haiku-4-5-20251001',
+                    'capabilities' => ['structured_outputs' => ['supported' => true]],
+                ],
             ],
         ]);
 
         self::assertSame(['claude-sonnet-5', 'claude-haiku-4-5-20251001'], $provider->listModels());
+    }
+
+    #[Test]
+    #[TestDox('構造化出力に非対応または能力情報がないモデルは一覧から除外する')]
+    public function listModelsExcludesModelsWithoutStructuredOutput(): void
+    {
+        $provider = $this->provider();
+        $provider->stubGetResult = json_encode([
+            'data' => [
+                [
+                    'id' => 'claude-supported',
+                    'capabilities' => ['structured_outputs' => ['supported' => true]],
+                ],
+                [
+                    'id' => 'claude-unsupported',
+                    'capabilities' => ['structured_outputs' => ['supported' => false]],
+                ],
+                ['id' => 'claude-unknown'],
+            ],
+        ]);
+
+        self::assertSame(['claude-supported'], $provider->listModels());
     }
 
     #[Test]

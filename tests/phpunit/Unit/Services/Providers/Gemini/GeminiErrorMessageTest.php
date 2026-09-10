@@ -42,6 +42,28 @@ final class GeminiErrorMessageTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('promptFeedback の安全性ブロックを利用者向けメッセージへ変換する')]
+    public function mapsPromptSafetyBlock(): void
+    {
+        $response = json_decode('{"promptFeedback":{"blockReason":"SAFETY"}}');
+
+        self::assertIsString(GeminiErrorMessage::fromResponse($response));
+        self::assertStringContainsString('ブロック', GeminiErrorMessage::fromResponse($response));
+    }
+
+    #[Test]
+    #[TestDox('STOP は成功、MAX_TOKENS は出力上限エラーとして判定する')]
+    public function mapsCandidateFinishReason(): void
+    {
+        $completed = json_decode('{"candidates":[{"finishReason":"STOP"}]}');
+        $truncated = json_decode('{"candidates":[{"finishReason":"MAX_TOKENS"}]}');
+
+        self::assertNull(GeminiErrorMessage::fromResponse($completed));
+        self::assertIsString(GeminiErrorMessage::fromResponse($truncated));
+        self::assertStringContainsString('出力上限', GeminiErrorMessage::fromResponse($truncated));
+    }
+
+    #[Test]
     #[TestDox('未知の status・不正な形は汎用メッセージへフォールバックする')]
     public function fallsBackForUnknownShapes(): void
     {

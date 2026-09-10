@@ -363,6 +363,19 @@
   flex-shrink: 0;
 }
 
+.chatErrorMessage {
+  flex-shrink: 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid #fecaca;
+  border-radius: 0.5rem;
+  background-color: #fef2f2;
+  color: #991b1b;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .chatInputArea {
   flex-shrink: 0;
   display: flex;
@@ -639,8 +652,6 @@
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
 }
-
-
 
 /* ===== エントリー編集: フィールド埋め込み型 AI 生成 UI ===== */
 

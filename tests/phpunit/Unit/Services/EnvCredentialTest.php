@@ -20,22 +20,31 @@ use PHPUnit\Framework\Attributes\TestDox;
  */
 final class EnvCredentialTest extends TestCase
 {
-    /** @var list<string> テストで使った環境変数（tearDown で掃除する） */
-    private array $touchedEnvKeys = [];
+    /** @var array<string, array{exists: bool, value: mixed}> テスト前の環境変数。 */
+    private array $originalEnv = [];
 
     protected function tearDown(): void
     {
-        foreach ($this->touchedEnvKeys as $key) {
-            unset($_ENV[$key]);
+        foreach ($this->originalEnv as $key => $original) {
+            if ($original['exists']) {
+                $_ENV[$key] = $original['value'];
+            } else {
+                unset($_ENV[$key]);
+            }
         }
-        $this->touchedEnvKeys = [];
+        $this->originalEnv = [];
         parent::tearDown();
     }
 
     private function setEnv(string $key, string $value): void
     {
+        if (!array_key_exists($key, $this->originalEnv)) {
+            $this->originalEnv[$key] = [
+                'exists' => array_key_exists($key, $_ENV),
+                'value' => $_ENV[$key] ?? null,
+            ];
+        }
         $_ENV[$key] = $value;
-        $this->touchedEnvKeys[] = $key;
     }
 
     #[Test]
@@ -49,8 +58,8 @@ final class EnvCredentialTest extends TestCase
     }
 
     #[Test]
-    #[TestDox('環境変数が未設定・空なら fallback を返す')]
-    public function fallsBackWhenUnsetOrEmpty(): void
+    #[TestDox('環境変数が未設定・空・空白だけなら fallback を返す')]
+    public function fallsBackWhenUnsetEmptyOrWhitespace(): void
     {
         self::assertSame('from-config', EnvCredential::get('ACMS_AI_UNSET_KEY', 'from-config'));
         self::assertFalse(EnvCredential::isSet('ACMS_AI_UNSET_KEY'));
@@ -58,6 +67,22 @@ final class EnvCredentialTest extends TestCase
         $this->setEnv('ACMS_AI_EMPTY_KEY', '');
         self::assertSame('from-config', EnvCredential::get('ACMS_AI_EMPTY_KEY', 'from-config'));
         self::assertFalse(EnvCredential::isSet('ACMS_AI_EMPTY_KEY'));
+
+        $this->setEnv('ACMS_AI_WHITESPACE_KEY', '   ');
+        self::assertSame('from-config', EnvCredential::get('ACMS_AI_WHITESPACE_KEY', 'from-config'));
+        self::assertFalse(EnvCredential::isSet('ACMS_AI_WHITESPACE_KEY'));
+    }
+
+    #[Test]
+    #[TestDox('OpenAI互換キーは正式名を優先し、Sakura名も互換利用できる')]
+    public function resolvesCompatKeyAliasesInPriorityOrder(): void
+    {
+        $this->setEnv(OpenAiCompatProvider::ENV_API_KEY_SAKURA, 'legacy-key');
+        self::assertSame('legacy-key', EnvCredential::getForConfig('ai_compat_api_key', 'db-key'));
+
+        $this->setEnv(OpenAiCompatProvider::ENV_API_KEY, 'primary-key');
+        self::assertSame('primary-key', EnvCredential::getForConfig('ai_compat_api_key', 'db-key'));
+        self::assertTrue(EnvCredential::isSetForConfig('ai_compat_api_key'));
     }
 
     #[Test]

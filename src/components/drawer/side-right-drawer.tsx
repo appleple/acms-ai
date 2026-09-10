@@ -138,6 +138,7 @@ interface SideRightDrawerProps {
   messages: ChatMessage[]
   streamingContent: string
   isLoading: boolean
+  errorMessage?: string | null
   onClose: () => void
   onSendMessage: (content: string) => void
   onInsert?: (content?: string) => void
@@ -151,6 +152,7 @@ export const SideRightDrawer = memo(({
   messages,
   streamingContent,
   isLoading,
+  errorMessage,
   onClose,
   onSendMessage,
   onInsert,
@@ -317,6 +319,11 @@ export const SideRightDrawer = memo(({
             {isLoading && !streamingContent && (
               <div className={styles.chatMessageAssistant}>
                 <span className={styles.chatLoadingStatus}>回答中</span>
+              </div>
+            )}
+            {errorMessage && (
+              <div className={styles.chatErrorMessage} role="alert">
+                {errorMessage}
               </div>
             )}
             <div ref={messagesEndRef} />
