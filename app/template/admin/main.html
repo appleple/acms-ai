@@ -340,16 +340,16 @@
             <div class="acms-admin-form-checkbox">
               <input
                 type="checkbox"
-                name="ai_title_valid[]"
-                {ai_title_valid:checked#on}
-                id="input-checkbox-ai_title_valid-on"
+                name="ai_title_enabled[]"
+                {ai_title_enabled:checked#on}
+                id="input-checkbox-ai_title_enabled-on"
                 value="on" />
-              <label for="input-checkbox-ai_title_valid-on"><i class="acms-admin-ico-checkbox"></i>有効</label>
+              <label for="input-checkbox-ai_title_enabled-on"><i class="acms-admin-ico-checkbox"></i>有効</label>
               <p class="acms-admin-text-helper acms-admin-margin-top-mini">
                 有効にすることで、以下のテキストエリアに入力したプロンプトをもとに、記事タイトルの候補をAIが生成します。
               </p>
             </div>
-            <input type="hidden" name="config[]" value="ai_title_valid" />
+            <input type="hidden" name="config[]" value="ai_title_enabled" />
           </td>
         </tr>
         <tr>
@@ -363,13 +363,13 @@
           <th><!-- T -->タグ<!-- /T --></th>
           <td>
             <div class="acms-admin-form-checkbox">
-              <input type="checkbox" name="ai_tag_valid[]" {ai_tag_valid:checked#on} id="input-checkbox-ai_tag_valid-on" value="on" />
-              <label for="input-checkbox-ai_tag_valid-on"><i class="acms-admin-ico-checkbox"></i>有効</label>
+              <input type="checkbox" name="ai_tag_enabled[]" {ai_tag_enabled:checked#on} id="input-checkbox-ai_tag_enabled-on" value="on" />
+              <label for="input-checkbox-ai_tag_enabled-on"><i class="acms-admin-ico-checkbox"></i>有効</label>
               <p class="acms-admin-text-helper acms-admin-margin-top-mini">
                 有効にすることで、以下のテキストエリアに入力したプロンプトをもとに、記事タグの候補をAIが生成します。
               </p>
             </div>
-            <input type="hidden" name="config[]" value="ai_tag_valid" />
+            <input type="hidden" name="config[]" value="ai_tag_enabled" />
           </td>
         </tr>
         <tr>

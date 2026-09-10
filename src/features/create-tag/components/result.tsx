@@ -1,7 +1,8 @@
-import { ChangeEvent, memo, useCallback } from 'react'
+import { ChangeEvent, memo, useCallback, useMemo } from 'react'
 import type { PromptResultType, PromptResponseType } from '../../../types/prompt-type'
-import { useEntryContext } from '../../../stores/use-entry'
+import { useEntryContext } from '../../../stores/entry-context'
 import styles from '../../../css/styles.module.css'
+import { normalizePromptResponses } from '../../entry-ai/prompt-response'
 
 interface Props {
   result: PromptResultType
@@ -9,6 +10,8 @@ interface Props {
 
 const Result = memo(({ result: { id, data } }: Props) => {
   const { entryTag, addEntryTagData, setEntryTagData } = useEntryContext()
+  const options = normalizePromptResponses(data)
+  const selectedTags = useMemo(() => new Set(entryTag.data), [entryTag.data])
 
   const onCheckHandler = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
@@ -21,11 +24,9 @@ const Result = memo(({ result: { id, data } }: Props) => {
 
   return (
     <>
-      {data && (
+      {options.length > 0 && (
         <ul className={`${styles.entryAiResultList} ${styles.entryAiResultListInline}`}>
-          {data
-            .filter((object: PromptResponseType) => object.content.trim() !== '')
-            .map((object: PromptResponseType) => {
+          {options.map((object: PromptResponseType) => {
               const checkboxId = `resultPromptCheckbox-${id}-${encodeURIComponent(object.content)}`
               return (
                 <li key={object.content} className="acms-admin-form-checkbox">
@@ -33,6 +34,7 @@ const Result = memo(({ result: { id, data } }: Props) => {
                     id={checkboxId}
                     type="checkbox"
                     value={object.content}
+                    checked={selectedTags.has(object.content)}
                     onChange={onCheckHandler}
                     data-prompt-result='createTag'
                   />

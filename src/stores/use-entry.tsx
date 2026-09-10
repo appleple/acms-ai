@@ -1,133 +1,150 @@
-import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { EntryTagType, EntryTagRefTypeRef } from '../types/entry-tag-type.d'
-import { getTagJoin } from '../utils'
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { EntryTagType } from '../types/entry-tag-type.d'
+import { getTagArray, getTagJoin } from '../utils'
+import { EntryContext } from './entry-context'
 
 interface EntryContextProviderType {
-  children: ReactNode,
+  children: ReactNode
   entryTag?: EntryTagType
 }
 
-const defaultEntryTag: EntryTagType = {
-  ref: null,
-  data: []
+interface AcmsTagSelectElement extends HTMLElement {
+  value: string
 }
 
-export const EntryContext = createContext<{
-  entryTag: EntryTagType
-  addEntryTagRef: (ref: EntryTagRefTypeRef) => void
-  addEntryTagData: (tag: string) => void
-  setEntryTagData: (tagList: string[]) => void
-  deleteEntryTagData: (tag: string) => void
-}>({
-  entryTag: defaultEntryTag,
-  addEntryTagRef: () => {},
-  addEntryTagData: () => {},
-  setEntryTagData: () => {},
-  deleteEntryTagData: () => {}
-})
+const normalizeTags = (tags: string[]): string[] => {
+  const normalized = new Set<string>()
+  for (const tag of tags) {
+    const value = tag.trim()
+    if (value !== '') {
+      normalized.add(value)
+    }
+  }
+  return [...normalized]
+}
+
+const parseTags = (value: string): string[] => (
+  value ? normalizeTags(getTagArray(value)) : []
+)
+
+const findTagSelect = (): AcmsTagSelectElement | null => (
+  document.querySelector<AcmsTagSelectElement>('#entry-tag-display acms-tag-select')
+)
+
+const findTagInput = (): HTMLInputElement | null => (
+  document.querySelector<HTMLInputElement>('#entry-tag-display #entry-tag-value')
+)
+
+const readInitialTags = (
+  tagSelect: AcmsTagSelectElement | null,
+  input: HTMLInputElement | null
+): string[] => {
+  const value = input?.value || tagSelect?.getAttribute('default-value') || ''
+  return parseTags(value)
+}
 
 export function EntryContextProvider({
   children,
-  entryTag: entryTagProp = defaultEntryTag
+  entryTag: entryTagProp
 }: EntryContextProviderType) {
-  const entryTagRef = useRef<HTMLElement | null>(null);
-  const [entryTag, setEntryTag] = useState<EntryTagType>(entryTagProp);
+  const initialTagSelect = findTagSelect()
+  const initialInput = findTagInput()
+  const tagSelectRef = useRef<AcmsTagSelectElement | null>(initialTagSelect)
+  const entryTagInputRef = useRef<HTMLInputElement | null>(initialInput)
+  const [entryTag, setEntryTag] = useState<EntryTagType>(() => (
+    entryTagProp ?? { data: readInitialTags(initialTagSelect, initialInput) }
+  ))
 
-  const addEntryTagRef = useCallback((ref: EntryTagRefTypeRef) => setEntryTag((prevState) => ({ ...prevState, ref })), [])
-  const addEntryTagData = useCallback((tag: string) => setEntryTag((prevState) => ({...prevState, data: [...prevState.data, tag]})), [])
-  const setEntryTagData = useCallback((tagList: string[]) => setEntryTag((prevState) => ({...prevState, data: tagList})), [])
-  const deleteEntryTagData = useCallback((tag: string) => setEntryTag((prevState) => ({
-    ...prevState,
-    data: prevState.data.filter(item => item !== tag)
-  })), []);
+  const setEntryTagData = useCallback((tagList: string[]) => {
+    const data = normalizeTags(tagList)
+    setEntryTag((current) => (
+      current.data.length === data.length && current.data.every((tag, index) => tag === data[index])
+        ? current
+        : { data }
+    ))
+  }, [])
 
-  // tagの設定値を監視
+  const addEntryTagData = useCallback((tag: string) => {
+    setEntryTag((current) => {
+      const data = normalizeTags([...current.data, tag])
+      return data.length === current.data.length ? current : { data }
+    })
+  }, [])
+
+  // a-blog cms のタグUIが変更された場合も Context へ反映する。
   useEffect(() => {
-    const initElement = () => {
-      const entryTagValue = document.querySelector<HTMLElement>('#entry-tag-value');
-      if (entryTagValue) {
-        entryTagRef.current = entryTagValue;
-        addEntryTagRef(entryTagRef);
+    const tagSelect = tagSelectRef.current
+    const input = entryTagInputRef.current
+    if (!tagSelect && !input) {
+      return
+    }
 
-        const observer = new MutationObserver((mutations) => {
-          mutations.forEach((mutation) => {
-            // 値の変更も監視
-            if (
-              mutation.type === 'attributes' ||
-              mutation.type === 'characterData' ||
-              (entryTagValue instanceof HTMLInputElement && mutation.target === entryTagValue)
-            ) {
-              addEntryTagRef(entryTagRef)
-            }
-          });
-        });
+    const syncFromField = () => setEntryTagData(parseTags(tagSelect?.value ?? input?.value ?? ''))
+    tagSelect?.addEventListener('change', syncFromField)
+    input?.addEventListener('acmsAdminTagChange', syncFromField)
+    input?.addEventListener('input', syncFromField)
+    input?.addEventListener('change', syncFromField)
 
-        // value の変更も監視するように設定
-        observer.observe(entryTagValue, {
-          attributes: true,
-          characterData: true,
-          childList: true,
-          subtree: true,
-          attributeFilter: ['value']
-        });
+    return () => {
+      tagSelect?.removeEventListener('change', syncFromField)
+      input?.removeEventListener('acmsAdminTagChange', syncFromField)
+      input?.removeEventListener('input', syncFromField)
+      input?.removeEventListener('change', syncFromField)
+    }
+  }, [setEntryTagData])
 
-        // input イベントも監視
-        entryTagValue.addEventListener('input', () => {
-          addEntryTagRef(entryTagRef);
-        });
+  // AI候補の選択結果をタグUIと保存対象の hidden input へ反映する。
+  useEffect(() => {
+    const tagSelect = tagSelectRef.current
+    const input = entryTagInputRef.current
+    const entryTagListString = getTagJoin(entryTag.data)
+    let cancelled = false
+    if (!tagSelect && !input) {
+      return
+    }
 
-        return observer;
+    const syncToField = () => {
+      if (cancelled) {
+        return
       }
-      return null;
-    };
 
-    // DOMContentLoaded に対応
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => {
-        const observer = initElement();
-        return () => observer?.disconnect();
-      });
-    } else {
-      const observer = initElement();
-      return () => observer?.disconnect();
+      const currentTags = parseTags(tagSelect?.value ?? input?.value ?? '')
+      if (currentTags.length === entryTag.data.length && currentTags.every((tag, index) => tag === entryTag.data[index])) {
+        return
+      }
+
+      // コアのカスタム要素登録より先にこのプラグインが初期化される場合にも、保存値を先に確定する。
+      if (input) {
+        input.value = entryTagListString
+      }
+
+      if (tagSelect) {
+        // a-blog cms の公開 API を通すことで、React製タグUIと hidden input の両方を更新する。
+        tagSelect.value = entryTagListString
+        tagSelect.dispatchEvent(new Event('change', { bubbles: true }))
+      }
+
+      input?.dispatchEvent(new Event('input', { bubbles: true }))
+      input?.dispatchEvent(new Event('change', { bubbles: true }))
+    }
+
+    syncToField()
+
+    // a-blog cms 側のカスタム要素が後から定義される場合は、公開 API が使える時点でもう一度同期する。
+    if (tagSelect && typeof customElements !== 'undefined') {
+      void customElements.whenDefined('acms-tag-select').then(syncToField)
     }
 
     return () => {
-      entryTagRef.current = null;
-    };
-  }, []);
-
-  const updateEntryTagValue = useCallback(() => {
-    const entryTagListString = getTagJoin(entryTag.data);
-    if (entryTag.ref?.current) {  // nullチェックを追加
-      if (entryTag.ref.current instanceof HTMLInputElement) {
-        // input要素の場合
-        entryTag.ref.current.value = entryTagListString;
-      }
+      cancelled = true
     }
-  }, [entryTag.data, entryTag.ref]);
-
-  // useEffectで使用
-useEffect(() => {
-  updateEntryTagValue();
-}, [updateEntryTagValue]);
-
+  }, [entryTag.data])
 
   const value = useMemo(() => ({
     entryTag,
-    addEntryTagRef,
     addEntryTagData,
-    setEntryTagData,
-    deleteEntryTagData
-  }), [
-    entryTag,
-    addEntryTagRef,
-    addEntryTagData,
-    setEntryTagData,
-    deleteEntryTagData
-  ]);
+    setEntryTagData
+  }), [entryTag, addEntryTagData, setEntryTagData])
 
   return <EntryContext.Provider value={value}>{children}</EntryContext.Provider>
 }
-
-export const useEntryContext = () => useContext(EntryContext);

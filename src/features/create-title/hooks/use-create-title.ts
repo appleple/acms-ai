@@ -1,12 +1,13 @@
 import { useCallback, useState } from 'react'
 import { postRequest } from '../../../api/fetcher'
-import { usePromptContext } from '../../../stores/use-prompt'
+import { usePromptContext } from '../../../stores/prompt-context'
 import { collectEntryUnitHtml } from '../../../utils'
 import type { PromptResultType } from '../../../types/prompt-type'
+import { normalizePromptResponses, promptErrorMessage } from '../../entry-ai/prompt-response'
 
 export function useCreateTitle(initialLabel = 'ユニットからタイトルを生成') {
   const [displayLabel, setDisplayLabel] = useState(initialLabel)
-  const { prompt: { results: promptResults, status }, setStatus, addResult, putResult, setMode, setError } = usePromptContext()
+  const { prompt: { results: promptResults, status }, setStatus, setResults, setMode, setError } = usePromptContext()
 
   const postPrompt = useCallback(async () => {
     setMode('createTitle')
@@ -31,12 +32,19 @@ export function useCreateTitle(initialLabel = 'ユニットからタイトルを
         setStatus('error')
         return null
       }
-      if (result.errorCode && result.errorCode === 500) {
-        setError(typeof result.message === 'string' && result.message ? result.message : 'タイトル生成に失敗しました。')
+      const responseError = promptErrorMessage(result, 'タイトル生成に失敗しました。')
+      if (responseError !== null) {
+        setError(responseError)
         setStatus('error')
         return null
       }
-      return result
+      const responses = normalizePromptResponses(result)
+      if (responses.length === 0) {
+        setError('生成結果が空でした。もう一度お試しください。')
+        setStatus('error')
+        return null
+      }
+      return responses
     } catch {
       setError('通信に失敗しました。時間をおいて再試行してください。')
       setStatus('error')
@@ -50,34 +58,22 @@ export function useCreateTitle(initialLabel = 'ユニットからタイトルを
       // エラーメッセージ・status は postPrompt 側で設定済み。
       return
     }
-    if (!result[0].content) {
-      setError('生成結果が空でした。もう一度お試しください。')
-      setStatus('error')
-      return
+    const newId = promptResults.length > 0
+      ? promptResults.reduce((max, promptResult) => Math.max(max, promptResult.id), 0) + 1
+      : 1
+    const nextResult: PromptResultType = {
+      id: newId,
+      data: result,
+      resultType: 'radio',
+      byMode: 'createTitle'
     }
-
-    const createTitleResults = promptResults.filter((r: PromptResultType) => r.byMode === 'createTitle')
-    if (createTitleResults.length) {
-      putResult({
-        id: createTitleResults[0].id,
-        data: result,
-        resultType: 'radio',
-        byMode: 'createTitle'
-      })
-    } else {
-      const newId = promptResults.length > 0
-        ? promptResults.reduce((max, r) => Math.max(max, r.id), 0) + 1
-        : 1
-      addResult({
-        id: newId,
-        data: result,
-        resultType: 'radio',
-        byMode: 'createTitle'
-      })
-      setDisplayLabel('再生成')
-    }
+    setResults([
+      ...promptResults.filter((promptResult) => promptResult.byMode !== 'createTitle'),
+      nextResult,
+    ])
+    setDisplayLabel('再生成')
     setStatus('result')
-  }, [postPrompt, promptResults, putResult, addResult, setStatus, setError])
+  }, [postPrompt, promptResults, setResults, setStatus])
 
   return { status, displayLabel, createTitle }
 }

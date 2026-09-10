@@ -5,8 +5,8 @@
 # 未保存でも生成時に既定プロンプトが使われる。
 
 # エントリー: タイトル/タグ生成は既定で有効（チェックを外すと機能ごと非表示・無効になる）
-ai_title_valid: "on"
-ai_tag_valid: "on"
+ai_title_enabled: "on"
+ai_tag_enabled: "on"
 
 # エントリー: タイトル/タグ生成の既定プロンプト
 ai_title_prompt: |-
