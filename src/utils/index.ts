@@ -1,6 +1,6 @@
 export const isScrollable = (el: Element) => el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth;
 
-const HIDDEN_UNIT_SELECTOR = '.acms-unit[data-unit-status="close"], .entryFormColumnItem-hidden';
+const HIDDEN_UNIT_SELECTOR = '[data-unit-status="close"], .entryFormColumnItem-hidden';
 
 export const collectEntryUnitHtml = () => {
   const fragments: string[] = [];

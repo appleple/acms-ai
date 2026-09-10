@@ -36,7 +36,7 @@ describe('collectEntryUnitHtml', () => {
 
   it('data-unit-statusがcloseの非表示ユニットを除外する', () => {
     document.body.innerHTML = `
-      <div class="acms-unit" data-unit-status="close">
+      <div class="acms-admin-unit acms-admin-unit-hidden" data-unit-status="close">
         <div class="entryFormLiteEditor"><p>非表示の旧テキスト</p></div>
         <input type="hidden" name="block-editor_html_3" value="非表示のブロック">
       </div>
