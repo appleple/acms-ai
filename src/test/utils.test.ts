@@ -34,9 +34,9 @@ describe('collectEntryUnitHtml', () => {
     expect(collectEntryUnitHtml()).toBe('<p>最初</p>\n<p>中央</p>\n<p>最後</p>\n')
   })
 
-  it('非表示ユニットの本文を除外する', () => {
+  it('data-unit-statusがcloseの非表示ユニットを除外する', () => {
     document.body.innerHTML = `
-      <div class="entryFormColumnItem-hidden">
+      <div class="acms-unit" data-unit-status="close">
         <div class="entryFormLiteEditor"><p>非表示の旧テキスト</p></div>
         <input type="hidden" name="block-editor_html_3" value="非表示のブロック">
       </div>
@@ -44,6 +44,16 @@ describe('collectEntryUnitHtml', () => {
     `
 
     expect(collectEntryUnitHtml()).toBe('<p>表示中</p>\n')
+  })
+
+  it('旧DOMの非表示ユニットも除外する', () => {
+    document.body.innerHTML = `
+      <div class="entryFormColumnItem-hidden">
+        <div class="entryFormLiteEditor"><p>非表示</p></div>
+      </div>
+    `
+
+    expect(collectEntryUnitHtml()).toBe('')
   })
 
   it('空のブロックエディタを除外する', () => {

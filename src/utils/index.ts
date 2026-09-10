@@ -1,5 +1,7 @@
 export const isScrollable = (el: Element) => el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth;
 
+const HIDDEN_UNIT_SELECTOR = '.acms-unit[data-unit-status="close"], .entryFormColumnItem-hidden';
+
 export const collectEntryUnitHtml = () => {
   const fragments: string[] = [];
 
@@ -10,7 +12,7 @@ export const collectEntryUnitHtml = () => {
       '.entryFormLiteEditor, input[type="hidden"][name^="block-editor_html_"]'
     )
     .forEach((element) => {
-      if (element.closest('.entryFormColumnItem-hidden')) {
+      if (element.closest(HIDDEN_UNIT_SELECTOR)) {
         return;
       }
 
