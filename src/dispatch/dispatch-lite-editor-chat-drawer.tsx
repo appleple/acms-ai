@@ -1,30 +1,11 @@
 import ChatDrawer from '../features/chat/components/chat-drawer'
 import { ensureDrawerMount } from '../features/chat'
-import { brToNewline, newlineToBr } from '../features/chat/utils/textarea-insert'
+import {
+  getLiteEditorInitialContent,
+  insertToLiteEditor,
+  type LiteEditorLike,
+} from '../features/chat/utils/lite-editor'
 import { render } from '../utils/react'
-
-function insertToLiteEditor(liteEditorInstance: any, content: string): void {
-  if (!liteEditorInstance || !content) return
-
-  const normalized = newlineToBr(content)
-
-  liteEditorInstance.stopStack = true
-
-  const currentPosition = liteEditorInstance.stackPosition
-  liteEditorInstance.data.value = normalized
-
-  const source = liteEditorInstance._getElementByQuery('[data-selector="lite-editor-source"]')
-  if (source) {
-    source.value = liteEditorInstance.format(normalized)
-  }
-
-  liteEditorInstance.stack = liteEditorInstance.stack.slice(0, currentPosition)
-  liteEditorInstance.stack.push(normalized)
-  liteEditorInstance.stackPosition = currentPosition
-
-  liteEditorInstance._fireEvent('change')
-  liteEditorInstance.update()
-}
 
 export function DispatchLiteEditorChatDrawer(): void {
   // ライトエディタを使わない管理画面では設定が存在しないため何もしない
@@ -36,12 +17,11 @@ export function DispatchLiteEditorChatDrawer(): void {
     label: 'AIアシスタント',
     group: 'mark',
     action: 'extra',
-    onClick: function (editor: any) {
+    onClick: function (editor: LiteEditorLike) {
       const container = ensureDrawerMount()
       if (!container) return
 
-      const position = editor.stackPosition <= 0 ? 0 : editor.stackPosition - 1
-      const initialText: string = editor.stack?.[position] || ''
+      const initialText = getLiteEditorInitialContent(editor)
 
       const onUnmount = () => {
         if (container._reactRoot) {
@@ -53,7 +33,7 @@ export function DispatchLiteEditorChatDrawer(): void {
       render(
         <ChatDrawer
           chatKey={String(editor.id)}
-          initialContent={initialText ? brToNewline(initialText) : undefined}
+          initialContent={initialText}
           onInsert={(content) => insertToLiteEditor(editor, content)}
           onClose={onUnmount}
         />,

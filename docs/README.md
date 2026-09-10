@@ -232,6 +232,23 @@ acms-ai-assistant-button[loading] button {
 </acms-ai-assistant-button>
 ```
 
+**挿入時の改行形式を指定する**
+
+通常は改行を `<br />` に変換して textarea へ挿入します。a-blog cms のテキストユニットで
+`markdown`、`pre`、`none` などのソース系タグが選ばれている場合は、自動的に通常の改行を維持します。
+
+独自の textarea で通常の改行を維持したい場合は、挿入先に
+`data-acms-ai-insert-format="plain"` を指定してください。逆にソース系タグの自動判定より
+HTML 形式を優先したい場合は `"html"` を指定できます。
+
+```html
+<textarea id="markdown-body" data-acms-ai-insert-format="plain"></textarea>
+
+<acms-ai-assistant-button target="#markdown-body">
+  <button type="button" class="acms-admin-btn">AIアシスタントを開く</button>
+</acms-ai-assistant-button>
+```
+
 サイレント実行時は、ホスト要素に対して以下のカスタムイベントが発火します。処理状況に応じた UI 制御に利用できます。
 
 | イベント名 | タイミング |
