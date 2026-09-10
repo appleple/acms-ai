@@ -11,12 +11,11 @@ use Acms\Plugins\AI\Services\AI\Contracts\Credentials;
 use Acms\Plugins\AI\Services\AI\Contracts\GenerationRequest;
 use Acms\Plugins\AI\Services\AI\Contracts\GenerationResult;
 use Acms\Plugins\AI\Services\AI\Contracts\Message;
-use Acms\Plugins\AI\Services\AI\Contracts\ModelListingProvider;
+use Acms\Plugins\AI\Services\AI\Contracts\ManualModelProvider;
 use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
 use Acms\Plugins\AI\Services\AI\Contracts\TokenUsage;
 use Acms\Plugins\AI\Services\AI\Conversation\ConversationStore;
 use Acms\Plugins\AI\Services\AI\EnvCredential;
-use Acms\Services\Facades\Common;
 use Acms\Services\Facades\Logger;
 use Field;
 
@@ -25,7 +24,7 @@ use Field;
  *
  * base URL を差し替えて、さくらのAI Engine やローカル LLM などの OpenAI 互換 API を利用する。
  * 純正 OpenAI（Responses API）とは別プロバイダとして扱う。互換ワイヤの形状
- * （Bearer 認証、messages/choices、response_format、SSE の [DONE] 終端、/models 応答）は
+ * （Bearer 認証、messages/choices、response_format、SSE の [DONE] 終端）は
  * すべてこのクラス配下（本クラスと {@see ChatCompletionsStreamParser} /
  * {@see OpenAiCompatErrorMessage}）に閉じる。
  *
@@ -35,22 +34,31 @@ use Field;
  *
  * 構造化出力: json_schema 対応は互換エンドポイントによりまちまちなので、より広く通る
  * response_format: json_object ＋スキーマをプロンプトへ埋め込む方式を使う。json_object 非対応の
- * エンドポイントではエラーになり得るため、その場合は response_format なしで 1 回だけ再試行する。
+ * エンドポイントではエラーになり得るため、エラーが response_format を原因として示した場合に限り、
+ * response_format なしで 1 回だけ再試行する。
  * さらに、モデルが JSON を重複出力する（さくらのAI Engine で観測）・コードフェンスで包む等の
  * 揺れに備え、「最初の完全な JSON オブジェクト」だけを切り出してから返す。
  */
-class OpenAiCompatProvider implements AiProvider, ModelListingProvider
+class OpenAiCompatProvider implements AiProvider, ManualModelProvider
 {
     public const ID = 'compat';
 
-    /** API キーを供給できる環境変数名（.env）。設定されていれば config より優先する。 */
-    public const ENV_API_KEY = 'ACMS_AI_SAKURA_API_KEY';
+    /** OpenAI 互換 API キーの正式な環境変数名。 */
+    public const ENV_API_KEY = 'ACMS_AI_COMPAT_API_KEY';
+
+    /** 旧PRで案内していた、さくらのAI Engine向け互換エイリアス。 */
+    public const ENV_API_KEY_SAKURA = 'ACMS_AI_SAKURA_API_KEY';
 
     /** base URL 未設定時の既定（さくらのAI Engine）。 */
     public const DEFAULT_BASE_URL = 'https://api.ai.sakura.ad.jp/v1';
 
     /** Credentials の attributes で base URL を持ち回るキー。 */
     private const ATTR_BASE_URL = 'baseUrl';
+
+    private const CONNECT_TIMEOUT = 10;
+    private const REQUEST_TIMEOUT = 180;
+    private const STREAM_LOW_SPEED_LIMIT = 1;
+    private const STREAM_LOW_SPEED_TIME = 120;
 
     private readonly string $baseUrl;
 
@@ -62,8 +70,7 @@ class OpenAiCompatProvider implements AiProvider, ModelListingProvider
     }
 
     /**
-     * config（`ai_compat_api_key` / `ai_compat_base_url`）から生成する。
-     * API キーは環境変数（{@see self::ENV_API_KEY}）が設定されていればそちらを優先する。
+     * config（`ai_compat_api_key` / `ai_compat_base_url`）から生成する。APIキーは環境変数を優先する。
      * base URL が空なら既定（さくらのAI Engine）を使う。モデルはリクエストごとに与えられる。
      */
     public static function fromConfig(Field $config): self
@@ -74,7 +81,7 @@ class OpenAiCompatProvider implements AiProvider, ModelListingProvider
         }
 
         return new self(new Credentials(
-            EnvCredential::get(self::ENV_API_KEY, $config->get('ai_compat_api_key')),
+            EnvCredential::getForConfig('ai_compat_api_key', $config->get('ai_compat_api_key')),
             [self::ATTR_BASE_URL => $baseUrl]
         ));
     }
@@ -99,40 +106,6 @@ class OpenAiCompatProvider implements AiProvider, ModelListingProvider
         return $this->credentials->apiKey() !== '' && $this->baseUrl !== '';
     }
 
-    /**
-     * 互換エンドポイントの /models を叩き、利用可能なモデル名を返す。
-     * 認証情報が未充足なら通信せず null。通信・解析に失敗した場合も null。
-     *
-     * @return list<string>|null
-     */
-    public function listModels(): ?array
-    {
-        if (!$this->isConfigured()) {
-            return null;
-        }
-
-        try {
-            $result = $this->httpGetJson($this->baseUrl . '/models', $this->baseHeaders());
-            $decoded = json_decode($result);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \Exception('JSON decode error: ' . json_last_error_msg());
-            }
-            if (!$decoded instanceof \stdClass) {
-                throw new \Exception('Unexpected response from compatible endpoint.');
-            }
-            if (isset($decoded->error)) {
-                throw new \Exception(
-                    'Compatible endpoint error: ' . OpenAiCompatErrorMessage::fromError($decoded->error)
-                );
-            }
-
-            return $this->modelsFromResponse($decoded);
-        } catch (\Exception $e) {
-            Logger::error('【AI plugin】 モデル一覧の取得に失敗しました', Common::exceptionArray($e));
-            return null;
-        }
-    }
-
     public function generateText(GenerationRequest $request): GenerationResult
     {
         $structured = $request->outputSchema !== null;
@@ -145,12 +118,29 @@ class OpenAiCompatProvider implements AiProvider, ModelListingProvider
         }
 
         $raw = $this->post($payload);
-        if ($structured && $raw instanceof \stdClass && isset($raw->error)) {
+        if (
+            $structured
+            && $raw instanceof \stdClass
+            && isset($raw->error)
+            && $this->isResponseFormatUnsupported($raw->error)
+        ) {
             unset($payload['response_format']);
             $raw = $this->post($payload);
         }
 
-        if ($raw instanceof \stdClass && isset($raw->error)) {
+        if (!$raw instanceof \stdClass) {
+            Logger::error('【AI plugin】 OpenAI互換 API の応答を解析できませんでした', [
+                'model' => $request->model,
+                'jsonError' => json_last_error_msg(),
+            ]);
+            return new GenerationResult(
+                null,
+                $raw,
+                errorMessage: 'AI からの応答を解析できませんでした。時間をおいて再試行してください。'
+            );
+        }
+
+        if (isset($raw->error)) {
             Logger::error('【AI plugin】 OpenAI互換 API がエラーを返しました', $this->errorToContext($raw->error));
             return new GenerationResult(null, $raw, errorMessage: OpenAiCompatErrorMessage::fromError($raw->error));
         }
@@ -162,12 +152,56 @@ class OpenAiCompatProvider implements AiProvider, ModelListingProvider
         }
         $finishReason = $this->finishReason($raw);
 
+        if ($structured && $finishReason !== null && $finishReason !== 'stop') {
+            Logger::warning('【AI plugin】 OpenAI互換 API が構造化出力を完了できませんでした', [
+                'model' => $request->model,
+                'finishReason' => $finishReason,
+            ]);
+            return new GenerationResult(
+                null,
+                $raw,
+                null,
+                $finishReason,
+                $this->usageFromResponse($raw),
+                $finishReason === 'length'
+                    ? 'AI の応答が出力上限に達しました。内容を短くして再試行してください。'
+                    : 'AI が構造化出力を完了できませんでした。入力内容を見直して再試行してください。'
+            );
+        }
+
+        if ($structured && $text !== null) {
+            $decoded = json_decode($text);
+            if (!$decoded instanceof \stdClass) {
+                Logger::warning('【AI plugin】 OpenAI互換 API が有効な JSON オブジェクトを返しませんでした', [
+                    'model' => $request->model,
+                    'finishReason' => $finishReason,
+                    'jsonError' => json_last_error_msg(),
+                ]);
+                return new GenerationResult(
+                    null,
+                    $raw,
+                    null,
+                    $finishReason,
+                    $this->usageFromResponse($raw),
+                    'AI から有効な形式のデータを取得できませんでした。再試行してください。'
+                );
+            }
+        }
+
         // エラーではないが本文が取れないケース。原因切り分けのためモデルと終了理由を残す。
         if ($text === null || $text === '') {
             Logger::warning('【AI plugin】 OpenAI互換 API から本文を取得できませんでした', [
                 'model' => $request->model,
                 'finishReason' => $finishReason,
             ]);
+            return new GenerationResult(
+                null,
+                $raw,
+                null,
+                $finishReason,
+                $this->usageFromResponse($raw),
+                'AI から本文を取得できませんでした。時間をおいて再試行してください。'
+            );
         }
 
         // 継続トークンは返さない。単発生成（タイトル/タグ）に会話状態は不要で、
@@ -183,23 +217,33 @@ class OpenAiCompatProvider implements AiProvider, ModelListingProvider
 
         $assistantText = '';
         $rawBytes = '';
-        $sawEvent = false;
+        $sawAnyEvent = false;
+        $sawTerminalEvent = false;
         $parser = new ChatCompletionsStreamParser();
 
         $this->httpPostStream(
             $this->baseUrl . '/chat/completions',
             $this->baseHeaders(),
             $this->encode($payload),
-            function (string $bytes) use ($parser, $onEvent, &$assistantText, &$rawBytes, &$sawEvent, $request, $messages): void {
-                $rawBytes .= $bytes;
-                $parser->feed($bytes, function (StreamEvent $event) use ($onEvent, &$assistantText, &$sawEvent, $request, $messages): void {
-                    $sawEvent = true;
+            function (string $bytes) use ($parser, $onEvent, &$assistantText, &$rawBytes, &$sawAnyEvent, &$sawTerminalEvent, $request, $messages): void {
+                if (!$sawAnyEvent) {
+                    $rawBytes .= $bytes;
+                }
+                $parser->feed($bytes, function (StreamEvent $event) use ($onEvent, &$assistantText, &$sawAnyEvent, &$sawTerminalEvent, $request, $messages): void {
+                    $sawAnyEvent = true;
                     if ($event->type === StreamEvent::TYPE_DELTA) {
                         $assistantText .= $event->text ?? '';
                         $onEvent($event);
                         return;
                     }
                     if ($event->type === StreamEvent::TYPE_COMPLETED) {
+                        $sawTerminalEvent = true;
+                        if ($assistantText === '') {
+                            $onEvent(StreamEvent::error(
+                                'AI から本文を取得できませんでした。時間をおいて再試行してください。'
+                            ));
+                            return;
+                        }
                         // 完了時点で全履歴（送信メッセージ＋今回の応答）を保存し、
                         // 次リクエストで会話を継続するためのトークンを発行して差し替える。
                         $token = $this->conversationStore()->save(
@@ -209,6 +253,9 @@ class OpenAiCompatProvider implements AiProvider, ModelListingProvider
                         $onEvent(StreamEvent::completed($token));
                         return;
                     }
+                    if ($event->type === StreamEvent::TYPE_ERROR) {
+                        $sawTerminalEvent = true;
+                    }
                     $onEvent($event);
                 });
             }
@@ -216,13 +263,17 @@ class OpenAiCompatProvider implements AiProvider, ModelListingProvider
 
         // リクエスト不正（モデル名誤り等）のとき互換エンドポイントは SSE ではなく素の JSON エラーを返す。
         // その場合はイベントが 1 つも出ないため、受信全体をエラーとして解釈しフロントへ通知する。
-        if (!$sawEvent) {
+        if (!$sawTerminalEvent) {
             $decoded = json_decode($rawBytes);
             $error = ($decoded instanceof \stdClass && isset($decoded->error)) ? $decoded->error : null;
             if ($error !== null) {
                 Logger::error('【AI plugin】 OpenAI互換 API がエラーを返しました', $this->errorToContext($error));
             }
-            $onEvent(StreamEvent::error(OpenAiCompatErrorMessage::fromError($error)));
+            $onEvent(StreamEvent::error(
+                $error !== null
+                    ? OpenAiCompatErrorMessage::fromError($error)
+                    : 'AI からのストリーミング応答が途中で終了しました。再試行してください。'
+            ));
         }
     }
 
@@ -427,26 +478,6 @@ class OpenAiCompatProvider implements AiProvider, ModelListingProvider
     }
 
     /**
-     * /models の応答から利用可能モデル名の配列を取り出す。
-     *
-     * @return list<string>
-     */
-    private function modelsFromResponse(\stdClass $result): array
-    {
-        $models = [];
-        if (!isset($result->data) || !is_iterable($result->data)) {
-            return $models;
-        }
-        foreach ($result->data as $datum) {
-            if ($datum instanceof \stdClass && isset($datum->id) && is_string($datum->id) && $datum->id !== '') {
-                $models[] = $datum->id;
-            }
-        }
-
-        return $models;
-    }
-
-    /**
      * エラーオブジェクト（{ message, type, code }）をログ用の配列へ写す。
      * 認証情報（API キー等）は含まれないため、そのままログに残してよい。
      *
@@ -466,6 +497,25 @@ class OpenAiCompatProvider implements AiProvider, ModelListingProvider
             ],
             static fn($value): bool => $value !== null
         );
+    }
+
+    /** response_format だけが非対応と確認できる場合に限り、安全な 1 回だけの再試行を許可する。 */
+    private function isResponseFormatUnsupported(mixed $error): bool
+    {
+        if (!$error instanceof \stdClass) {
+            return false;
+        }
+
+        $param = isset($error->param) && is_string($error->param) ? strtolower($error->param) : '';
+        if ($param === 'response_format') {
+            return true;
+        }
+
+        $message = isset($error->message) && is_string($error->message) ? strtolower($error->message) : '';
+
+        return str_contains($message, 'response_format')
+            || str_contains($message, 'json_object')
+            || str_contains($message, 'json mode');
     }
 
     /**
@@ -505,6 +555,10 @@ class OpenAiCompatProvider implements AiProvider, ModelListingProvider
         }
         if (isset($parts['user']) || isset($parts['pass'])) {
             Logger::warning('【AI plugin】 OpenAI互換エンドポイント URL に認証情報は含められません', []);
+            return '';
+        }
+        if (isset($parts['query']) || isset($parts['fragment'])) {
+            Logger::warning('【AI plugin】 OpenAI互換エンドポイント URL にクエリやフラグメントは含められません', []);
             return '';
         }
 
@@ -592,32 +646,6 @@ class OpenAiCompatProvider implements AiProvider, ModelListingProvider
     }
 
     /**
-     * 互換エンドポイントへ GET し、レスポンスボディ（JSON 文字列）を返す。curl 依存の I/O 境界。
-     * テストではこのメソッドを差し替えて listModels() の解析・分岐を検証する。
-     *
-     * @param list<string> $headers
-     * @throws \Exception cURL 実行に失敗した場合
-     * @codeCoverageIgnore 実通信（curl）の I/O 境界。決定的なユニット検証ができないため実機/E2E で担保する。
-     */
-    protected function httpGetJson(string $url, array $headers): string
-    {
-        $ch = curl_init();
-        curl_setopt_array($ch, [
-            CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => $headers,
-            CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_TIMEOUT => 30,
-        ]);
-        $result = curl_exec($ch);
-        if (!is_string($result)) {
-            throw new \Exception('cURL Error: ' . curl_error($ch));
-        }
-
-        return $result;
-    }
-
-    /**
      * 互換エンドポイントへ POST し、レスポンスボディ（JSON 文字列）を返す。curl 依存の I/O 境界。
      * テストではこのメソッドを差し替えてリクエスト変換・レスポンス解析を検証する。
      *
@@ -633,9 +661,8 @@ class OpenAiCompatProvider implements AiProvider, ModelListingProvider
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_POSTFIELDS => $body,
-            CURLOPT_CONNECTTIMEOUT => 10,
-            // 重量級モデルの生成は分単位になり得るため長めに取る（無期限ハングだけを防ぐ）。
-            CURLOPT_TIMEOUT => 180,
+            CURLOPT_CONNECTTIMEOUT => self::CONNECT_TIMEOUT,
+            CURLOPT_TIMEOUT => self::REQUEST_TIMEOUT,
         ]);
         $result = curl_exec($ch);
         if (!is_string($result)) {
@@ -667,10 +694,10 @@ class OpenAiCompatProvider implements AiProvider, ModelListingProvider
                 $onBytes($data);
                 return strlen($data);
             },
-            CURLOPT_CONNECTTIMEOUT => 10,
-            // ストリーミングは総時間ではなく「停止」を検出して打ち切る（120秒間 1B/s 未満で中断）。
-            CURLOPT_LOW_SPEED_LIMIT => 1,
-            CURLOPT_LOW_SPEED_TIME => 120,
+            CURLOPT_CONNECTTIMEOUT => self::CONNECT_TIMEOUT,
+            // 総時間ではなく応答停止を検出し、長い生成は許容しながら無期限ハングを防ぐ。
+            CURLOPT_LOW_SPEED_LIMIT => self::STREAM_LOW_SPEED_LIMIT,
+            CURLOPT_LOW_SPEED_TIME => self::STREAM_LOW_SPEED_TIME,
         ]);
         curl_exec($ch);
 

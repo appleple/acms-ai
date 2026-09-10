@@ -7,7 +7,7 @@
   data 属性の \{ \} は、外側のレンダリングで変数として解決されないようエスケープが必須
   （未エスケープだと空になり title/tag の表示制御が効かなくなる）。
 -->
-<div id="js-acms-ai" data-title-enabled="\{title_enabled\}" data-tag-enabled="\{tag_enabled\}" style="display:none"></div>
+<div id="js-acms-ai" data-title-enabled="\{title_enabled\}" data-tag-enabled="\{tag_enabled\}" hidden></div>
 
 <link rel="stylesheet" href="%{AI_CSS}">
 <script crossorigin src="%{AI_JS}"></script>

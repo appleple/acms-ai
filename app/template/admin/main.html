@@ -27,7 +27,7 @@
       <div class="acms_fix_bg_index">
         <input
           type="submit"
-          name="ACMS_POST_Config"
+          name="ACMS_POST_AI_Config"
           value="<!--T-->保存<!--/T-->"
           class="acms-admin-btn-admin acms-admin-btn-admin-primary acms-admin-btn-admin-save js-saving-splash"
         />
@@ -67,7 +67,10 @@
         </th>
         <td>
           <!-- BEGIN_IF [%{AI_OPENAI_ORGANIZATION_ID_FROM_ENV}/eq/1] -->
-          <p class="acms-admin-text-helper">.env（ACMS_AI_OPENAI_ORGANIZATION_ID）で設定済みのため、ここでの入力は不要です。</p>
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->.env で設定済み<!-- /T --></span>
+          <p class="acms-admin-text-helper">ACMS_AI_OPENAI_ORGANIZATION_ID を使用します。保存するとDB上の旧値は削除されます。</p>
+          <input type="hidden" name="ai_organization_id" value="" />
+          <input type="hidden" name="config[]" value="ai_organization_id" />
           <!-- ELSE -->
           <input
             type="text"
@@ -87,7 +90,10 @@
         </th>
         <td>
           <!-- BEGIN_IF [%{AI_OPENAI_PROJECT_ID_FROM_ENV}/eq/1] -->
-          <p class="acms-admin-text-helper">.env（ACMS_AI_OPENAI_PROJECT_ID）で設定済みのため、ここでの入力は不要です。</p>
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->.env で設定済み<!-- /T --></span>
+          <p class="acms-admin-text-helper">ACMS_AI_OPENAI_PROJECT_ID を使用します。保存するとDB上の旧値は削除されます。</p>
+          <input type="hidden" name="ai_project_id" value="" />
+          <input type="hidden" name="config[]" value="ai_project_id" />
           <!-- ELSE -->
           <input
             type="text"
@@ -107,15 +113,35 @@
         </th>
         <td>
           <!-- BEGIN_IF [%{AI_OPENAI_API_KEY_FROM_ENV}/eq/1] -->
-          <p class="acms-admin-text-helper">.env（ACMS_AI_OPENAI_API_KEY）で設定済みのため、ここでの入力は不要です。</p>
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->.env で設定済み<!-- /T --></span>
+          <p class="acms-admin-text-helper">ACMS_AI_OPENAI_API_KEY を使用します。保存するとDB上の旧キーは削除されます。</p>
+          <input type="hidden" name="ai_api_key" value="" />
+          <input type="hidden" name="config[]" value="ai_api_key" />
+          <!-- ELSE -->
+          <!-- BEGIN_IF [{ai_api_key}/nem/] -->
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->設定済み<!-- /T --></span>
+          <input
+            type="password"
+            name="ai_api_key"
+            value=""
+            class="acms-admin-form-width-full acms-admin-margin-top-mini"
+            placeholder="変更する場合のみ新しい API KEY を入力（空欄なら現在のキーを維持）"
+            autocomplete="new-password"
+          />
+          <div class="acms-admin-form-checkbox acms-admin-margin-top-mini">
+            <input type="checkbox" name="ai_api_key_delete" value="on" id="input-checkbox-ai_api_key_delete" />
+            <label for="input-checkbox-ai_api_key_delete"><i class="acms-admin-ico-checkbox"></i><!-- T -->保存時にキーを削除する<!-- /T --></label>
+          </div>
           <!-- ELSE -->
           <input
-            type="text"
+            type="password"
             name="ai_api_key"
-            value="{ai_api_key}"
+            value=""
             class="acms-admin-form-width-full"
             placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
+            autocomplete="new-password"
           />
+          <!-- END_IF -->
           <input type="hidden" name="config[]" value="ai_api_key" />
           <!-- END_IF -->
         </td>
@@ -127,15 +153,35 @@
         </th>
         <td>
           <!-- BEGIN_IF [%{AI_ANTHROPIC_API_KEY_FROM_ENV}/eq/1] -->
-          <p class="acms-admin-text-helper">.env（ACMS_AI_ANTHROPIC_API_KEY）で設定済みのため、ここでの入力は不要です。</p>
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->.env で設定済み<!-- /T --></span>
+          <p class="acms-admin-text-helper">ACMS_AI_ANTHROPIC_API_KEY を使用します。保存するとDB上の旧キーは削除されます。</p>
+          <input type="hidden" name="ai_anthropic_api_key" value="" />
+          <input type="hidden" name="config[]" value="ai_anthropic_api_key" />
+          <!-- ELSE -->
+          <!-- BEGIN_IF [{ai_anthropic_api_key}/nem/] -->
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->設定済み<!-- /T --></span>
+          <input
+            type="password"
+            name="ai_anthropic_api_key"
+            value=""
+            class="acms-admin-form-width-full acms-admin-margin-top-mini"
+            placeholder="変更する場合のみ新しい API KEY を入力（空欄なら現在のキーを維持）"
+            autocomplete="new-password"
+          />
+          <div class="acms-admin-form-checkbox acms-admin-margin-top-mini">
+            <input type="checkbox" name="ai_anthropic_api_key_delete" value="on" id="input-checkbox-ai_anthropic_api_key_delete" />
+            <label for="input-checkbox-ai_anthropic_api_key_delete"><i class="acms-admin-ico-checkbox"></i><!-- T -->保存時にキーを削除する<!-- /T --></label>
+          </div>
           <!-- ELSE -->
           <input
-            type="text"
+            type="password"
             name="ai_anthropic_api_key"
-            value="{ai_anthropic_api_key}"
+            value=""
             class="acms-admin-form-width-full"
             placeholder="sk-ant-xxxxxxxxxxxxxxxxxxxxxxxx"
+            autocomplete="new-password"
           />
+          <!-- END_IF -->
           <input type="hidden" name="config[]" value="ai_anthropic_api_key" />
           <!-- END_IF -->
         </td>
@@ -147,15 +193,35 @@
         </th>
         <td>
           <!-- BEGIN_IF [%{AI_GEMINI_API_KEY_FROM_ENV}/eq/1] -->
-          <p class="acms-admin-text-helper">.env（ACMS_AI_GEMINI_API_KEY）で設定済みのため、ここでの入力は不要です。</p>
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->.env で設定済み<!-- /T --></span>
+          <p class="acms-admin-text-helper">ACMS_AI_GEMINI_API_KEY を使用します。保存するとDB上の旧キーは削除されます。</p>
+          <input type="hidden" name="ai_gemini_api_key" value="" />
+          <input type="hidden" name="config[]" value="ai_gemini_api_key" />
+          <!-- ELSE -->
+          <!-- BEGIN_IF [{ai_gemini_api_key}/nem/] -->
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->設定済み<!-- /T --></span>
+          <input
+            type="password"
+            name="ai_gemini_api_key"
+            value=""
+            class="acms-admin-form-width-full acms-admin-margin-top-mini"
+            placeholder="変更する場合のみ新しい API KEY を入力（空欄なら現在のキーを維持）"
+            autocomplete="new-password"
+          />
+          <div class="acms-admin-form-checkbox acms-admin-margin-top-mini">
+            <input type="checkbox" name="ai_gemini_api_key_delete" value="on" id="input-checkbox-ai_gemini_api_key_delete" />
+            <label for="input-checkbox-ai_gemini_api_key_delete"><i class="acms-admin-ico-checkbox"></i><!-- T -->保存時にキーを削除する<!-- /T --></label>
+          </div>
           <!-- ELSE -->
           <input
-            type="text"
+            type="password"
             name="ai_gemini_api_key"
-            value="{ai_gemini_api_key}"
+            value=""
             class="acms-admin-form-width-full"
             placeholder="AIzaXxxxxxxxxxxxxxxxxxxxxxxx"
+            autocomplete="new-password"
           />
+          <!-- END_IF -->
           <input type="hidden" name="config[]" value="ai_gemini_api_key" />
           <!-- END_IF -->
         </td>
@@ -167,15 +233,35 @@
         </th>
         <td>
           <!-- BEGIN_IF [%{AI_COMPAT_API_KEY_FROM_ENV}/eq/1] -->
-          <p class="acms-admin-text-helper">.env（ACMS_AI_SAKURA_API_KEY）で設定済みのため、ここでの入力は不要です。</p>
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->.env で設定済み<!-- /T --></span>
+          <p class="acms-admin-text-helper">ACMS_AI_COMPAT_API_KEY（または互換名 ACMS_AI_SAKURA_API_KEY）を使用します。保存するとDB上の旧キーは削除されます。</p>
+          <input type="hidden" name="ai_compat_api_key" value="" />
+          <input type="hidden" name="config[]" value="ai_compat_api_key" />
+          <!-- ELSE -->
+          <!-- BEGIN_IF [{ai_compat_api_key}/nem/] -->
+          <span class="acms-admin-label acms-admin-label-success"><!-- T -->設定済み<!-- /T --></span>
+          <input
+            type="password"
+            name="ai_compat_api_key"
+            value=""
+            class="acms-admin-form-width-full acms-admin-margin-top-mini"
+            placeholder="変更する場合のみ新しい API KEY を入力（空欄なら現在のキーを維持）"
+            autocomplete="new-password"
+          />
+          <div class="acms-admin-form-checkbox acms-admin-margin-top-mini">
+            <input type="checkbox" name="ai_compat_api_key_delete" value="on" id="input-checkbox-ai_compat_api_key_delete" />
+            <label for="input-checkbox-ai_compat_api_key_delete"><i class="acms-admin-ico-checkbox"></i><!-- T -->保存時にキーを削除する<!-- /T --></label>
+          </div>
           <!-- ELSE -->
           <input
-            type="text"
+            type="password"
             name="ai_compat_api_key"
-            value="{ai_compat_api_key}"
+            value=""
             class="acms-admin-form-width-full"
             placeholder="xxxxxxxxxxxxxxxxxxxxxxxx"
+            autocomplete="new-password"
           />
+          <!-- END_IF -->
           <input type="hidden" name="config[]" value="ai_compat_api_key" />
           <!-- END_IF -->
         </td>
@@ -183,16 +269,17 @@
       <tr>
         <th>
           <!-- T -->OpenAI互換 Base URL<!-- /T -->
-          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI互換エンドポイントの Base URL。空欄の場合はさくらのAI Engine（https://api.ai.sakura.ad.jp/v1）を使用します。"></i>
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI互換エンドポイント（例: https://api.ai.sakura.ad.jp/v1）を入力してください。空欄では例のURLを使用します。"></i>
         </th>
         <td>
           <input
-            type="text"
+            type="url"
             name="ai_compat_base_url"
             value="{ai_compat_base_url}"
             class="acms-admin-form-width-full"
             placeholder="https://api.ai.sakura.ad.jp/v1"
           />
+          <p class="acms-admin-text-helper">空欄の場合は、さくらのAI Engine のURLを使用します。</p>
           <input type="hidden" name="config[]" value="ai_compat_base_url" />
         </td>
       </tr>
@@ -200,12 +287,24 @@
       <tr>
         <th>
           <!-- T -->モデル<!-- /T -->
-          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="選択中のプロバイダで利用できるモデルが表示されます。"></i>
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="選択中のプロバイダに応じて、利用可能なモデルの選択またはモデル名の入力を行います。"></i>
         </th>
         <td>
           <!-- BEGIN_MODULE AI_Admin -->
           <!-- BEGIN_IF [{configured}/eq/false] -->
           <p>選択中のプロバイダの認証情報を保存してください。</p>
+          <!-- ELSE -->
+          <!-- BEGIN_IF [{manualModel}/eq/true] -->
+          <input
+            type="text"
+            name="ai_model"
+            value="{ai_model}"
+            class="acms-admin-form-width-full"
+            placeholder="例: gpt-oss-120b"
+            autocomplete="off"
+          />
+          <p class="acms-admin-text-helper">接続先で利用可能なチャットモデル名を入力してください。</p>
+          <input type="hidden" name="config[]" value="ai_model" />
           <!-- ELSE -->
           <!-- BEGIN_IF [{authorized}/eq/false] -->
           <p>認証に失敗または、API KEY に使用できるモデルがない可能性があります。</p>
@@ -222,34 +321,6 @@
           </select>
           <input type="hidden" name="config[]" value="ai_model" />
           <!-- END_IF -->
-          <!-- END_IF -->
-          <!-- END_MODULE AI_Admin -->
-        </td>
-      </tr>
-      <tr>
-        <th>
-          <!-- T -->画像解析モデル<!-- /T -->
-          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="メディアの画像解析（AI生成）で使うモデル。未選択の場合は上のモデルを使用します。"></i>
-        </th>
-        <td>
-          <!-- BEGIN_MODULE AI_Admin -->
-          <!-- BEGIN_IF [{configured}/eq/false] -->
-          <p>選択中のプロバイダの認証情報を保存してください。</p>
-          <!-- ELSE -->
-          <!-- BEGIN_IF [{authorized}/eq/false] -->
-          <p>認証に失敗または、API KEY に使用できるモデルがない可能性があります。</p>
-          <!-- ELSE -->
-          <select name="ai_vision_model" class="acms-admin-form-width-full">
-            <option value="">---（通常モデルと同じ）</option>
-            <!-- BEGIN model:loop -->
-            <option
-              value="{model}"
-              <!-- BEGIN_IF [{model}/eq/{vision_model_cur}] -->selected<!-- END_IF -->>
-              {model}
-            </option>
-            <!-- END model:loop -->
-          </select>
-          <input type="hidden" name="config[]" value="ai_vision_model" />
           <!-- END_IF -->
           <!-- END_IF -->
           <!-- END_MODULE AI_Admin -->
@@ -269,16 +340,16 @@
             <div class="acms-admin-form-checkbox">
               <input
                 type="checkbox"
-                name="ai_title_valid[]"
-                {ai_title_valid:checked#on}
-                id="input-checkbox-ai_title_valid-on"
+                name="ai_title_enabled[]"
+                {ai_title_enabled:checked#on}
+                id="input-checkbox-ai_title_enabled-on"
                 value="on" />
-              <label for="input-checkbox-ai_title_valid-on"><i class="acms-admin-ico-checkbox"></i>有効</label>
+              <label for="input-checkbox-ai_title_enabled-on"><i class="acms-admin-ico-checkbox"></i>有効</label>
               <p class="acms-admin-text-helper acms-admin-margin-top-mini">
                 有効にすることで、以下のテキストエリアに入力したプロンプトをもとに、記事タイトルの候補をAIが生成します。
               </p>
             </div>
-            <input type="hidden" name="config[]" value="ai_title_valid" />
+            <input type="hidden" name="config[]" value="ai_title_enabled" />
           </td>
         </tr>
         <tr>
@@ -292,13 +363,13 @@
           <th><!-- T -->タグ<!-- /T --></th>
           <td>
             <div class="acms-admin-form-checkbox">
-              <input type="checkbox" name="ai_tag_valid[]" {ai_tag_valid:checked#on} id="input-checkbox-ai_tag_valid-on" value="on" />
-              <label for="input-checkbox-ai_tag_valid-on"><i class="acms-admin-ico-checkbox"></i>有効</label>
+              <input type="checkbox" name="ai_tag_enabled[]" {ai_tag_enabled:checked#on} id="input-checkbox-ai_tag_enabled-on" value="on" />
+              <label for="input-checkbox-ai_tag_enabled-on"><i class="acms-admin-ico-checkbox"></i>有効</label>
               <p class="acms-admin-text-helper acms-admin-margin-top-mini">
                 有効にすることで、以下のテキストエリアに入力したプロンプトをもとに、記事タグの候補をAIが生成します。
               </p>
             </div>
-            <input type="hidden" name="config[]" value="ai_tag_valid" />
+            <input type="hidden" name="config[]" value="ai_tag_enabled" />
           </td>
         </tr>
         <tr>
@@ -306,146 +377,6 @@
           <td>
             <textarea name="ai_tag_prompt" class="acms-admin-form-width-full">{ai_tag_prompt}</textarea>
             <input type="hidden" name="config[]" value="ai_tag_prompt" />
-          </td>
-        </tr>
-      </tbody>
-    </table>
-
-    <h2 class="acms-admin-admin-title2"><!-- T -->メディア プロンプト設定<!-- /T --></h2>
-    <table class="acms-admin-table-admin-edit">
-      <tbody>
-        <tr>
-          <th><!-- T -->メディアAI生成<!-- /T --></th>
-          <td>
-            <div class="acms-admin-form-checkbox">
-              <input
-                type="checkbox"
-                name="ai_vision_valid[]"
-                {ai_vision_valid:checked#on}
-                id="input-checkbox-ai_vision_valid-on"
-                value="on" />
-              <label for="input-checkbox-ai_vision_valid-on"><i class="acms-admin-ico-checkbox"></i>有効</label>
-              <p class="acms-admin-text-helper acms-admin-margin-top-mini">
-                有効にすることで、メディア管理画面に「AI生成」ボタンが表示され、画像から以下の各フィールドを生成できます。
-              </p>
-            </div>
-            <input type="hidden" name="config[]" value="ai_vision_valid" />
-          </td>
-        </tr>
-        <tr>
-          <th><!-- T -->システムプロンプト<!-- /T --></th>
-          <td>
-            <textarea
-              name="ai_vision_system_prompt"
-              class="acms-admin-form-width-full"
-              placeholder="空欄の場合は既定のプロンプトを使用します"
-            >{ai_vision_system_prompt}</textarea>
-            <input type="hidden" name="config[]" value="ai_vision_system_prompt" />
-          </td>
-        </tr>
-        <tr>
-          <th><!-- T -->代替テキスト<!-- /T --></th>
-          <td>
-            <div class="acms-admin-form-checkbox">
-              <input
-                type="checkbox"
-                name="ai_vision_valid_alt[]"
-                {ai_vision_valid_alt:checked#on}
-                id="input-checkbox-ai_vision_valid_alt-on"
-                value="on" />
-              <label for="input-checkbox-ai_vision_valid_alt-on"><i class="acms-admin-ico-checkbox"></i>有効</label>
-            </div>
-            <input type="hidden" name="config[]" value="ai_vision_valid_alt" />
-            <textarea
-              name="ai_vision_prompt_alt"
-              class="acms-admin-form-width-full acms-admin-margin-top-mini"
-              placeholder="空欄の場合は既定のプロンプトを使用します"
-            >{ai_vision_prompt_alt}</textarea>
-            <input type="hidden" name="config[]" value="ai_vision_prompt_alt" />
-          </td>
-        </tr>
-        <tr>
-          <th><!-- T -->キャプション<!-- /T --></th>
-          <td>
-            <div class="acms-admin-form-checkbox">
-              <input
-                type="checkbox"
-                name="ai_vision_valid_caption[]"
-                {ai_vision_valid_caption:checked#on}
-                id="input-checkbox-ai_vision_valid_caption-on"
-                value="on" />
-              <label for="input-checkbox-ai_vision_valid_caption-on"><i class="acms-admin-ico-checkbox"></i>有効</label>
-            </div>
-            <input type="hidden" name="config[]" value="ai_vision_valid_caption" />
-            <textarea
-              name="ai_vision_prompt_caption"
-              class="acms-admin-form-width-full acms-admin-margin-top-mini"
-              placeholder="空欄の場合は既定のプロンプトを使用します"
-            >{ai_vision_prompt_caption}</textarea>
-            <input type="hidden" name="config[]" value="ai_vision_prompt_caption" />
-          </td>
-        </tr>
-        <tr>
-          <th><!-- T -->メモ<!-- /T --></th>
-          <td>
-            <div class="acms-admin-form-checkbox">
-              <input
-                type="checkbox"
-                name="ai_vision_valid_memo[]"
-                {ai_vision_valid_memo:checked#on}
-                id="input-checkbox-ai_vision_valid_memo-on"
-                value="on" />
-              <label for="input-checkbox-ai_vision_valid_memo-on"><i class="acms-admin-ico-checkbox"></i>有効</label>
-            </div>
-            <input type="hidden" name="config[]" value="ai_vision_valid_memo" />
-            <textarea
-              name="ai_vision_prompt_memo"
-              class="acms-admin-form-width-full acms-admin-margin-top-mini"
-              placeholder="空欄の場合は既定のプロンプトを使用します"
-            >{ai_vision_prompt_memo}</textarea>
-            <input type="hidden" name="config[]" value="ai_vision_prompt_memo" />
-          </td>
-        </tr>
-        <tr>
-          <th><!-- T -->ファイル名<!-- /T --></th>
-          <td>
-            <div class="acms-admin-form-checkbox">
-              <input
-                type="checkbox"
-                name="ai_vision_valid_filename[]"
-                {ai_vision_valid_filename:checked#on}
-                id="input-checkbox-ai_vision_valid_filename-on"
-                value="on" />
-              <label for="input-checkbox-ai_vision_valid_filename-on"><i class="acms-admin-ico-checkbox"></i>有効</label>
-            </div>
-            <input type="hidden" name="config[]" value="ai_vision_valid_filename" />
-            <textarea
-              name="ai_vision_prompt_filename"
-              class="acms-admin-form-width-full acms-admin-margin-top-mini"
-              placeholder="空欄の場合は既定のプロンプトを使用します"
-            >{ai_vision_prompt_filename}</textarea>
-            <input type="hidden" name="config[]" value="ai_vision_prompt_filename" />
-          </td>
-        </tr>
-        <tr>
-          <th><!-- T -->タグ<!-- /T --></th>
-          <td>
-            <div class="acms-admin-form-checkbox">
-              <input
-                type="checkbox"
-                name="ai_vision_valid_tags[]"
-                {ai_vision_valid_tags:checked#on}
-                id="input-checkbox-ai_vision_valid_tags-on"
-                value="on" />
-              <label for="input-checkbox-ai_vision_valid_tags-on"><i class="acms-admin-ico-checkbox"></i>有効</label>
-            </div>
-            <input type="hidden" name="config[]" value="ai_vision_valid_tags" />
-            <textarea
-              name="ai_vision_prompt_tags"
-              class="acms-admin-form-width-full acms-admin-margin-top-mini"
-              placeholder="空欄の場合は既定のプロンプトを使用します"
-            >{ai_vision_prompt_tags}</textarea>
-            <input type="hidden" name="config[]" value="ai_vision_prompt_tags" />
           </td>
         </tr>
       </tbody>

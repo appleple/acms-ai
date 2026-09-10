@@ -14,14 +14,25 @@ namespace Acms\Plugins\AI\Services\AI;
  */
 final class EnvCredential
 {
+    /** @var array<string, list<string>> config キーごとの環境変数名（先頭を優先する）。 */
+    private const CONFIG_ENV_KEYS = [
+        'ai_api_key' => ['ACMS_AI_OPENAI_API_KEY'],
+        'ai_organization_id' => ['ACMS_AI_OPENAI_ORGANIZATION_ID'],
+        'ai_project_id' => ['ACMS_AI_OPENAI_PROJECT_ID'],
+        'ai_anthropic_api_key' => ['ACMS_AI_ANTHROPIC_API_KEY'],
+        'ai_gemini_api_key' => ['ACMS_AI_GEMINI_API_KEY'],
+        'ai_compat_api_key' => ['ACMS_AI_COMPAT_API_KEY', 'ACMS_AI_SAKURA_API_KEY'],
+    ];
+
     /**
      * 環境変数の値を返す。未設定・空なら $fallback（通常は config の値）を返す。
      */
     public static function get(string $envKey, string $fallback = ''): string
     {
         $value = $_ENV[$envKey] ?? '';
+        $value = is_string($value) ? trim($value) : '';
 
-        return is_string($value) && $value !== '' ? $value : $fallback;
+        return $value !== '' ? $value : $fallback;
     }
 
     /**
@@ -29,8 +40,29 @@ final class EnvCredential
      */
     public static function isSet(string $envKey): bool
     {
-        $value = $_ENV[$envKey] ?? '';
+        return self::get($envKey) !== '';
+    }
 
-        return is_string($value) && $value !== '';
+    /**
+     * config キーに対応する環境変数を優先順に解決する。
+     */
+    public static function getForConfig(string $configKey, string $fallback = ''): string
+    {
+        foreach (self::CONFIG_ENV_KEYS[$configKey] ?? [] as $envKey) {
+            $value = self::get($envKey);
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return $fallback;
+    }
+
+    /**
+     * config キーに対応する環境変数が1つ以上設定されているか。
+     */
+    public static function isSetForConfig(string $configKey): bool
+    {
+        return self::getForConfig($configKey) !== '';
     }
 }

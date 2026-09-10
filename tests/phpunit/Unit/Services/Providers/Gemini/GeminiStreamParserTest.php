@@ -77,6 +77,35 @@ final class GeminiStreamParserTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('promptFeedback のブロックは completed ではなく error を返す')]
+    public function promptBlockEmitsError(): void
+    {
+        $events = $this->feedAll([
+            "data: {\"promptFeedback\":{\"blockReason\":\"SAFETY\"}}\n\n",
+        ]);
+
+        self::assertCount(1, $events);
+        self::assertSame(StreamEvent::TYPE_ERROR, $events[0]->type);
+        self::assertIsString($events[0]->message);
+        self::assertStringContainsString('ブロック', $events[0]->message);
+    }
+
+    #[Test]
+    #[TestDox('MAX_TOKENS は completed ではなく error を返し、以後のチャンクを無視する')]
+    public function nonStopFinishReasonEmitsErrorAndTerminates(): void
+    {
+        $events = $this->feedAll([
+            "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"不完全\"}]},\"finishReason\":\"MAX_TOKENS\"}]}\n\n",
+            "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"無視\"}]},\"finishReason\":\"STOP\"}]}\n\n",
+        ]);
+
+        self::assertCount(1, $events);
+        self::assertSame(StreamEvent::TYPE_ERROR, $events[0]->type);
+        self::assertIsString($events[0]->message);
+        self::assertStringContainsString('出力上限', $events[0]->message);
+    }
+
+    #[Test]
     #[TestDox('SSE 行がチャンク境界で分断されても正しく復元する')]
     public function reassemblesChunkedLines(): void
     {

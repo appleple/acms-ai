@@ -16,7 +16,6 @@ use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
 use Acms\Plugins\AI\Services\AI\Contracts\TokenUsage;
 use Acms\Plugins\AI\Services\AI\Conversation\ConversationStore;
 use Acms\Plugins\AI\Services\AI\EnvCredential;
-use Acms\Plugins\AI\Services\AI\Vision\DataUrl;
 use Acms\Services\Facades\Common;
 use Acms\Services\Facades\Logger;
 use Field;
@@ -26,7 +25,7 @@ use Field;
  *
  * プロバイダ非依存の {@see GenerationRequest} を generateContent のペイロードへ変換する処理を内包する。
  * Gemini 固有のワイヤ形状（x-goog-api-key ヘッダー、contents/parts、role=model、systemInstruction、
- * responseSchema、SSE チャンク形状、/v1beta/models 応答）はすべてこのクラス配下（本クラスと
+ * responseJsonSchema、SSE チャンク形状、/v1beta/models 応答）はすべてこのクラス配下（本クラスと
  * {@see GeminiStreamParser} / {@see GeminiErrorMessage}）に閉じる。
  *
  * 認証はキーを URL クエリではなく x-goog-api-key ヘッダーで送る（アクセスログ等へ API キーが
@@ -36,9 +35,12 @@ use Field;
  * {@see ConversationStore} で履歴を復元・保存してプロバイダ内部で吸収する
  * （docs/adding-a-provider.md「会話継続トークンの扱い」参照）。
  *
- * 構造化出力: generationConfig の responseMimeType=application/json と responseSchema で
- * ネイティブに強制する。Gemini のスキーマは OpenAPI 由来のサブセット（type が大文字・
- * additionalProperties 非対応）のため、JSON Schema からの変換をここで吸収する。
+ * 構造化出力: generationConfig の responseMimeType=application/json と responseJsonSchema で
+ * ネイティブに強制する。プロバイダ非依存契約の JSON Schema を欠落なく渡す。
+ *
+ * 画像入力は、共通契約が URL しか保持せず、Gemini の generateContent API ではインラインデータへの
+ * 変換にサーバー側取得が必要になるため提供しない。任意 URL の取得は SSRF・容量超過を招くので、
+ * 信頼済みバイナリを表現できる共通契約が追加されるまでは Text/Structured/Streaming に限定する。
  */
 class GeminiProvider implements AiProvider, ModelListingProvider
 {
@@ -46,8 +48,13 @@ class GeminiProvider implements AiProvider, ModelListingProvider
 
     /** API キーを供給できる環境変数名（.env）。設定されていれば config より優先する。 */
     public const ENV_API_KEY = 'ACMS_AI_GEMINI_API_KEY';
-
     private const BASE = 'https://generativelanguage.googleapis.com/v1beta';
+
+    private const CONNECT_TIMEOUT = 10;
+    private const REQUEST_TIMEOUT = 180;
+    private const MODEL_LIST_TIMEOUT = 30;
+    private const STREAM_LOW_SPEED_LIMIT = 1;
+    private const STREAM_LOW_SPEED_TIME = 120;
 
     public function __construct(
         private readonly Credentials $credentials,
@@ -56,13 +63,13 @@ class GeminiProvider implements AiProvider, ModelListingProvider
     }
 
     /**
-     * config（`ai_gemini_api_key`）から生成する。環境変数（{@see self::ENV_API_KEY}）が
-     * 設定されていればそちらを優先する。モデルはリクエストごとに与えられるためここでは読まない。
+     * config（`ai_gemini_api_key`）から生成する。環境変数があればそちらを優先する。
+     * モデルはリクエストごとに与えられるためここでは読まない。
      */
     public static function fromConfig(Field $config): self
     {
         return new self(new Credentials(
-            EnvCredential::get(self::ENV_API_KEY, $config->get('ai_gemini_api_key'))
+            EnvCredential::getForConfig('ai_gemini_api_key', $config->get('ai_gemini_api_key'))
         ));
     }
 
@@ -76,7 +83,6 @@ class GeminiProvider implements AiProvider, ModelListingProvider
         return in_array($capability, [
             Capability::TextGeneration,
             Capability::StructuredOutput,
-            Capability::VisionInput,
             Capability::Streaming,
         ], true);
     }
@@ -122,25 +128,62 @@ class GeminiProvider implements AiProvider, ModelListingProvider
     {
         $payload = $this->buildPayload($request);
         $url = self::BASE . '/models/' . rawurlencode($request->model) . ':generateContent';
-        $raw = json_decode($this->httpPostJson($url, $this->baseHeaders(), $this->encode($payload)));
+        $responseBody = $this->httpPostJson($url, $this->baseHeaders(), $this->encode($payload));
+        $raw = json_decode($responseBody);
+
+        if (json_last_error() !== JSON_ERROR_NONE || !$raw instanceof \stdClass) {
+            Logger::error('【AI plugin】 Gemini API の応答を解析できませんでした', [
+                'model' => $request->model,
+                'jsonError' => json_last_error_msg(),
+            ]);
+            return new GenerationResult(
+                null,
+                $raw,
+                errorMessage: 'AI からの応答を解析できませんでした。時間をおいて再試行してください。'
+            );
+        }
 
         // Gemini はエラー時に { error: { code, message, status } } を返す。
         // エラーの実体をログに残し、原因を運用ログから追えるようにする。
-        if ($raw instanceof \stdClass && isset($raw->error)) {
+        if (isset($raw->error)) {
             Logger::error('【AI plugin】 Gemini API がエラーを返しました', $this->errorToContext($raw->error));
             return new GenerationResult(null, $raw, errorMessage: GeminiErrorMessage::fromError($raw->error));
         }
 
         $text = $this->extractText($raw);
         $finishReason = $this->finishReason($raw);
+        $responseError = GeminiErrorMessage::fromResponse($raw);
 
-        // エラーではないが本文が取れないケース（セーフティブロック・空出力など）。原因切り分けのため
-        // モデルと終了理由を残す。
+        if ($responseError !== null) {
+            Logger::warning('【AI plugin】 Gemini API が生成を完了できませんでした', [
+                'model' => $request->model,
+                'finishReason' => $finishReason,
+                'promptBlockReason' => $this->promptBlockReason($raw),
+            ]);
+            return new GenerationResult(
+                null,
+                $raw,
+                null,
+                $finishReason,
+                $this->usageFromResponse($raw),
+                $responseError,
+            );
+        }
+
+        // 正常終了なのに本文が無い場合も成功にしない。消費側が無反応になるのを防ぐ。
         if ($text === null || $text === '') {
             Logger::warning('【AI plugin】 Gemini API から本文を取得できませんでした', [
                 'model' => $request->model,
                 'finishReason' => $finishReason,
             ]);
+            return new GenerationResult(
+                null,
+                $raw,
+                null,
+                $finishReason,
+                $this->usageFromResponse($raw),
+                'AI から本文を取得できませんでした。時間をおいて再試行してください。',
+            );
         }
 
         // 継続トークンは返さない。単発生成（タイトル/タグ）に会話状態は不要で、
@@ -157,23 +200,33 @@ class GeminiProvider implements AiProvider, ModelListingProvider
 
         $assistantText = '';
         $rawBytes = '';
-        $sawEvent = false;
+        $sawAnyEvent = false;
+        $sawTerminalEvent = false;
         $parser = new GeminiStreamParser();
 
         $this->httpPostStream(
             $url,
             $this->baseHeaders(),
             $this->encode($payload),
-            function (string $bytes) use ($parser, $onEvent, &$assistantText, &$rawBytes, &$sawEvent, $request, $messages): void {
-                $rawBytes .= $bytes;
-                $parser->feed($bytes, function (StreamEvent $event) use ($onEvent, &$assistantText, &$sawEvent, $request, $messages): void {
-                    $sawEvent = true;
+            function (string $bytes) use ($parser, $onEvent, &$assistantText, &$rawBytes, &$sawAnyEvent, &$sawTerminalEvent, $request, $messages): void {
+                if (!$sawAnyEvent) {
+                    $rawBytes .= $bytes;
+                }
+                $parser->feed($bytes, function (StreamEvent $event) use ($onEvent, &$assistantText, &$sawAnyEvent, &$sawTerminalEvent, $request, $messages): void {
+                    $sawAnyEvent = true;
                     if ($event->type === StreamEvent::TYPE_DELTA) {
                         $assistantText .= $event->text ?? '';
                         $onEvent($event);
                         return;
                     }
                     if ($event->type === StreamEvent::TYPE_COMPLETED) {
+                        $sawTerminalEvent = true;
+                        if ($assistantText === '') {
+                            $onEvent(StreamEvent::error(
+                                'AI から本文を取得できませんでした。時間をおいて再試行してください。'
+                            ));
+                            return;
+                        }
                         // 完了時点で全履歴（送信メッセージ＋今回の応答）を保存し、
                         // 次リクエストで会話を継続するためのトークンを発行して差し替える。
                         $token = $this->conversationStore()->save(
@@ -183,6 +236,9 @@ class GeminiProvider implements AiProvider, ModelListingProvider
                         $onEvent(StreamEvent::completed($token));
                         return;
                     }
+                    if ($event->type === StreamEvent::TYPE_ERROR) {
+                        $sawTerminalEvent = true;
+                    }
                     $onEvent($event);
                 });
             }
@@ -190,13 +246,17 @@ class GeminiProvider implements AiProvider, ModelListingProvider
 
         // リクエスト不正（モデル名誤り等）のとき Gemini は SSE ではなく素の JSON エラーを返す。
         // その場合はイベントが 1 つも出ないため、受信全体をエラーとして解釈しフロントへ通知する。
-        if (!$sawEvent) {
+        if (!$sawTerminalEvent) {
             $decoded = json_decode($rawBytes);
             $error = ($decoded instanceof \stdClass && isset($decoded->error)) ? $decoded->error : null;
             if ($error !== null) {
                 Logger::error('【AI plugin】 Gemini API がエラーを返しました', $this->errorToContext($error));
             }
-            $onEvent(StreamEvent::error(GeminiErrorMessage::fromError($error)));
+            $onEvent(StreamEvent::error(
+                $error !== null
+                    ? GeminiErrorMessage::fromError($error)
+                    : 'AI からのストリーミング応答が途中で終了しました。再試行してください。'
+            ));
         }
     }
 
@@ -232,10 +292,10 @@ class GeminiProvider implements AiProvider, ModelListingProvider
         }
 
         if ($request->outputSchema !== null) {
-            // ネイティブの構造化出力。responseSchema は OpenAPI 由来のサブセットのため変換する。
+            // JSON Schema を受け取る現行フィールドを使い、additionalProperties 等の制約も保持する。
             $payload['generationConfig'] = [
                 'responseMimeType' => 'application/json',
-                'responseSchema' => $this->toGeminiSchema($request->outputSchema),
+                'responseJsonSchema' => $request->outputSchema,
             ];
         }
 
@@ -244,9 +304,7 @@ class GeminiProvider implements AiProvider, ModelListingProvider
 
     /**
      * 1 メッセージ分のコンテンツ断片を generateContent の parts 配列へ変換する。
-     * テキストは text パートに、画像は inlineData（base64）パートに振り分ける。
-     * 画像が data URL（サーバー側で取得済みのメディア画像など）ならそのまま分解し、
-     * 通常の URL なら取得して base64 化する（Gemini は任意 URL の直接参照に対応しないため）。
+     * 現在はテキストだけを扱う。画像 URL はサーバー側で安全に取得できる共通契約が無いため拒否する。
      *
      * @return list<array<string, mixed>>
      */
@@ -255,66 +313,12 @@ class GeminiProvider implements AiProvider, ModelListingProvider
         $parts = [];
         foreach ($message->parts as $part) {
             if ($part->type === ContentPart::TYPE_IMAGE) {
-                $inline = DataUrl::parse($part->value) ?? $this->fetchInlineImage($part->value);
-                if ($inline === null) {
-                    throw new \RuntimeException('画像を取得できませんでした: ' . $part->value);
-                }
-                $parts[] = ['inlineData' => ['mimeType' => $inline['mimeType'], 'data' => $inline['data']]];
-                continue;
+                throw new \RuntimeException('Gemini プロバイダは画像 URL 入力に対応していません。');
             }
             $parts[] = ['text' => $part->value];
         }
 
         return $parts;
-    }
-
-    /**
-     * JSON Schema を Gemini の responseSchema（OpenAPI 由来のサブセット）へ変換する。
-     * type は大文字へ、未対応のキー（additionalProperties 等）は落とす。
-     *
-     * @param array<string, mixed> $schema
-     * @return array<string, mixed>
-     */
-    private function toGeminiSchema(array $schema): array
-    {
-        $converted = [];
-        foreach ($schema as $key => $value) {
-            switch ($key) {
-                case 'type':
-                    if (is_string($value)) {
-                        $converted['type'] = strtoupper($value);
-                    }
-                    break;
-                case 'properties':
-                    if (is_array($value)) {
-                        $properties = [];
-                        foreach ($value as $name => $property) {
-                            if (is_array($property)) {
-                                $properties[$name] = $this->toGeminiSchema($property);
-                            }
-                        }
-                        $converted['properties'] = $properties;
-                    }
-                    break;
-                case 'items':
-                    if (is_array($value)) {
-                        $converted['items'] = $this->toGeminiSchema($value);
-                    }
-                    break;
-                case 'required':
-                case 'enum':
-                case 'description':
-                case 'format':
-                case 'nullable':
-                    $converted[$key] = $value;
-                    break;
-                default:
-                    // additionalProperties / strict など Gemini 非対応のキーは送らない。
-                    break;
-            }
-        }
-
-        return $converted;
     }
 
     /**
@@ -353,6 +357,21 @@ class GeminiProvider implements AiProvider, ModelListingProvider
         return $candidate->finishReason;
     }
 
+    private function promptBlockReason(mixed $raw): ?string
+    {
+        if (
+            !$raw instanceof \stdClass
+            || !isset($raw->promptFeedback)
+            || !$raw->promptFeedback instanceof \stdClass
+            || !isset($raw->promptFeedback->blockReason)
+            || !is_string($raw->promptFeedback->blockReason)
+        ) {
+            return null;
+        }
+
+        return $raw->promptFeedback->blockReason;
+    }
+
     private function firstCandidate(mixed $raw): ?\stdClass
     {
         if (
@@ -383,18 +402,34 @@ class GeminiProvider implements AiProvider, ModelListingProvider
             if (!$model instanceof \stdClass || !isset($model->name) || !is_string($model->name)) {
                 continue;
             }
-            if (isset($model->supportedGenerationMethods) && is_array($model->supportedGenerationMethods)) {
-                if (!in_array('generateContent', $model->supportedGenerationMethods, true)) {
-                    continue;
-                }
+            if (
+                !isset($model->supportedGenerationMethods)
+                || !is_array($model->supportedGenerationMethods)
+                || !in_array('generateContent', $model->supportedGenerationMethods, true)
+            ) {
+                continue;
             }
             $name = preg_replace('@\Amodels/@', '', $model->name);
-            if (is_string($name) && $name !== '') {
+            if (is_string($name) && $this->supportsStructuredOutputModel($name)) {
                 $models[] = $name;
             }
         }
 
         return $models;
+    }
+
+    /**
+     * 管理画面のモデル選択はタイトル・タグ生成にも使われるため、構造化出力対応モデルに限定する。
+     * Models API は構造化出力の能力を返さないので、Google の対応表にある 2.5 系と 3 系を許可し、
+     * 同じ generateContent を公開する画像生成・音声・Live 等の派生モデルは除外する。
+     */
+    private function supportsStructuredOutputModel(string $model): bool
+    {
+        if (preg_match('/\Agemini-(?:2\.5-(?:pro|flash(?:-lite)?)|3(?:\.\d+)?-(?:pro|flash(?:-lite)?))(?:-.+)?\z/', $model) !== 1) {
+            return false;
+        }
+
+        return preg_match('/(?:image|tts|audio|live|computer-use)/i', $model) !== 1;
     }
 
     /**
@@ -484,36 +519,6 @@ class GeminiProvider implements AiProvider, ModelListingProvider
     }
 
     /**
-     * 画像 URL を取得して inlineData 用の base64 へ変換する。取得できなければ null。
-     * curl 依存の I/O 境界。テストではこのメソッドを差し替える。
-     *
-     * @return array{mimeType: string, data: string}|null
-     * @codeCoverageIgnore 実通信（curl）の I/O 境界。決定的なユニット検証ができないため実機/E2E で担保する。
-     */
-    protected function fetchInlineImage(string $url): ?array
-    {
-        $ch = curl_init();
-        curl_setopt_array($ch, [
-            CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_MAXREDIRS => 3,
-            CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_TIMEOUT => 30,
-        ]);
-        $body = curl_exec($ch);
-        $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-        if (!is_string($body) || $body === '') {
-            return null;
-        }
-        $mimeType = is_string($contentType) && $contentType !== '' ? $contentType : 'application/octet-stream';
-        // "image/jpeg; charset=..." のようなパラメータ付きは MIME 部分だけを使う。
-        $mimeType = trim(explode(';', $mimeType)[0]);
-
-        return ['mimeType' => $mimeType, 'data' => base64_encode($body)];
-    }
-
-    /**
      * Gemini の API へ GET し、レスポンスボディ（JSON 文字列）を返す。curl 依存の I/O 境界。
      * テストではこのメソッドを差し替えて listModels() の解析・分岐を検証する。
      *
@@ -528,8 +533,8 @@ class GeminiProvider implements AiProvider, ModelListingProvider
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => $headers,
-            CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_TIMEOUT => 30,
+            CURLOPT_CONNECTTIMEOUT => self::CONNECT_TIMEOUT,
+            CURLOPT_TIMEOUT => self::MODEL_LIST_TIMEOUT,
         ]);
         $result = curl_exec($ch);
         if (!is_string($result)) {
@@ -555,9 +560,8 @@ class GeminiProvider implements AiProvider, ModelListingProvider
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_POSTFIELDS => $body,
-            CURLOPT_CONNECTTIMEOUT => 10,
-            // 重量級モデルの生成は分単位になり得るため長めに取る（無期限ハングだけを防ぐ）。
-            CURLOPT_TIMEOUT => 180,
+            CURLOPT_CONNECTTIMEOUT => self::CONNECT_TIMEOUT,
+            CURLOPT_TIMEOUT => self::REQUEST_TIMEOUT,
         ]);
         $result = curl_exec($ch);
         if (!is_string($result)) {
@@ -589,10 +593,10 @@ class GeminiProvider implements AiProvider, ModelListingProvider
                 $onBytes($data);
                 return strlen($data);
             },
-            CURLOPT_CONNECTTIMEOUT => 10,
-            // ストリーミングは総時間ではなく「停止」を検出して打ち切る（120秒間 1B/s 未満で中断）。
-            CURLOPT_LOW_SPEED_LIMIT => 1,
-            CURLOPT_LOW_SPEED_TIME => 120,
+            CURLOPT_CONNECTTIMEOUT => self::CONNECT_TIMEOUT,
+            // 総時間ではなく応答停止を検出し、長い生成は許容しながら無期限ハングを防ぐ。
+            CURLOPT_LOW_SPEED_LIMIT => self::STREAM_LOW_SPEED_LIMIT,
+            CURLOPT_LOW_SPEED_TIME => self::STREAM_LOW_SPEED_TIME,
         ]);
         curl_exec($ch);
 

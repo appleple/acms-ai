@@ -74,6 +74,19 @@ final class ChatCompletionsStreamParserTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('error の後に [DONE] が届いても completed は発行しない')]
+    public function errorTerminatesStream(): void
+    {
+        $events = $this->feedAll([
+            "data: {\"error\":{\"message\":\"rate limited\",\"type\":\"rate_limit_error\"}}\n\n"
+            . "data: [DONE]\n\n",
+        ]);
+
+        self::assertCount(1, $events);
+        self::assertSame(StreamEvent::TYPE_ERROR, $events[0]->type);
+    }
+
+    #[Test]
     #[TestDox('SSE 行がチャンク境界で分断されても正しく復元する')]
     public function reassemblesChunkedLines(): void
     {

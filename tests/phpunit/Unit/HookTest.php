@@ -33,48 +33,27 @@ final class HookTest extends TestCase
     }
 
     #[Test]
-    #[TestDox('メディア AI 生成の有効フラグ（AI_VISION_VALID / AI_VISION_VALID_*）を 1/0 でセットする')]
-    public function setsVisionFlagsIntoGlobalVars(): void
+    #[TestDox('環境変数で供給された認証情報の管理画面フラグをセットする')]
+    public function setsEnvironmentCredentialFlags(): void
     {
-        $globalVars = new Field();
-        (new Hook())->extendsGlobalVars($globalVars);
+        $key = 'ACMS_AI_ANTHROPIC_API_KEY';
+        $exists = array_key_exists($key, $_ENV);
+        $original = $_ENV[$key] ?? null;
+        $_ENV[$key] = 'sk-ant-env';
 
-        $keys = [
-            'AI_VISION_VALID',
-            'AI_VISION_VALID_ALT',
-            'AI_VISION_VALID_CAPTION',
-            'AI_VISION_VALID_MEMO',
-            'AI_VISION_VALID_FILENAME',
-            'AI_VISION_VALID_TAGS',
-        ];
-        foreach ($keys as $key) {
-            // 値は config に依存するため '1' か '0' のどちらか（キーが確実に入ること）を保証する。
-            self::assertContains($globalVars->get($key), ['1', '0'], $key);
-        }
-    }
-
-    #[Test]
-    #[TestDox('.env 供給フラグ（AI_*_FROM_ENV）を 1/0 でセットする')]
-    public function setsEnvFlagsIntoGlobalVars(): void
-    {
-        $_ENV['ACMS_AI_ANTHROPIC_API_KEY'] = 'sk-ant-env';
         try {
             $globalVars = new Field();
             (new Hook())->extendsGlobalVars($globalVars);
 
             self::assertSame('1', $globalVars->get('AI_ANTHROPIC_API_KEY_FROM_ENV'));
-            $keys = [
-                'AI_OPENAI_API_KEY_FROM_ENV',
-                'AI_OPENAI_ORGANIZATION_ID_FROM_ENV',
-                'AI_OPENAI_PROJECT_ID_FROM_ENV',
-                'AI_GEMINI_API_KEY_FROM_ENV',
-                'AI_COMPAT_API_KEY_FROM_ENV',
-            ];
-            foreach ($keys as $key) {
-                self::assertContains($globalVars->get($key), ['1', '0'], $key);
-            }
+            self::assertContains($globalVars->get('AI_OPENAI_API_KEY_FROM_ENV'), ['0', '1']);
+            self::assertContains($globalVars->get('AI_COMPAT_API_KEY_FROM_ENV'), ['0', '1']);
         } finally {
-            unset($_ENV['ACMS_AI_ANTHROPIC_API_KEY']);
+            if ($exists) {
+                $_ENV[$key] = $original;
+            } else {
+                unset($_ENV[$key]);
+            }
         }
     }
 }

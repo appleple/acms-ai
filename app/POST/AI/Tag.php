@@ -7,6 +7,7 @@ use Acms\Plugins\AI\POST\AIPostTrait;
 use Acms\Plugins\AI\Services\AI as ServiceAI;
 use Acms\Plugins\AI\Services\AI\Contracts\ContentPart;
 use Acms\Plugins\AI\Services\AI\Contracts\Message;
+use Acms\Plugins\AI\Services\AI\EntryAiSettings;
 
 /**
  * ACMS_POST_AI_Tag
@@ -55,17 +56,14 @@ class Tag extends ACMS_POST
 
         $serviceAI = new ServiceAI();
         $config = $serviceAI->getConfig();
+        $settings = new EntryAiSettings($config);
 
         // 「有効」設定はフロントの表示制御に加えて、直接 POST への防御として二重に検査する
-        if ($config->get('ai_tag_valid') === '') {
+        if (!$settings->tagEnabled()) {
             return $this->errorResponse('タグ生成は管理画面で有効化されていません。');
         }
 
-        // 保存済みプロンプト（既定値は config.system.yaml が供給。空なら内蔵既定へフォールバック）
-        $customPrompt = trim($config->get('ai_tag_prompt'));
-        if ($customPrompt === '') {
-            $customPrompt = 'Please answer in Japanese.';
-        }
+        $customPrompt = $settings->tagPrompt();
 
         $content = "Consider the tags for this article.\n\ncondition:\n{$customPrompt}\n"
             . "Please generate the linked tag without including the set tag.\n\n"

@@ -14,6 +14,18 @@ services:
       # テスト基盤（Bootstrap）が参照する本体ルート。
       ACMS_ROOT: /var/www/html
     volumes:
+      # 本体ルートを名前付きボリュームで永続化する。これがないと本体はコンテナのレイヤ上にしか
+      # 存在せず、インストーラーの成果物（.htaccess の生成・setup/ のリネーム・テーマの設定）が
+      # docker compose down で消える。DB だけ db-data に残るため、再起動するとインストーラーが
+      # 再表示される状態になる。ボリュームはイメージの /var/www/html から初回だけコピーされる。
+      - acms-html:/var/www/html
+      # イメージが VOLUME 宣言しているパス。明示しないと匿名ボリュームが割り当てられ、
+      # down のたびに孤児化して投稿画像やアップロードファイルが失われる。
+      - acms-archives:/var/www/html/archives
+      - acms-media:/var/www/html/media
+      - acms-private:/var/www/html/private
+      - acms-storage:/var/www/html/storage
+      - acms-cache:/var/www/html/cache
       # 本番コードは app/。プラグイン本体としてデプロイされる（PSR-4: Acms\Plugins\AI\ => app/）。
       - ./app:/var/www/html/extension/plugins/AI
       # リポジトリ全体（composer.json / tests/ / app/）。composer とテストはここから実行する。
@@ -36,5 +48,22 @@ services:
     volumes:
       - db-data:/var/lib/mysql
 
+# 本体ファイルと DB スキーマは a-blog cms のバージョンに依存するため、ボリューム名に
+# ACMS_IMAGE_TAG を含めてタグごとに分離する。こうしないとタグを切り替えても前のバージョンで
+# インストールした本体・DB を黙って使い回してしまう。
+# 初期状態へ戻す（インストーラーからやり直す）ときは `docker compose down -v`。
 volumes:
+  acms-html:
+    name: acms-ai-html-${ACMS_IMAGE_TAG:-3.2-php8.5}
+  acms-archives:
+    name: acms-ai-archives-${ACMS_IMAGE_TAG:-3.2-php8.5}
+  acms-media:
+    name: acms-ai-media-${ACMS_IMAGE_TAG:-3.2-php8.5}
+  acms-private:
+    name: acms-ai-private-${ACMS_IMAGE_TAG:-3.2-php8.5}
+  acms-storage:
+    name: acms-ai-storage-${ACMS_IMAGE_TAG:-3.2-php8.5}
+  acms-cache:
+    name: acms-ai-cache-${ACMS_IMAGE_TAG:-3.2-php8.5}
   db-data:
+    name: acms-ai-db-${ACMS_IMAGE_TAG:-3.2-php8.5}
