@@ -8,6 +8,26 @@ const DRAWER_MOUNT_ID = 'js-acms-ai-chat-drawer-container'
 const SILENT_MOUNT_ID = 'js-acms-ai-silent-chat-container'
 const LAYOUT_CLASS = 'acms-ai-drawer-layout'
 
+function findTextarea(selector: string, attributeName: 'target' | 'insert-target'): HTMLTextAreaElement | null {
+  let element: Element | null
+  try {
+    element = document.querySelector(selector)
+  } catch {
+    console.warn(`[acms-ai] invalid ${attributeName} selector: "${selector}".`)
+    return null
+  }
+
+  if (!(element instanceof HTMLTextAreaElement)) {
+    console.warn(
+      `[acms-ai] ${attributeName} textarea not found: "${selector}". ` +
+      `<acms-ai-assistant-button> の ${attributeName} 属性に、実在する textarea の CSS セレクターを指定してください。`
+    )
+    return null
+  }
+
+  return element
+}
+
 export function ensureDrawerMount(): ReactRootContainer | null {
   const existing = document.getElementById(DRAWER_MOUNT_ID)
   if (existing) return existing as ReactRootContainer
@@ -62,18 +82,17 @@ export function openChatDrawer(options: {
     onAfterInsert,
   } = options
 
-  const textarea = document.querySelector<HTMLTextAreaElement>(targetSelector)
+  const textarea = findTextarea(targetSelector, 'target')
   if (!textarea) {
-    console.warn(
-      `[acms-ai] target textarea not found: "${targetSelector}". ` +
-      '<acms-ai-assistant-button> の target 属性に、実在する textarea の CSS セレクターを指定してください。'
-    )
     return false
   }
 
   const insertTextarea = insertSelector
-    ? document.querySelector<HTMLTextAreaElement>(insertSelector) ?? undefined
+    ? findTextarea(insertSelector, 'insert-target') ?? undefined
     : undefined
+  if (insertSelector && !insertTextarea) {
+    return false
+  }
 
   if (!showDrawer) {
     if (!textarea.value.trim()) {

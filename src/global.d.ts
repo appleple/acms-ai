@@ -1,3 +1,5 @@
+import type { LiteEditorLike } from './features/chat/utils/lite-editor'
+
 declare global {
   interface Window {
     ACMS: {
@@ -13,7 +15,7 @@ declare global {
             label: string,
             group: string,
             action: string,
-            onClick:(editor: any) => void
+            onClick: (editor: LiteEditorLike) => void
           }[]
         }
       }

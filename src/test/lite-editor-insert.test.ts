@@ -2,8 +2,8 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import {
   getLiteEditorInitialContent,
   insertToLiteEditor,
-} from '../dispatch/dispatch-lite-editor-chat-drawer'
-import { insertToTextarea } from '../features/chat/utils/textarea-insert'
+} from '../features/chat/utils/lite-editor'
+import { brToNewline, insertToTextarea } from '../features/chat/utils/textarea-insert'
 
 function makeLiteEditor(options: {
   showSource: boolean
@@ -64,6 +64,19 @@ describe('LiteEditor AI assistant insertion', () => {
     })
 
     expect(getLiteEditorInitialContent(editor)).toBe('いまの本文\n次の行')
+  })
+
+  it('a-blog cmsのbr＋改行形式を二重改行にしない', () => {
+    expect(brToNewline('1行目<br>\n2行目<br />\r\n3行目')).toBe('1行目\n2行目\n3行目')
+  })
+
+  it('初期テキストのCRLFをLFへ正規化する', () => {
+    const { editor } = makeLiteEditor({
+      showSource: true,
+      sourceValue: '1行目\r\n2行目\r3行目',
+    })
+
+    expect(getLiteEditorInitialContent(editor)).toBe('1行目\n2行目\n3行目')
   })
 
   it('リッチ表示中は現在の編集DOMを初期テキストにする', () => {
@@ -155,6 +168,11 @@ describe('LiteEditor AI assistant insertion', () => {
 describe('plain textarea AI assistant insertion', () => {
   beforeEach(() => {
     document.body.innerHTML = ''
+    window.ACMS = {
+      Ready: vi.fn(),
+      Config: { root: '/' },
+      addListener: vi.fn(),
+    }
     Object.defineProperty(document, 'execCommand', {
       configurable: true,
       value: vi.fn((_command: string, _showUi: boolean, value: string) => {
@@ -201,5 +219,42 @@ describe('plain textarea AI assistant insertion', () => {
     insertToTextarea(textarea, undefined, '修正後\n本文')
 
     expect(textarea.value).toBe('修正後\n本文')
+  })
+
+  it('data属性で通常textareaへのraw改行挿入を明示できる', () => {
+    const textarea = makeTextarea()
+    textarea.dataset.acmsAiInsertFormat = 'plain'
+
+    insertToTextarea(textarea, undefined, '修正後\r\n本文')
+
+    expect(textarea.value).toBe('修正後\n本文')
+  })
+
+  it('data属性のhtml指定はsource系タグの自動判定より優先する', () => {
+    const textarea = makeTextarea('text_text_42')
+    textarea.dataset.acmsAiInsertFormat = 'html'
+    const select = document.createElement('select')
+    select.name = 'text_tag_42'
+    select.innerHTML = '<option value="markdown" selected>Markdown</option>'
+    document.body.appendChild(select)
+
+    insertToTextarea(textarea, undefined, '修正後\n本文')
+
+    expect(textarea.value).toBe('修正後<br />本文')
+  })
+
+  it('globalフラグ付きの上書き正規表現でも判定結果が呼び出しごとに変わらない', () => {
+    window.ACMS.Config.LiteEditorSourceModeTags = /markdown/g
+    const textarea = makeTextarea('text_text_42')
+    const select = document.createElement('select')
+    select.name = 'text_tag_42'
+    select.innerHTML = '<option value="markdown" selected>Markdown</option>'
+    document.body.appendChild(select)
+
+    insertToTextarea(textarea, undefined, '1行目\n2行目')
+    expect(textarea.value).toBe('1行目\n2行目')
+
+    insertToTextarea(textarea, undefined, '3行目\n4行目')
+    expect(textarea.value).toBe('3行目\n4行目')
   })
 })

@@ -1,6 +1,7 @@
 // テキストユニットの textarea は値に `<br />` を含んで保存される。
 // 表示用に改行へ、挿入時に再び `<br />` へ相互変換する。
-const BR_TAG_REGEX = /<br\s*\/?>/gi
+// a-blog cms の nl2br 形式（`<br>\n`）も、余分な空行を作らず1改行へ戻す。
+const BR_TAG_REGEX = /<br\s*\/?>\r?\n?/gi
 const TEXT_UNIT_SOURCE_MODE_TAGS = /^(ul|ol|dl|pre|blockquote|none|markdown|table|template|div)/
 
 export function brToNewline(value: string): string {
@@ -41,7 +42,11 @@ export function shouldPreserveTextareaNewlines(textarea: HTMLTextAreaElement): b
   if (!textUnitTag) return false
 
   const sourceModeTags = window.ACMS?.Config?.LiteEditorSourceModeTags ?? TEXT_UNIT_SOURCE_MODE_TAGS
-  return sourceModeTags.test(textUnitTag)
+  // 呼び出し側が global/sticky フラグ付きの正規表現を渡しても、lastIndex の状態を持ち越さない。
+  sourceModeTags.lastIndex = 0
+  const matches = sourceModeTags.test(textUnitTag)
+  sourceModeTags.lastIndex = 0
+  return matches
 }
 
 /**
