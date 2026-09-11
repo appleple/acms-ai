@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Acms\Plugins\AI\Services\AI;
 
+use Acms\Plugins\AI\Services\AI\Contracts\ContentPart;
+use Acms\Plugins\AI\Services\AI\Contracts\GenerationRequest;
+
 /**
  * AI 生成へ渡す入力サイズの上限を判定する。
  *
@@ -40,5 +43,34 @@ final class AiRequestInputLimit
         }
 
         return true;
+    }
+
+    /**
+     * instructions・継続ID・送信メッセージの文字列を、入口とプロバイダで同じ規則により合計する。
+     *
+     * @param list<\Acms\Plugins\AI\Services\AI\Contracts\Message>|null $messages
+     */
+    public function acceptsRequest(
+        GenerationRequest $request,
+        ?array $messages = null,
+        bool $includeContinuationToken = true,
+    ): bool {
+        $values = [];
+        if ($request->instructions !== null) {
+            $values[] = $request->instructions;
+        }
+        if ($includeContinuationToken && $request->continuationToken !== null) {
+            $values[] = $request->continuationToken;
+        }
+        foreach ($messages ?? $request->messages as $message) {
+            foreach ($message->parts as $part) {
+                // バイナリは MediaImageLoader の専用上限で検査済み。
+                if ($part->type !== ContentPart::TYPE_IMAGE_DATA) {
+                    $values[] = $part->value;
+                }
+            }
+        }
+
+        return $this->accepts(...$values);
     }
 }

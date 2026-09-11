@@ -215,8 +215,7 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
 
     public function streamText(GenerationRequest $request, callable $onEvent): void
     {
-        $history = $this->loadHistory($request->continuationToken);
-        $messages = [...$history, ...$request->messages];
+        $messages = $this->conversationStore()->messagesForRequest($request);
         $payload = $this->buildPayload($request, true, $messages);
 
         $assistantText = '';
@@ -293,11 +292,7 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
     private function buildPayload(GenerationRequest $request, bool $stream, ?array $messages = null): array
     {
         if ($messages === null) {
-            $messages = $request->messages;
-            if ($request->continuationToken !== null) {
-                // 非ストリーミングでも継続トークンが与えられたら履歴を復元して文脈を維持する。
-                $messages = [...$this->loadHistory($request->continuationToken), ...$messages];
-            }
+            $messages = $this->conversationStore()->messagesForRequest($request);
         }
 
         $apiMessages = [];
@@ -599,20 +594,6 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
         return json_decode(
             $this->httpPostJson($this->baseUrl . '/chat/completions', $this->baseHeaders(), $this->encode($payload))
         );
-    }
-
-    /**
-     * 継続トークンから履歴を復元する。トークンが無ければ空履歴。
-     *
-     * @return list<Message>
-     */
-    private function loadHistory(?string $token): array
-    {
-        if ($token === null || $token === '') {
-            return [];
-        }
-
-        return $this->conversationStore()->load($token);
     }
 
     private function conversationStore(): ConversationStore

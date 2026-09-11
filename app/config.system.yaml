@@ -42,7 +42,7 @@ ai_anthropic_allowed_models: ""
 ai_gemini_allowed_models: ""
 
 # AI生成POSTの悪用・誤操作による過剰なAPI消費を防ぐ
-# 入力上限はリクエスト内でAIへ渡す文字列の合計バイト数
+# instructions・継続ID・復元履歴を含む、AIへ渡す全メッセージ文字列の合計バイト数
 ai_request_max_input_bytes: 262144
 # ブログ・ログインユーザー単位。requests を 0 にするとレート制限を無効化
 ai_rate_limit_window_minutes: 1

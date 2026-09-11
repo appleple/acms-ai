@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Acms\Plugins\AI\Tests\Unit\Services\Conversation;
 
+use Acms\Plugins\AI\Services\AI\AiRequestInputLimit;
 use Acms\Plugins\AI\Services\AI\Contracts\ContentPart;
 use Acms\Plugins\AI\Services\AI\Contracts\Message;
 use Acms\Plugins\AI\Tests\Support\FakeConversationStore;
@@ -130,5 +131,33 @@ final class ConversationStoreTest extends TestCase
 
         self::assertNotSame([], $store->lifetimes);
         self::assertGreaterThan(0, $store->lifetimes[0]);
+    }
+
+    #[Test]
+    #[TestDox('保存JSONが入力上限を超える場合は古いメッセージから削る')]
+    public function capsSerializedHistoryBytesFromTheOldest(): void
+    {
+        $store = new FakeConversationStore(new AiRequestInputLimit(100));
+        $token = $store->save(null, [
+            Message::user(ContentPart::text(str_repeat('a', 60))),
+            Message::assistant(ContentPart::text(str_repeat('b', 60))),
+        ]);
+
+        $encoded = $store->storage['ai_conversation_' . $token];
+        self::assertLessThanOrEqual(100, strlen($encoded));
+        $history = $store->load($token);
+        self::assertCount(1, $history);
+        self::assertSame(str_repeat('b', 60), $history[0]->parts[0]->value);
+    }
+
+    #[Test]
+    #[TestDox('上限を超える旧形式キャッシュはJSON解析前に履歴なしとして扱う')]
+    public function rejectsOversizedLegacyCache(): void
+    {
+        $store = new FakeConversationStore(new AiRequestInputLimit(10));
+        $token = str_repeat('a', 32);
+        $store->storage['ai_conversation_' . $token] = str_repeat('x', 11);
+
+        self::assertSame([], $store->load($token));
     }
 }
