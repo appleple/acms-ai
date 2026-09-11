@@ -14,6 +14,7 @@ use Acms\Plugins\AI\Services\AI\Contracts\Message;
 use Acms\Plugins\AI\Services\AI\Contracts\ModelListingProvider;
 use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
 use Acms\Plugins\AI\Services\AI\Contracts\TokenUsage;
+use Acms\Plugins\AI\Services\AI\Logging\ProviderErrorLogContext;
 use Acms\Plugins\AI\Services\AI\Conversation\ConversationStore;
 use Acms\Plugins\AI\Services\AI\EnvCredential;
 use Acms\Services\Facades\Common;
@@ -132,9 +133,12 @@ class AnthropicProvider implements AiProvider, ModelListingProvider
         $raw = json_decode($this->httpPostJson(self::MESSAGES_ENDPOINT, $this->baseHeaders(), $this->encode($payload)));
 
         // Anthropic はエラー時に { type: "error", error: { type, message } } を返す。
-        // エラーの実体をログに残し、原因を運用ログから追えるようにする。
+        // 外部メッセージは入力内容を含み得るため記録せず、安全なエラー識別子だけを残す。
         if ($raw instanceof \stdClass && isset($raw->error)) {
-            Logger::error('【AI plugin】 Anthropic API がエラーを返しました', $this->errorToContext($raw->error));
+            Logger::error(
+                '【AI plugin】 Anthropic API がエラーを返しました',
+                ProviderErrorLogContext::from($raw->error)
+            );
             return new GenerationResult(null, $raw, errorMessage: AnthropicErrorMessage::fromError($raw->error));
         }
 
@@ -226,7 +230,10 @@ class AnthropicProvider implements AiProvider, ModelListingProvider
             $decoded = json_decode($rawBytes);
             $error = ($decoded instanceof \stdClass && isset($decoded->error)) ? $decoded->error : null;
             if ($error !== null) {
-                Logger::error('【AI plugin】 Anthropic API がエラーを返しました', $this->errorToContext($error));
+                Logger::error(
+                    '【AI plugin】 Anthropic API がエラーを返しました',
+                    ProviderErrorLogContext::from($error)
+                );
             }
             $onEvent(StreamEvent::error(AnthropicErrorMessage::fromError($error)));
         }
@@ -359,27 +366,6 @@ class AnthropicProvider implements AiProvider, ModelListingProvider
             && isset($model->capabilities->structured_outputs)
             && $model->capabilities->structured_outputs instanceof \stdClass
             && ($model->capabilities->structured_outputs->supported ?? false) === true;
-    }
-
-    /**
-     * Anthropic のエラーオブジェクト（{ type, message }）をログ用の配列へ写す。
-     * 認証情報（API キー等）は含まれないため、そのままログに残してよい。
-     *
-     * @return array<string, mixed>
-     */
-    private function errorToContext(mixed $error): array
-    {
-        if (!$error instanceof \stdClass) {
-            return ['error' => $error];
-        }
-
-        return array_filter(
-            [
-                'message' => isset($error->message) && is_string($error->message) ? $error->message : null,
-                'type' => isset($error->type) && is_string($error->type) ? $error->type : null,
-            ],
-            static fn($value): bool => $value !== null
-        );
     }
 
     /**

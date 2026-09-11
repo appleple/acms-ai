@@ -14,6 +14,7 @@ use Acms\Plugins\AI\Services\AI\Contracts\Message;
 use Acms\Plugins\AI\Services\AI\Contracts\ModelListingProvider;
 use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
 use Acms\Plugins\AI\Services\AI\Contracts\TokenUsage;
+use Acms\Plugins\AI\Services\AI\Logging\ProviderErrorLogContext;
 use Acms\Plugins\AI\Services\AI\Conversation\ConversationStore;
 use Acms\Plugins\AI\Services\AI\EnvCredential;
 use Acms\Services\Facades\Common;
@@ -144,9 +145,12 @@ class GeminiProvider implements AiProvider, ModelListingProvider
         }
 
         // Gemini はエラー時に { error: { code, message, status } } を返す。
-        // エラーの実体をログに残し、原因を運用ログから追えるようにする。
+        // 外部メッセージは入力内容を含み得るため記録せず、安全なエラー識別子だけを残す。
         if (isset($raw->error)) {
-            Logger::error('【AI plugin】 Gemini API がエラーを返しました', $this->errorToContext($raw->error));
+            Logger::error(
+                '【AI plugin】 Gemini API がエラーを返しました',
+                ProviderErrorLogContext::from($raw->error)
+            );
             return new GenerationResult(null, $raw, errorMessage: GeminiErrorMessage::fromError($raw->error));
         }
 
@@ -250,7 +254,10 @@ class GeminiProvider implements AiProvider, ModelListingProvider
             $decoded = json_decode($rawBytes);
             $error = ($decoded instanceof \stdClass && isset($decoded->error)) ? $decoded->error : null;
             if ($error !== null) {
-                Logger::error('【AI plugin】 Gemini API がエラーを返しました', $this->errorToContext($error));
+                Logger::error(
+                    '【AI plugin】 Gemini API がエラーを返しました',
+                    ProviderErrorLogContext::from($error)
+                );
             }
             $onEvent(StreamEvent::error(
                 $error !== null
@@ -430,28 +437,6 @@ class GeminiProvider implements AiProvider, ModelListingProvider
         }
 
         return preg_match('/(?:image|tts|audio|live|computer-use)/i', $model) !== 1;
-    }
-
-    /**
-     * Gemini のエラーオブジェクト（{ code, message, status }）をログ用の配列へ写す。
-     * 認証情報（API キー等）は含まれないため、そのままログに残してよい。
-     *
-     * @return array<string, mixed>
-     */
-    private function errorToContext(mixed $error): array
-    {
-        if (!$error instanceof \stdClass) {
-            return ['error' => $error];
-        }
-
-        return array_filter(
-            [
-                'message' => isset($error->message) && is_string($error->message) ? $error->message : null,
-                'status' => isset($error->status) && is_string($error->status) ? $error->status : null,
-                'code' => isset($error->code) && is_int($error->code) ? $error->code : null,
-            ],
-            static fn($value): bool => $value !== null
-        );
     }
 
     /**
