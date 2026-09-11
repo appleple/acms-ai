@@ -14,6 +14,7 @@ use Acms\Plugins\AI\Services\AI\Contracts\Message;
 use Acms\Plugins\AI\Services\AI\Contracts\ManualModelProvider;
 use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
 use Acms\Plugins\AI\Services\AI\Contracts\TokenUsage;
+use Acms\Plugins\AI\Services\AI\Logging\ProviderErrorLogContext;
 use Acms\Plugins\AI\Services\AI\Conversation\ConversationStore;
 use Acms\Plugins\AI\Services\AI\EnvCredential;
 use Acms\Services\Facades\Logger;
@@ -141,7 +142,10 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
         }
 
         if (isset($raw->error)) {
-            Logger::error('【AI plugin】 OpenAI互換 API がエラーを返しました', $this->errorToContext($raw->error));
+            Logger::error(
+                '【AI plugin】 OpenAI互換 API がエラーを返しました',
+                ProviderErrorLogContext::from($raw->error)
+            );
             return new GenerationResult(null, $raw, errorMessage: OpenAiCompatErrorMessage::fromError($raw->error));
         }
 
@@ -267,7 +271,10 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
             $decoded = json_decode($rawBytes);
             $error = ($decoded instanceof \stdClass && isset($decoded->error)) ? $decoded->error : null;
             if ($error !== null) {
-                Logger::error('【AI plugin】 OpenAI互換 API がエラーを返しました', $this->errorToContext($error));
+                Logger::error(
+                    '【AI plugin】 OpenAI互換 API がエラーを返しました',
+                    ProviderErrorLogContext::from($error)
+                );
             }
             $onEvent(StreamEvent::error(
                 $error !== null
@@ -475,28 +482,6 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
         }
 
         return $text;
-    }
-
-    /**
-     * エラーオブジェクト（{ message, type, code }）をログ用の配列へ写す。
-     * 認証情報（API キー等）は含まれないため、そのままログに残してよい。
-     *
-     * @return array<string, mixed>
-     */
-    private function errorToContext(mixed $error): array
-    {
-        if (!$error instanceof \stdClass) {
-            return ['error' => $error];
-        }
-
-        return array_filter(
-            [
-                'message' => isset($error->message) && is_string($error->message) ? $error->message : null,
-                'type' => isset($error->type) && is_string($error->type) ? $error->type : null,
-                'code' => isset($error->code) && is_string($error->code) ? $error->code : null,
-            ],
-            static fn($value): bool => $value !== null
-        );
     }
 
     /** response_format だけが非対応と確認できる場合に限り、安全な 1 回だけの再試行を許可する。 */

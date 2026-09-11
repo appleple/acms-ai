@@ -10,6 +10,7 @@ use Acms\Services\Facades\Response;
 use Acms\Plugins\AI\Services\AI as ServicesAI;
 use Acms\Plugins\AI\Services\AI\AiRequestInputLimit;
 use Acms\Plugins\AI\Services\AI\AiRequestRateLimiter;
+use Acms\Plugins\AI\Services\AI\StructuredItemsDecoder;
 use Acms\Plugins\AI\Services\AI\Logging\AuditLogSanitizer;
 use Acms\Plugins\AI\Services\AI\ProviderRegistry;
 use Acms\Plugins\AI\Services\AI\Contracts\AiProvider;
@@ -150,12 +151,21 @@ trait AIPostTrait
             $this->errorResponse($result->errorMessage ?? 'データを取得できませんでした。');
         }
 
-        $decoded = json_decode($text, true);
-        if (!is_array($decoded) || !isset($decoded['items'])) {
-            $this->errorResponse('有効な形式のデータを取得できませんでした。', 500, ['response' => $text]);
+        $decoded = (new StructuredItemsDecoder())->decode($text);
+        if (!$decoded->succeeded()) {
+            $context = [
+                'provider' => $this->provider->id(),
+                'model' => $this->model,
+                'response_bytes' => strlen($text),
+                'failure_reason' => $decoded->failureReason,
+            ];
+            if ($decoded->jsonErrorCode !== null) {
+                $context['json_error_code'] = $decoded->jsonErrorCode;
+            }
+            $this->errorResponse('有効な形式のデータを取得できませんでした。', 502, $context);
         }
 
-        Response::json($decoded['items']);
+        Response::json($decoded->items);
     }
 
     /**

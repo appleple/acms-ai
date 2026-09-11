@@ -13,6 +13,7 @@ use Acms\Plugins\AI\Services\AI\Contracts\GenerationResult;
 use Acms\Plugins\AI\Services\AI\Contracts\Message;
 use Acms\Plugins\AI\Services\AI\Contracts\ModelListingProvider;
 use Acms\Plugins\AI\Services\AI\Contracts\TokenUsage;
+use Acms\Plugins\AI\Services\AI\Logging\ProviderErrorLogContext;
 use Acms\Plugins\AI\Services\AI\EnvCredential;
 use Acms\Services\Facades\Common;
 use Acms\Services\Facades\Logger;
@@ -150,9 +151,12 @@ class OpenAiProvider implements AiProvider, ModelListingProvider
 
         // OpenAI が HTTP 200 でも本文にエラーを返すこと（モデル不存在・認証不備など）がある。
         // 従来はここを素通りして本文だけ見ていたため「取得できません」だけが出て原因が不明だった。
-        // エラーの実体（message/type/code）をログに残し、原因を運用ログから追えるようにする。
+        // 外部メッセージは入力内容を含み得るため記録せず、安全なエラー識別子だけを残す。
         if ($raw instanceof \stdClass && isset($raw->error)) {
-            Logger::error('【AI plugin】 OpenAI API がエラーを返しました', $this->errorToContext($raw->error));
+            Logger::error(
+                '【AI plugin】 OpenAI API がエラーを返しました',
+                ProviderErrorLogContext::from($raw->error)
+            );
             return new GenerationResult(null, $raw, errorMessage: OpenAiErrorMessage::fromError($raw->error));
         }
 
@@ -237,29 +241,6 @@ class OpenAiProvider implements AiProvider, ModelListingProvider
         }
 
         return $models;
-    }
-
-    /**
-     * OpenAI のエラーオブジェクト（{ message, type, code, param }）をログ用の配列へ写す。
-     * 認証情報（API キー等）は含まれないため、そのままログに残してよい。
-     *
-     * @return array<string, mixed>
-     */
-    private function errorToContext(mixed $error): array
-    {
-        if (!$error instanceof \stdClass) {
-            return ['error' => $error];
-        }
-
-        return array_filter(
-            [
-                'message' => isset($error->message) && is_string($error->message) ? $error->message : null,
-                'type' => isset($error->type) && is_string($error->type) ? $error->type : null,
-                'code' => isset($error->code) && is_string($error->code) ? $error->code : null,
-                'param' => isset($error->param) && is_string($error->param) ? $error->param : null,
-            ],
-            static fn($value): bool => $value !== null
-        );
     }
 
     /**
