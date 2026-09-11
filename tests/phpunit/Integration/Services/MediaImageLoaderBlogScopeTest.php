@@ -25,10 +25,23 @@ final class MediaImageLoaderBlogScopeTest extends DatabaseTestCase
 
     protected function setUpDatabase(): void
     {
-        $update = SQL::newUpdate('blog');
-        $update->addUpdate('blog_right', 4);
-        $update->addWhereOpr('blog_id', BID);
-        Database::query($update->get(dsn()), 'exec');
+        if ($this->fetchTestData('blog', ['blog_id' => BID]) === null) {
+            // CIのacms-create-databaseはスキーマだけを作り、ルートブログ行を投入しない。
+            BlogSeeder::seed([
+                'blog_id' => BID,
+                'blog_name' => 'AI media root blog',
+                'blog_code' => '',
+                'blog_parent' => 0,
+                'blog_left' => 1,
+                'blog_right' => 4,
+            ]);
+        } else {
+            $update = SQL::newUpdate('blog');
+            $update->addUpdate('blog_left', 1);
+            $update->addUpdate('blog_right', 4);
+            $update->addWhereOpr('blog_id', BID);
+            Database::query($update->get(dsn()), 'exec');
+        }
 
         BlogSeeder::seed([
             'blog_id' => self::CHILD_BLOG_ID,
