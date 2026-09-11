@@ -12,7 +12,7 @@ export default defineConfig({
   },
   build: {
     lib: {
-      entry: path.resolve(__dirname, 'src/main.tsx'),
+      entry: path.resolve(import.meta.dirname, 'src/main.tsx'),
       name: 'acms-ai',
       fileName: 'build',
       formats: ['umd'],
@@ -40,4 +40,3 @@ export default defineConfig({
     ...(process.env.NODE_ENV !== 'test' ? { 'process.env': JSON.stringify({}) } : {}),
   }
 })
-

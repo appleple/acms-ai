@@ -1,41 +1,74 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Acms\Plugins\AI\POST;
 
 use Acms\Services\Facades\Common;
 use Acms\Services\Facades\Logger;
+use Acms\Services\Facades\Response;
 use Acms\Plugins\AI\Services\AI as ServicesAI;
+use Acms\Plugins\AI\Services\AI\AiRequestInputLimit;
+use Acms\Plugins\AI\Services\AI\AiRequestRateLimiter;
 use Acms\Plugins\AI\Services\AI\Logging\AuditLogSanitizer;
 use Acms\Plugins\AI\Services\AI\ProviderRegistry;
 use Acms\Plugins\AI\Services\AI\Contracts\AiProvider;
 use Acms\Plugins\AI\Services\AI\Contracts\ContentPart;
 use Acms\Plugins\AI\Services\AI\Contracts\GenerationRequest;
 use Acms\Plugins\AI\Services\AI\Contracts\Message;
+use Field;
 
 trait AIPostTrait
 {
-    /**
-     * @var AiProvider|null 解決済みプロバイダ（config の ai_provider で決定）
-     */
-    protected $provider = null;
+    /** 解決済みプロバイダ（config の ai_provider で決定） */
+    protected ?AiProvider $provider = null;
+
+    /** 選択中のモデル名 */
+    protected string $model = '';
 
     /**
-     * @var string 選択中のモデル名
+     * AI POST 共通の入口。監査ログ保護 → 権限 → レート制限 → 機密設定読込の順を固定する。
      */
-    protected $model = "";
-
-    protected function initAiConfig(): void
+    protected function prepareAiRequest(): Field
     {
-        // 監査ログの req_body へ記事本文・チャット入力等が平文で残らないよう、
-        // コアのログフィルターへAI固有キーを登録する（旧コアでは $_POST のマスクへフォールバック）。
         (new AuditLogSanitizer())->protectRequestBody();
+
+        if (!sessionWithContribution(BID)) {
+            $this->errorResponse(
+                'AI 機能を利用する権限がありません。',
+                403,
+                ['reason' => 'permission_denied', 'blogId' => BID, 'userId' => SUID],
+            );
+        }
+
+        $userId = (int) SUID;
+        if (!AiRequestRateLimiter::fromConfig()->consume(BID, $userId)) {
+            $this->errorResponse(
+                'AI 機能へのリクエストが集中しています。しばらく待ってから再試行してください。',
+                429,
+                ['reason' => 'rate_limit_exceeded', 'blogId' => BID, 'userId' => $userId],
+            );
+        }
+
+        return $this->loadAiConfig();
+    }
+
+    private function loadAiConfig(): Field
+    {
         try {
             $ServiceAI = new ServicesAI();
             $config = $ServiceAI->getConfig();
             $this->model = $config->get('ai_model');
             $this->provider = ProviderRegistry::withDefaults()->resolve($config);
+
+            return $config;
         } catch (\Throwable $e) {
             Logger::error('【AI plugin】 AI 設定の初期化に失敗しました', Common::exceptionArray($e));
+            $this->errorResponse(
+                'AI 設定の読み込みに失敗しました。',
+                500,
+                ['reason' => 'config_initialization_failed'],
+            );
         }
     }
 
@@ -52,20 +85,45 @@ trait AIPostTrait
     /**
      * @param array<string, mixed> $logContext
      */
-    private function errorResponse(string $message, array $logContext = []): mixed
+    protected function errorResponse(string $message, int $status = 500, array $logContext = []): never
     {
-        $response = ['message' => $message, 'errorCode' => 500];
+        $response = ['message' => $message, 'errorCode' => $status];
         Logger::notice($message, $logContext === [] ? $response : $logContext);
-        return Common::responseJson($response);
+        http_response_code($status);
+        Response::json($response);
+    }
+
+    protected function assertGenerationInputWithinLimit(GenerationRequest $request): void
+    {
+        $values = [];
+        if ($request->instructions !== null) {
+            $values[] = $request->instructions;
+        }
+        if ($request->continuationToken !== null) {
+            $values[] = $request->continuationToken;
+        }
+        foreach ($request->messages as $message) {
+            foreach ($message->parts as $part) {
+                $values[] = $part->value;
+            }
+        }
+
+        if (!AiRequestInputLimit::fromConfig()->accepts(...$values)) {
+            $this->errorResponse(
+                'AI に送信する入力が大きすぎます。本文または入力内容を短くしてください。',
+                413,
+                ['reason' => 'input_too_large'],
+            );
+        }
     }
 
     /**
      * @param list<array{role?: string, content?: string}> $promptMessages
      */
-    protected function executeAiRequest(string $instructions, string $schemaName, array $promptMessages): mixed
+    protected function executeAiRequest(string $instructions, string $schemaName, array $promptMessages): never
     {
         if ($this->provider === null || !$this->provider->isConfigured() || $this->model === '') {
-            return $this->errorResponse('APIキーまたはモデルの設定がありません。');
+            $this->errorResponse('APIキーまたはモデルの設定がありません。');
         }
 
         $messages = $this->additionalMessages();
@@ -84,19 +142,20 @@ trait AIPostTrait
             $this->itemsSchema(),
             $schemaName
         );
+        $this->assertGenerationInputWithinLimit($request);
 
         $result = $this->provider->generateText($request);
         $text = $result->text;
         if ($text === null || $text === '') {
-            return $this->errorResponse($result->errorMessage ?? 'データを取得できませんでした。');
+            $this->errorResponse($result->errorMessage ?? 'データを取得できませんでした。');
         }
 
         $decoded = json_decode($text, true);
         if (!is_array($decoded) || !isset($decoded['items'])) {
-            return $this->errorResponse('有効な形式のデータを取得できませんでした。', ['response' => $text]);
+            $this->errorResponse('有効な形式のデータを取得できませんでした。', 500, ['response' => $text]);
         }
 
-        return Common::responseJson($decoded['items']);
+        Response::json($decoded['items']);
     }
 
     /**

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Acms\Plugins\AI\Services;
 
 use Acms\Services\Facades\Common;
@@ -8,7 +10,6 @@ use Acms\Services\Facades\Database;
 use Acms\Services\Facades\Logger;
 use SQL;
 use Field;
-use Exception;
 
 /**
  * AI 機能まわりの config 読み込み・保存値の取り出し・タグ一覧取得などの汎用ヘルパ。
@@ -32,14 +33,14 @@ class AI
     /**
      * @return list<string> $result タグの配列
      */
-    public static function getTagNameAll(?int $blogId = null): array
+    public static function getTagNameAll(int $blogId): array
     {
         $result = [];
         try {
-            $blogId = $blogId ?? BID;
             $SQL = SQL::newSelect('tag');
             $SQL->addSelect('tag_name');
             $SQL->addWhereOpr('tag_blog_id', $blogId);
+            $SQL->addGroup('tag_name');
             $tagNameArr = Database::query($SQL->get(dsn()), 'all');
             if (is_iterable($tagNameArr)) {
                 foreach ($tagNameArr as $row) {
@@ -48,7 +49,7 @@ class AI
                     }
                 }
             }
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             Logger::error('【AI plugin】 タグ一覧の取得に失敗しました', Common::exceptionArray($e));
             return $result;
         }

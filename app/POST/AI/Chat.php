@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Acms\Plugins\AI\POST\AI;
 
 use ACMS_POST;
@@ -21,24 +23,18 @@ class Chat extends ACMS_POST
 
     public function post(): mixed
     {
-        $this->initAiConfig();
+        $input = trim($this->Post->get('input'));
+        $previousResponseId = $this->Post->get('previousResponseId');
+        $silent = $this->Post->get('silent') === '1';
+
+        $this->prepareAiRequest();
 
         if ($this->provider === null || !$this->provider->isConfigured() || $this->model === '') {
-            return $this->jsonResponse([
-                'message' => 'APIキーまたはモデルの設定がありません。',
-                'errorCode' => 500
-            ]);
+            $this->errorResponse('APIキーまたはモデルの設定がありません。');
         }
 
-        $input = $this->Post->get("input");
-        $previousResponseId = $this->Post->get("previousResponseId");
-        $silent = $this->Post->get("silent") === '1';
-
-        if (!$input) {
-            return $this->jsonResponse([
-                'message' => '無効なリクエストです。',
-                'errorCode' => 400
-            ]);
+        if ($input === '') {
+            $this->errorResponse('入力内容を指定してください。', 400, ['reason' => 'empty_input']);
         }
 
         $request = new GenerationRequest(
@@ -49,6 +45,7 @@ class Chat extends ACMS_POST
             null,
             $previousResponseId !== '' ? $previousResponseId : null
         );
+        $this->assertGenerationInputWithinLimit($request);
 
         // Stream output directly - must run before any other output
         if (ob_get_level() !== 0) {
@@ -81,9 +78,12 @@ class Chat extends ACMS_POST
                 }
                 flush();
             });
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Logger::error('【AI plugin】 チャット応答の生成に失敗しました', Common::exceptionArray($e));
-            echo "data: " . json_encode(['type' => 'error', 'message' => $e->getMessage()]) . "\n\n";
+            echo 'data: ' . json_encode([
+                'type' => 'error',
+                'message' => 'チャット応答の生成に失敗しました。',
+            ]) . "\n\n";
         }
 
         exit;
@@ -134,14 +134,5 @@ class Chat extends ACMS_POST
             "The simplified text\n" .
             "</correction>" .
             $silentInstruction;
-    }
-
-    /**
-     * @param array<string, mixed> $data
-     * @return mixed
-     */
-    private function jsonResponse(array $data): mixed
-    {
-        return Common::responseJson($data);
     }
 }

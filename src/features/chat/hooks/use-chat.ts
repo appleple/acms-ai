@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { postStreamingRequest } from '../../../api/fetcher'
+import { parseErrorMessage, postStreamingRequest } from '../../../api/fetcher'
 
 export interface ChatMessage {
   id: string
@@ -172,12 +172,14 @@ export function useChat({ onError, chatId, initialContent, silent }: UseChatOpti
       })
 
       if (!result.ok) {
-        const msg =
+        const serverMessage = parseErrorMessage(result.errorBody)
+        const msg = serverMessage ?? (
           result.status === 404
             ? 'チャットAPIが見つかりません。プラグインの設定を確認してください。'
             : result.status === 500
               ? `サーバーエラー (${result.status})。APIキーやモデルの設定を確認してください。`
               : `接続に失敗しました。(${result.status})`
+        )
         onError?.(msg)
         setIsLoading(false)
         return
