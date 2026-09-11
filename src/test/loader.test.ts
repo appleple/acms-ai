@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import loaderTemplate from '../../app/template/admin/loader.html?raw'
 
 const JS_URL = '/extension/plugins/AI/bundle/acms-ai.js?v=test'
@@ -16,19 +16,66 @@ function executeLoader(): void {
   new Function(script)()
 }
 
-function appendAssistantButton(): void {
-  document.body.appendChild(document.createElement('acms-ai-assistant-button'))
+interface MutationObserverMockInstance {
+  callback: MutationCallback
+  observe: MutationObserver['observe']
+  disconnect: MutationObserver['disconnect']
+}
+
+const observerInstances: MutationObserverMockInstance[] = []
+
+function appendAdminMain(): HTMLElement {
+  const adminMain = document.createElement('div')
+  adminMain.id = 'acms-admin-main'
+  document.body.appendChild(adminMain)
+  return adminMain
+}
+
+function appendAssistantButton(parent: ParentNode = document.body): HTMLElement {
+  const button = document.createElement('acms-ai-assistant-button')
+  parent.appendChild(button)
+  return button
+}
+
+function addedNodesRecord(...nodes: Node[]): MutationRecord {
+  return { addedNodes: nodes } as unknown as MutationRecord
+}
+
+function notify(instance: MutationObserverMockInstance, ...records: MutationRecord[]): void {
+  instance.callback(records, instance as unknown as MutationObserver)
 }
 
 describe('admin assistant loader', () => {
   beforeEach(() => {
     document.head.innerHTML = ''
     document.body.innerHTML = ''
+    observerInstances.length = 0
+
+    class MutationObserverMock {
+      callback: MutationCallback
+      observe = vi.fn()
+      disconnect = vi.fn()
+      takeRecords = vi.fn(() => [])
+
+      constructor(callback: MutationCallback) {
+        this.callback = callback
+        observerInstances.push(this)
+      }
+    }
+
+    vi.stubGlobal('MutationObserver', MutationObserverMock)
+  })
+
+  afterEach(() => {
+    observerInstances.forEach((observer) => observer.disconnect())
+    vi.unstubAllGlobals()
     vi.restoreAllMocks()
+    document.head.innerHTML = ''
+    document.body.innerHTML = ''
   })
 
   it('ボタンがある場合だけCSSとバンドルを読み込む', () => {
-    appendAssistantButton()
+    appendAssistantButton(appendAdminMain())
 
     executeLoader()
 
@@ -43,8 +90,17 @@ describe('admin assistant loader', () => {
     expect(document.querySelector('script[data-acms-ai-bundle]')).toBeNull()
   })
 
+  it('複数のローダーがあってもCSSとバンドルを1回だけ読み込む', () => {
+    appendAssistantButton(appendAdminMain())
+
+    executeLoader()
+    executeLoader()
+
+    expect(document.querySelectorAll(`link[href="${CSS_URL}"]`)).toHaveLength(1)
+    expect(document.querySelectorAll('script[data-acms-ai-bundle]')).toHaveLength(1)
+  })
+
   it('既存のバンドルがある場合は二重に読み込まない', () => {
-    appendAssistantButton()
     const existing = document.createElement('script')
     existing.src = JS_URL
     document.body.appendChild(existing)
@@ -53,38 +109,72 @@ describe('admin assistant loader', () => {
 
     expect(document.querySelectorAll(`script[src*="extension/plugins/AI/bundle/acms-ai.js"]`)).toHaveLength(1)
     expect(document.querySelector('link[rel="stylesheet"]')).toBeNull()
+    expect(observerInstances).toHaveLength(0)
   })
 
   it('カスタム要素が登録済みの場合は二重に読み込まない', () => {
-    appendAssistantButton()
     vi.spyOn(window.customElements, 'get').mockReturnValue(class extends HTMLElement {})
 
     executeLoader()
 
     expect(document.querySelector('script[data-acms-ai-bundle]')).toBeNull()
     expect(document.querySelector('link[rel="stylesheet"]')).toBeNull()
+    expect(observerInstances).toHaveLength(0)
   })
 
-  it('後から追加されたボタンを検出し、読み込み後に監視を終了する', async () => {
-    const disconnect = vi.fn()
-    let notifyMutation: MutationCallback | undefined
-    class MutationObserverMock {
-      constructor(callback: MutationCallback) {
-        notifyMutation = callback
-      }
-
-      observe = vi.fn()
-      disconnect = disconnect
-      takeRecords = vi.fn(() => [])
-    }
-    vi.stubGlobal('MutationObserver', MutationObserverMock)
-
+  it('後から追加されたボタンを検出し、読み込み後に監視を終了する', () => {
+    const adminMain = appendAdminMain()
     executeLoader()
-    appendAssistantButton()
-    notifyMutation?.([], {} as MutationObserver)
+    const button = appendAssistantButton(adminMain)
+    notify(observerInstances[0], addedNodesRecord(button))
 
     expect(document.querySelectorAll('script[data-acms-ai-bundle]')).toHaveLength(1)
     expect(document.querySelectorAll(`link[href="${CSS_URL}"]`)).toHaveLength(1)
-    expect(disconnect).toHaveBeenCalledOnce()
+    expect(observerInstances[0].disconnect).toHaveBeenCalledOnce()
+  })
+
+  it('追加ノードの子孫にあるボタンも検出する', () => {
+    const adminMain = appendAdminMain()
+    executeLoader()
+    const wrapper = document.createElement('div')
+    appendAssistantButton(wrapper)
+    adminMain.appendChild(wrapper)
+    notify(observerInstances[0], addedNodesRecord(wrapper))
+
+    expect(document.querySelectorAll('script[data-acms-ai-bundle]')).toHaveLength(1)
+    expect(observerInstances[0].disconnect).toHaveBeenCalledOnce()
+  })
+
+  it('無関係なDOM更新ではバンドルを読み込まない', () => {
+    const adminMain = appendAdminMain()
+    executeLoader()
+    appendAssistantButton(adminMain)
+    const unrelatedNode = document.createElement('div')
+    adminMain.appendChild(unrelatedNode)
+    notify(observerInstances[0], addedNodesRecord(unrelatedNode))
+
+    expect(document.querySelector('link[rel="stylesheet"]')).toBeNull()
+    expect(document.querySelector('script[data-acms-ai-bundle]')).toBeNull()
+    expect(observerInstances[0].disconnect).not.toHaveBeenCalled()
+  })
+
+  it('#acms-admin-mainだけを監視する', () => {
+    const adminMain = appendAdminMain()
+
+    executeLoader()
+
+    expect(observerInstances[0].observe).toHaveBeenCalledWith(adminMain, {
+      childList: true,
+      subtree: true,
+    })
+  })
+
+  it('#acms-admin-mainがない場合はbodyを監視する', () => {
+    executeLoader()
+
+    expect(observerInstances[0].observe).toHaveBeenCalledWith(document.body, {
+      childList: true,
+      subtree: true,
+    })
   })
 })

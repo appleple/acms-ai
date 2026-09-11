@@ -13,8 +13,9 @@
 -->
 <script>
 (function () {
-  var JS_URL = '%{AI_JS}';
-  var CSS_URL = '%{AI_CSS}';
+  const JS_URL = '%{AI_JS}';
+  const CSS_URL = '%{AI_CSS}';
+  const BUTTON_SELECTOR = 'acms-ai-assistant-button';
 
   function bundleAlreadyPresent() {
     // 既に読み込み済み or 読み込み予約済みなら true
@@ -26,20 +27,39 @@
     );
   }
 
-  function loadBundle() {
-    if (!document.querySelector('acms-ai-assistant-button')) {
-      return false; // 現時点では未検出。遅延挿入を監視する
+  function nodeContainsAssistantButton(node) {
+    if (node.nodeType !== 1) {
+      return false;
     }
+    return node.matches(BUTTON_SELECTOR) || !!node.querySelector(BUTTON_SELECTOR);
+  }
+
+  function recordsContainAssistantButton(records) {
+    return records.some(function (record) {
+      return Array.from(record.addedNodes).some(nodeContainsAssistantButton);
+    });
+  }
+
+  function loadBundle(buttonPresent) {
     if (bundleAlreadyPresent()) {
       return true; // 二重ロード防止（エントリー編集など）
     }
-    if (CSS_URL) {
-      var link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = CSS_URL;
-      document.head.appendChild(link);
+    if (!buttonPresent) {
+      return false; // 現時点では未検出。遅延挿入を監視する
     }
-    var script = document.createElement('script');
+    if (CSS_URL) {
+      const stylesheetAlreadyPresent = document.querySelector(
+        'link[data-acms-ai-bundle-style], link[href*="extension/plugins/AI/bundle/acms-ai.css"]'
+      );
+      if (!stylesheetAlreadyPresent) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = CSS_URL;
+        link.setAttribute('data-acms-ai-bundle-style', '');
+        document.head.appendChild(link);
+      }
+    }
+    const script = document.createElement('script');
     script.src = JS_URL;
     script.crossOrigin = 'anonymous';
     script.setAttribute('data-acms-ai-bundle', '');
@@ -48,21 +68,24 @@
   }
 
   function startLoader() {
-    if (loadBundle()) {
+    const observationRoot = document.getElementById('acms-admin-main')
+      || document.body
+      || document.documentElement;
+    if (!observationRoot || loadBundle(nodeContainsAssistantButton(observationRoot))) {
       return;
     }
 
     // Ajax・モーダル等で後から追加されるボタンも検出する。
     // バンドルの読み込み予約ができた時点で監視を終了する。
-    if (!window.MutationObserver || !document.documentElement) {
+    if (!window.MutationObserver) {
       return;
     }
-    var observer = new MutationObserver(function () {
-      if (loadBundle()) {
+    const observer = new MutationObserver(function (records) {
+      if (recordsContainAssistantButton(records) && loadBundle(true)) {
         observer.disconnect();
       }
     });
-    observer.observe(document.documentElement, { childList: true, subtree: true });
+    observer.observe(observationRoot, { childList: true, subtree: true });
   }
 
   if (document.readyState === 'loading') {
