@@ -94,8 +94,9 @@ Google Gemini を利用する場合は `https://ai.google.dev/gemini-api/docs/ap
 
 その他の OpenAI 互換サービスでは、サービスが案内する Chat Completions の `/v1` 相当の Base URL、
 Bearer トークン、チャットモデル名を入力してください。Base URL に入力した接続先へ記事本文や
-チャット内容が送信されるため、信頼できる接続先だけを指定してください。HTTPS を必須とし、ローカル
-開発用の `localhost` / ループバックだけ HTTP を許可します。
+チャット内容が送信されるため、信頼できる接続先だけを指定してください。Base URL は公開ネットワークへ
+解決される HTTPS URL だけを指定できます。ループバック、プライベートIP、
+リンクローカル等の内部アドレスは、HTTPSの場合も拒否します。
 
 ### 2. 認証情報を `.env` で管理する（推奨）
 

@@ -72,7 +72,7 @@ final class OpenAiCompatProviderTest extends TestCase
     }
 
     #[Test]
-    #[TestDox('base URL は https 以外（ループバック除く）・認証情報やクエリ入り・不正形式を拒否する')]
+    #[TestDox('base URL は https 以外・認証情報やクエリ入り・不正形式を拒否する')]
     public function baseUrlValidationRejectsUnsafeUrls(): void
     {
         $reject = static fn(string $url): bool => (new StubOpenAiCompatProvider(
@@ -87,8 +87,8 @@ final class OpenAiCompatProviderTest extends TestCase
         self::assertFalse($reject('not a url'));
 
         self::assertTrue($reject('https://api.ai.sakura.ad.jp/v1'));
-        self::assertTrue($reject('http://localhost:1234/v1'));
-        self::assertTrue($reject('http://127.0.0.1:8080/v1'));
+        self::assertFalse($reject('http://localhost:1234/v1'));
+        self::assertFalse($reject('http://127.0.0.1:8080/v1'));
     }
 
     #[Test]
