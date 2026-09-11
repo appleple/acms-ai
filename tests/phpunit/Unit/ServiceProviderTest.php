@@ -30,4 +30,11 @@ final class ServiceProviderTest extends TestCase
 
         self::assertContains(PLUGIN_DIR . 'AI/template/admin/entry/edit.html', $entries);
     }
+
+    #[Test]
+    #[TestDox('実行中のa-blog cmsが最低バージョン要件を満たす')]
+    public function currentCmsMeetsInstallationRequirement(): void
+    {
+        self::assertTrue((new ServiceProvider())->checkRequirements());
+    }
 }

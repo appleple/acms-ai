@@ -42,6 +42,25 @@ final class AuditLogSanitizerTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('4プロバイダのAPIキーを旧コア向けフォールバックでもマスクする')]
+    public function masksProviderApiKeys(): void
+    {
+        $masked = AuditLogSanitizer::maskPostBody([
+            'ai_api_key' => 'sk-openai',
+            'ai_anthropic_api_key' => 'sk-anthropic',
+            'ai_gemini_api_key' => 'gemini-secret',
+            'ai_compat_api_key' => 'compat-secret',
+            'ai_model' => 'model-name',
+        ]);
+
+        self::assertSame('***MASKED***', $masked['ai_api_key']);
+        self::assertSame('***MASKED***', $masked['ai_anthropic_api_key']);
+        self::assertSame('***MASKED***', $masked['ai_gemini_api_key']);
+        self::assertSame('***MASKED***', $masked['ai_compat_api_key']);
+        self::assertSame('model-name', $masked['ai_model']);
+    }
+
+    #[Test]
     #[TestDox('ネストした配列の中のコンテンツ系フィールドもマスクする')]
     public function masksNestedContent(): void
     {
@@ -92,6 +111,7 @@ final class AuditLogSanitizerTest extends TestCase
             self::assertSame('field', $filter->target);
             self::assertContains('article', $filter->keys);
             self::assertContains('previousresponseid', $filter->keys);
+            self::assertContains('api_key', $filter->keys);
         } finally {
             $_POST = $original;
         }
@@ -108,6 +128,10 @@ final class AuditLogSanitizerTest extends TestCase
                 'article' => '記事本文',
                 'input' => 'チャット入力',
                 'previousResponseId' => 'resp_secret',
+                'ai_api_key' => 'sk-openai',
+                'ai_anthropic_api_key' => 'sk-anthropic',
+                'ai_gemini_api_key' => 'gemini-secret',
+                'ai_compat_api_key' => 'compat-secret',
                 'targets' => 'title',
             ];
             (new AuditLogSanitizer($filter))->protectRequestBody();
@@ -117,7 +141,24 @@ final class AuditLogSanitizerTest extends TestCase
             self::assertSame('***MASKED***', $masked['article']);
             self::assertSame('***MASKED***', $masked['input']);
             self::assertSame('***MASKED***', $masked['previousResponseId']);
+            self::assertSame('***MASKED***', $masked['ai_api_key']);
+            self::assertSame('***MASKED***', $masked['ai_anthropic_api_key']);
+            self::assertSame('***MASKED***', $masked['ai_gemini_api_key']);
+            self::assertSame('***MASKED***', $masked['ai_compat_api_key']);
             self::assertSame('title', $masked['targets']);
+
+            $context = $filter->scrubLogArray([
+                'data' => [
+                    'ai_api_key' => ['sk-openai'],
+                    'ai_anthropic_api_key' => ['sk-anthropic'],
+                    'ai_gemini_api_key' => ['gemini-secret'],
+                    'ai_compat_api_key' => ['compat-secret'],
+                ],
+            ]);
+            self::assertSame('***MASKED***', $context['data']['ai_api_key']);
+            self::assertSame('***MASKED***', $context['data']['ai_anthropic_api_key']);
+            self::assertSame('***MASKED***', $context['data']['ai_gemini_api_key']);
+            self::assertSame('***MASKED***', $context['data']['ai_compat_api_key']);
         } finally {
             $_POST = $original;
         }

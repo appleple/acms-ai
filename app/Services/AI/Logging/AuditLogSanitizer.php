@@ -7,13 +7,15 @@ namespace Acms\Plugins\AI\Services\AI\Logging;
 use Acms\Services\Facades\Application;
 
 /**
- * 監査ログへ記事本文・プロンプトが残らないようにするリクエスト保護。
+ * 監査ログへ記事本文・プロンプト・APIキーが残らないようにするリクエスト保護。
  *
  * a-blog cms のロガーは notice 以上のログで $_POST 全体を audit_log_req_body へ保存する。
  * コアのフィルターは api_key / token / password 等の資格情報キーをマスクする
  * （str_contains 照合のため ai_api_key 等も対象）が、AI 機能のリクエストに含まれる
  * **コンテンツ**（記事本文 article・チャット入力 input・プロンプト・画像 URL 等）は対象外で、
  * 生成に失敗してログが出るたびに本文が監査ログへ平文で蓄積されてしまう。
+ * また、3.2.28以前のコンフィグ保存ログはField全体をcontextへ渡すため、本クラスだけでは
+ * APIキーのcontext漏えいを防げない。設定保存側は該当バージョンで処理自体を拒否する。
  *
  * 対策として、AI の POST エンドポイントの冒頭で {@see self::protectRequestBody()} を呼び、
  * コアのログフィルターへ AI 固有の機密キーを登録する。これにより $_POST 自体は変更せず、
@@ -24,8 +26,8 @@ final class AuditLogSanitizer
 {
     private const MASK = '***MASKED***';
 
-    /** 監査ログに残さないコンテンツ系フィールド名（str_contains・小文字比較） */
-    private const CONTENT_KEY_PATTERNS = [
+    /** 監査ログに残さない機密フィールド名（str_contains・小文字比較） */
+    private const SENSITIVE_KEY_PATTERNS = [
         'article',
         'input',
         'messages',
@@ -33,6 +35,8 @@ final class AuditLogSanitizer
         'image_url',
         'alreadygeneratedtags',
         'previousresponseid',
+        // AI設定の4プロバイダすべて（ai_api_key / ai_*_api_key）を含む。
+        'api_key',
     ];
 
     /** マスク対象外の値の安全上限（巨大な値が監査ログを肥大させないように切り詰める） */
@@ -60,8 +64,7 @@ final class AuditLogSanitizer
     }
 
     /**
-     * POST ボディからコンテンツ系フィールドをマスクし、残りも安全上限で切り詰める。
-     * （資格情報キーはコアのフィルターがマスクするため、ここではコンテンツに専念する）
+     * POST ボディからコンテンツ・資格情報フィールドをマスクし、残りも安全上限で切り詰める。
      *
      * @param array<string|int, mixed> $data
      * @return array<string|int, mixed>
@@ -70,7 +73,7 @@ final class AuditLogSanitizer
     {
         $safe = [];
         foreach ($data as $key => $value) {
-            if (is_string($key) && self::isContentKey($key)) {
+            if (is_string($key) && self::isSensitiveKey($key)) {
                 $safe[$key] = self::MASK;
                 continue;
             }
@@ -88,10 +91,10 @@ final class AuditLogSanitizer
         return $safe;
     }
 
-    private static function isContentKey(string $key): bool
+    private static function isSensitiveKey(string $key): bool
     {
         $lower = strtolower($key);
-        foreach (self::CONTENT_KEY_PATTERNS as $pattern) {
+        foreach (self::SENSITIVE_KEY_PATTERNS as $pattern) {
             if (str_contains($lower, $pattern)) {
                 return true;
             }
@@ -126,7 +129,7 @@ final class AuditLogSanitizer
         }
 
         try {
-            $filter->registerSensitiveKeys('field', self::CONTENT_KEY_PATTERNS);
+            $filter->registerSensitiveKeys('field', self::SENSITIVE_KEY_PATTERNS);
             return true;
         } catch (\Throwable $e) {
             return false;
