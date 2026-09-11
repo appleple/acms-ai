@@ -105,6 +105,11 @@ trait AIPostTrait
         }
         foreach ($request->messages as $message) {
             foreach ($message->parts as $part) {
+                // バイナリは MediaImageLoader の専用上限で検査済み。
+                // base64 をテキスト入力上限へ重複計上すると、正常な画像が拒否される。
+                if ($part->type === ContentPart::TYPE_IMAGE_DATA) {
+                    continue;
+                }
                 $values[] = $part->value;
             }
         }

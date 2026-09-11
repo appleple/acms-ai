@@ -39,9 +39,8 @@ use Field;
  * 構造化出力: generationConfig の responseMimeType=application/json と responseJsonSchema で
  * ネイティブに強制する。プロバイダ非依存契約の JSON Schema を欠落なく渡す。
  *
- * 画像入力は、共通契約が URL しか保持せず、Gemini の generateContent API ではインラインデータへの
- * 変換にサーバー側取得が必要になるため提供しない。任意 URL の取得は SSRF・容量超過を招くので、
- * 信頼済みバイナリを表現できる共通契約が追加されるまでは Text/Structured/Streaming に限定する。
+ * 画像入力は、CMS が権限検査済みストレージから読み込んだデータだけを
+ * inlineData へ変換する。任意の画像 URL はサーバー側で取得せず拒否する。
  */
 class GeminiProvider implements AiProvider, ModelListingProvider
 {
@@ -84,6 +83,7 @@ class GeminiProvider implements AiProvider, ModelListingProvider
         return in_array($capability, [
             Capability::TextGeneration,
             Capability::StructuredOutput,
+            Capability::VisionInput,
             Capability::Streaming,
         ], true);
     }
@@ -311,7 +311,7 @@ class GeminiProvider implements AiProvider, ModelListingProvider
 
     /**
      * 1 メッセージ分のコンテンツ断片を generateContent の parts 配列へ変換する。
-     * 現在はテキストだけを扱う。画像 URL はサーバー側で安全に取得できる共通契約が無いため拒否する。
+     * 信頼済み画像データは inlineData へ変換し、任意の画像 URL は拒否する。
      *
      * @return list<array<string, mixed>>
      */
@@ -322,7 +322,9 @@ class GeminiProvider implements AiProvider, ModelListingProvider
             if ($part->type === ContentPart::TYPE_IMAGE) {
                 throw new \RuntimeException('Gemini プロバイダは画像 URL 入力に対応していません。');
             }
-            $parts[] = ['text' => $part->value];
+            $parts[] = $part->type === ContentPart::TYPE_IMAGE_DATA
+                ? ['inlineData' => ['mimeType' => $part->mimeType, 'data' => $part->value]]
+                : ['text' => $part->value];
         }
 
         return $parts;

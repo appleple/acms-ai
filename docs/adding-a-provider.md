@@ -98,10 +98,12 @@ class AnthropicProvider implements AiProvider, ModelListingProvider
 }
 ```
 
-`supports()` は、安全に実装できている能力だけを返します。特に `ContentPart::image()` は URL を保持するため、
-ベンダへ URL を直接渡せずサーバー側取得が必要な場合、任意 URL をそのまま取得してはいけません。SSRF、
-リダイレクト、名前解決後のプライベート IP、Content-Type、容量上限まで検証できる共通境界を用意するまでは、
-`VisionInput` を非対応にします。
+`supports()` は、安全に実装できている能力だけを返します。画像には2つの契約があります。
+
+- `ContentPart::image()` は、ベンダへ直接渡せる画像URLです。プロバイダがこのURLを自前で取得してはいけません。
+- `ContentPart::imageData()` は、CMS側で権限・容量・実MIME・実画像の検査が済んだbase64データです。プロバイダはこれをベンダ固有のインライン形式へ変換できます。
+
+ベンダがURL直接入力をサポートせず、`imageData()` の変換も実装しない場合は `VisionInput` を非対応にします。
 
 ### 2. リクエスト／レスポンスを変換する
 

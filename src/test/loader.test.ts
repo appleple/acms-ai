@@ -45,6 +45,13 @@ function notify(instance: MutationObserverMockInstance, ...records: MutationReco
   instance.callback(records, instance as unknown as MutationObserver)
 }
 
+function appendMediaMarker(parent: ParentNode = document.body): HTMLElement {
+  const marker = document.createElement('div')
+  marker.id = 'js-acms-ai-media'
+  parent.appendChild(marker)
+  return marker
+}
+
 describe('admin assistant loader', () => {
   beforeEach(() => {
     document.head.innerHTML = ''
@@ -100,6 +107,14 @@ describe('admin assistant loader', () => {
     expect(document.querySelectorAll('script[data-acms-ai-bundle]')).toHaveLength(1)
   })
 
+  it('メディアAIのマーカーがある場合もバンドルを読み込む', () => {
+    appendMediaMarker()
+
+    executeLoader()
+
+    expect(document.querySelector<HTMLScriptElement>('script[data-acms-ai-bundle]')).not.toBeNull()
+  })
+
   it('既存のバンドルがある場合は二重に読み込まない', () => {
     const existing = document.createElement('script')
     existing.src = JS_URL
@@ -127,6 +142,17 @@ describe('admin assistant loader', () => {
     executeLoader()
     const button = appendAssistantButton(adminMain)
     notify(observerInstances[0], addedNodesRecord(button))
+
+    expect(document.querySelectorAll('script[data-acms-ai-bundle]')).toHaveLength(1)
+    expect(document.querySelectorAll(`link[href="${CSS_URL}"]`)).toHaveLength(1)
+    expect(observerInstances[0].disconnect).toHaveBeenCalledOnce()
+  })
+
+  it('後から追加されたメディアAIのマーカーも検出する', () => {
+    const adminMain = appendAdminMain()
+    executeLoader()
+    const marker = appendMediaMarker(adminMain)
+    notify(observerInstances[0], addedNodesRecord(marker))
 
     expect(document.querySelectorAll('script[data-acms-ai-bundle]')).toHaveLength(1)
     expect(document.querySelectorAll(`link[href="${CSS_URL}"]`)).toHaveLength(1)

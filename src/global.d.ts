@@ -20,6 +20,16 @@ declare global {
         }
       }
       addListener: any
+      plugins?: {
+        register: (name: string, plugin: {
+          version: string
+          setup: (context: {
+            ui: { fill: (slot: string, component: unknown) => void }
+          }) => void
+        }) => void
+        get: (name: string) => unknown
+        withFillProps: (component: unknown) => unknown
+      }
     }
     csrfToken: string
   }

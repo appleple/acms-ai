@@ -225,6 +225,24 @@ final class AnthropicProviderTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('信頼済み画像データは base64 ソースへ変換する')]
+    public function imageDataPartBecomesBase64ImageBlock(): void
+    {
+        $provider = $this->provider();
+        $provider->stubPostResult = '{"content":[{"type":"text","text":"猫"}]}';
+
+        $provider->generateText(new GenerationRequest(
+            'claude-sonnet-5',
+            [Message::user(ContentPart::imageData('image/jpeg', 'YWJj'))],
+        ));
+
+        self::assertSame([
+            'type' => 'image',
+            'source' => ['type' => 'base64', 'media_type' => 'image/jpeg', 'data' => 'YWJj'],
+        ], $provider->capturedPayload()['messages'][0]['content'][0]);
+    }
+
+    #[Test]
     #[TestDox('エラー応答は日本語メッセージ付きの失敗結果になる')]
     public function errorResponseBecomesFailureResult(): void
     {

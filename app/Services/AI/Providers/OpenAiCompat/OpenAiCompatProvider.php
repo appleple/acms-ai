@@ -356,7 +356,7 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
     {
         $hasImage = false;
         foreach ($message->parts as $part) {
-            if ($part->type === ContentPart::TYPE_IMAGE) {
+            if (in_array($part->type, [ContentPart::TYPE_IMAGE, ContentPart::TYPE_IMAGE_DATA], true)) {
                 $hasImage = true;
                 break;
             }
@@ -372,9 +372,13 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
 
         $contents = [];
         foreach ($message->parts as $part) {
-            $contents[] = $part->type === ContentPart::TYPE_IMAGE
-                ? ['type' => 'image_url', 'image_url' => ['url' => $part->value]]
-                : ['type' => 'text', 'text' => $part->value];
+            if ($part->type === ContentPart::TYPE_IMAGE_DATA) {
+                $contents[] = ['type' => 'image_url', 'image_url' => ['url' => $part->asDataUrl()]];
+            } elseif ($part->type === ContentPart::TYPE_IMAGE) {
+                $contents[] = ['type' => 'image_url', 'image_url' => ['url' => $part->value]];
+            } else {
+                $contents[] = ['type' => 'text', 'text' => $part->value];
+            }
         }
 
         return $contents;

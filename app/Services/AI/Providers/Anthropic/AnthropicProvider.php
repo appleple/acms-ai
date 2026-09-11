@@ -291,7 +291,7 @@ class AnthropicProvider implements AiProvider, ModelListingProvider
 
     /**
      * 1 メッセージ分のコンテンツ断片を Messages API の content ブロック配列へ変換する。
-     * テキストは text ブロックに、画像は URL ソースの image ブロックに振り分ける。
+     * テキストは text ブロックに、画像は URL または base64 ソースの image ブロックに振り分ける。
      *
      * @return list<array<string, mixed>>
      */
@@ -299,9 +299,16 @@ class AnthropicProvider implements AiProvider, ModelListingProvider
     {
         $contents = [];
         foreach ($message->parts as $part) {
-            $contents[] = $part->type === ContentPart::TYPE_IMAGE
-                ? ['type' => 'image', 'source' => ['type' => 'url', 'url' => $part->value]]
-                : ['type' => 'text', 'text' => $part->value];
+            if ($part->type === ContentPart::TYPE_IMAGE_DATA) {
+                $contents[] = [
+                    'type' => 'image',
+                    'source' => ['type' => 'base64', 'media_type' => $part->mimeType, 'data' => $part->value],
+                ];
+            } elseif ($part->type === ContentPart::TYPE_IMAGE) {
+                $contents[] = ['type' => 'image', 'source' => ['type' => 'url', 'url' => $part->value]];
+            } else {
+                $contents[] = ['type' => 'text', 'text' => $part->value];
+            }
         }
 
         return $contents;

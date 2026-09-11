@@ -215,9 +215,13 @@ class OpenAiProvider implements AiProvider, ModelListingProvider
     {
         $contents = [];
         foreach ($message->parts as $part) {
-            $contents[] = $part->type === ContentPart::TYPE_IMAGE
-                ? $client->createImageContent($part->value)
-                : $client->createTextContent($part->value, $message->role);
+            if ($part->type === ContentPart::TYPE_IMAGE_DATA) {
+                $contents[] = $client->createImageContent($part->asDataUrl());
+            } elseif ($part->type === ContentPart::TYPE_IMAGE) {
+                $contents[] = $client->createImageContent($part->value);
+            } else {
+                $contents[] = $client->createTextContent($part->value, $message->role);
+            }
         }
 
         return $contents;

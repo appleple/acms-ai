@@ -16,12 +16,21 @@ final class ModelSelectionFilterTest extends TestCase
     #[TestDox('プロバイダを変更すると以前のモデル名をクリアする')]
     public function clearsModelWhenProviderChanges(): void
     {
-        $post = $this->field(['ai_provider' => 'gemini', 'ai_model' => 'gpt-5']);
-        $saved = $this->field(['ai_provider' => 'openai', 'ai_model' => 'gpt-5']);
+        $post = $this->field([
+            'ai_provider' => 'gemini',
+            'ai_model' => 'gpt-5',
+            'ai_vision_model' => 'gpt-5',
+        ]);
+        $saved = $this->field([
+            'ai_provider' => 'openai',
+            'ai_model' => 'gpt-5',
+            'ai_vision_model' => 'gpt-5',
+        ]);
 
         (new ModelSelectionFilter())->apply($post, $saved);
 
         self::assertSame('', $post->get('ai_model'));
+        self::assertSame('', $post->get('ai_vision_model'));
     }
 
     #[Test]
@@ -53,11 +62,16 @@ final class ModelSelectionFilterTest extends TestCase
     public function keepsSavedModelWhenInputIsMissing(): void
     {
         $post = $this->field(['ai_provider' => 'anthropic']);
-        $saved = $this->field(['ai_provider' => 'anthropic', 'ai_model' => 'claude-sonnet-4']);
+        $saved = $this->field([
+            'ai_provider' => 'anthropic',
+            'ai_model' => 'claude-sonnet-4',
+            'ai_vision_model' => 'claude-sonnet-4-vision',
+        ]);
 
         (new ModelSelectionFilter())->apply($post, $saved);
 
         self::assertSame('claude-sonnet-4', $post->get('ai_model'));
+        self::assertSame('claude-sonnet-4-vision', $post->get('ai_vision_model'));
     }
 
     #[Test]
