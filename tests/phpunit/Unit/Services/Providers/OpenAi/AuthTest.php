@@ -12,7 +12,7 @@ use PHPUnit\Framework\Attributes\TestDox;
 
 /**
  * OpenAI /models へのモデル列挙（OpenAiProvider::listModels）の「認証情報バリデーション・レスポンス解析・
- * エラー分岐・利用可能モデル絞り込み」を固定する。
+ * エラー分岐・モデル名の抽出」を固定する。
  *
  * 実通信は {@see FakeOpenAiProvider} で差し替え、決定的に検証する。cURL 自体（OpenAiProvider::httpGetJson）は
  * I/O 境界のため実機/E2E で担保する（ユニット対象外）。
@@ -98,8 +98,8 @@ final class AuthTest extends TestCase
     }
 
     #[Test]
-    #[TestDox('成功時は許可リストのモデルだけを配列で返す')]
-    public function returnsOnlyAllowedModelsOnSuccess(): void
+    #[TestDox('成功時は API が返したモデル名を配列で返す')]
+    public function returnsAllModelNamesOnSuccess(): void
     {
         $body = json_encode([
             'data' => [
@@ -110,7 +110,10 @@ final class AuthTest extends TestCase
             ],
         ], JSON_THROW_ON_ERROR);
 
-        self::assertSame(['gpt-5.4', 'gpt-5.4-mini'], $this->configured($body)->listModels());
+        self::assertSame(
+            ['gpt-5.4', 'gpt-3.5-turbo', 'gpt-5.4-mini', 'dall-e-3'],
+            $this->configured($body)->listModels()
+        );
     }
 
     #[Test]

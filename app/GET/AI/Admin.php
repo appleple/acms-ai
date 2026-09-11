@@ -7,6 +7,7 @@ use Template;
 use ACMS_Corrector;
 use Acms\Plugins\AI\GET\AI;
 use Acms\Plugins\AI\Services\AI as ServiceAI;
+use Acms\Plugins\AI\Services\AI\ModelListFilter;
 use Acms\Plugins\AI\Services\AI\ProviderRegistry;
 use Acms\Plugins\AI\Services\AI\Contracts\ModelListingProvider;
 use Acms\Plugins\AI\Services\AI\Contracts\ManualModelProvider;
@@ -33,7 +34,8 @@ class Admin extends AI
             if ($manualModel) {
                 // OpenAI 互換 API は /models を必須としない。モデル名は接続先の仕様を確認して手入力する。
                 $this->authorized = true;
-            } elseif ($models !== null) {
+            } elseif (is_array($models)) {
+                $models = (new ModelListFilter($config))->apply($provider->id(), $models);
                 $this->authorized = $models !== [] ? true : false;
             }
             $selectedModel = $config->get('ai_model');

@@ -37,9 +37,6 @@ class OpenAiProvider implements AiProvider, ModelListingProvider
 
     private const MODELS_ENDPOINT = 'https://api.openai.com/v1/models';
 
-    /** @var list<string> このプロバイダで利用を許可するモデル名。 */
-    private const ALLOWED_MODELS = ['gpt-5.4', 'gpt-5.4-pro', 'gpt-5.4-mini', 'gpt-5.4-nano'];
-
     public function __construct(private readonly Credentials $credentials)
     {
     }
@@ -85,13 +82,9 @@ class OpenAiProvider implements AiProvider, ModelListingProvider
             && $this->credentials->attribute('projectId') !== '';
     }
 
-    public function supportsModel(string $model): bool
-    {
-        return $model !== '' && in_array($model, self::ALLOWED_MODELS, true);
-    }
-
     /**
-     * OpenAI の /v1/models を叩き、許可リストに含まれる利用可能モデル名を返す。
+     * OpenAI の /v1/models を叩き、API が返すモデル名を返す。
+     * 管理画面へ表示する候補は ModelListFilter が config に基づいて絞り込む。
      * 認証情報（API キー・Organization ID・Project ID）が未充足なら通信せず null。
      *
      * @return list<string>|null
@@ -249,7 +242,7 @@ class OpenAiProvider implements AiProvider, ModelListingProvider
             return $models;
         }
         foreach ($result->data as $datum) {
-            if ($datum instanceof \stdClass && isset($datum->id) && $this->supportsModel((string) $datum->id)) {
+            if ($datum instanceof \stdClass && isset($datum->id) && (string) $datum->id !== '') {
                 $models[] = (string) $datum->id;
             }
         }
