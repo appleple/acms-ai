@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Acms\Plugins\AI\Services\AI;
 
+use Acms\Services\Facades\Database as DB;
 use Acms\Services\Facades\RateLimiter;
 
 /**
@@ -14,6 +15,7 @@ final class AiRequestRateLimiter
     private const DEFAULT_WINDOW_MINUTES = 1;
     private const DEFAULT_MAX_REQUESTS = 20;
     private const DEFAULT_LOCK_MINUTES = 5;
+    private const ADVISORY_LOCK_TIMEOUT_SECONDS = 5;
 
     public function __construct(
         private readonly int $windowMinutes,
@@ -45,20 +47,70 @@ final class AiRequestRateLimiter
         }
 
         $lockKey = "acms-ai:{$blogId}:{$userId}";
-        if (
-            !RateLimiter::validateLockPost(
-                $lockKey,
-                $this->windowMinutes,
-                $this->maxRequests,
-                $this->lockMinutes,
-                false,
-            )
-        ) {
+        $advisoryLock = self::advisoryLockName($lockKey);
+        if (!$this->acquireLock($advisoryLock)) {
             return false;
         }
 
-        RateLimiter::logLockPost($lockKey);
-        return true;
+        try {
+            if (
+                !RateLimiter::validateLockPost(
+                    $lockKey,
+                    $this->windowMinutes,
+                    $this->maxRequests,
+                    $this->lockMinutes,
+                    false,
+                )
+            ) {
+                return false;
+            }
+
+            RateLimiter::logLockPost($lockKey);
+            return true;
+        } finally {
+            $this->releaseLock($advisoryLock);
+        }
+    }
+
+    /**
+     * MySQLサーバを共有する複数CMSや、64文字のGET_LOCK上限を考慮したロック名を返す。
+     */
+    private static function advisoryLockName(string $lockKey): string
+    {
+        $database = defined('DB_NAME') ? constant('DB_NAME') : '';
+        $prefix = defined('DB_PREFIX') ? constant('DB_PREFIX') : '';
+
+        return 'acms_ai_' . sha1($database . '|' . $prefix . '|' . $lockKey);
+    }
+
+    private function acquireLock(string $name): bool
+    {
+        try {
+            $acquired = DB::query(
+                [
+                    'sql' => 'SELECT GET_LOCK(?, ?)',
+                    'params' => [$name, self::ADVISORY_LOCK_TIMEOUT_SECONDS],
+                ],
+                'one',
+            );
+
+            return (string) $acquired === '1';
+        } catch (\Throwable) {
+            // 制限処理を直列化できない場合は、有料API呼び出しを安全側に拒否する。
+            return false;
+        }
+    }
+
+    private function releaseLock(string $name): void
+    {
+        try {
+            DB::query(
+                ['sql' => 'SELECT RELEASE_LOCK(?)', 'params' => [$name]],
+                'one',
+            );
+        } catch (\Throwable) {
+            // 接続終了時にも解放されるため、元の判定結果を維持する。
+        }
     }
 
     private static function positiveConfig(string $key, int $default): int
