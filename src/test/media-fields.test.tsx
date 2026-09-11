@@ -1,9 +1,19 @@
-import { fireEvent, render } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { fireEvent, render, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { postRequest } from '../api/fetcher'
 import { MediaFields } from '../features/media-fields'
+
+vi.mock('../api/fetcher')
 
 describe('MediaFields', () => {
   beforeEach(() => {
+    vi.mocked(postRequest).mockReset()
+    window.ACMS = {
+      Ready: vi.fn(),
+      Config: { root: '/', bid: 1 },
+      addListener: vi.fn(),
+    }
+    window.csrfToken = 'token'
     document.body.innerHTML = `
       <div id="js-acms-ai-media" data-alt-enabled="on"></div>
       <div class="acms-admin-modal-content">
@@ -70,5 +80,36 @@ describe('MediaFields', () => {
     })
 
     expect(document.querySelectorAll('table[data-acms-ai-media-row]')).toHaveLength(1)
+  })
+
+  it('タグ入力欄への反映が失敗しても生成済みテキストを反映する', async () => {
+    document.body.innerHTML = `
+      <div id="js-acms-ai-media" data-alt-enabled="on" data-tags-enabled="on"></div>
+      <div class="acms-admin-modal-content">
+        <textarea id="media-modal-alt-42">変更前</textarea>
+        <div id="media-edit"></div>
+      </div>
+    `
+    vi.mocked(postRequest).mockResolvedValue({
+      fields: { alt: '生成した代替テキスト', tags: ['生成タグ'] },
+    })
+    const mediaEdit = document.getElementById('media-edit')
+    if (!mediaEdit) throw new Error('テスト用のメディア編集領域を取得できません。')
+
+    render(<MediaFields item={{ media_id: 42, media_type: 'image' }} />, { container: mediaEdit })
+    const checkboxes = mediaEdit.querySelectorAll<HTMLInputElement>('input[data-acms-ai-media-target]')
+    const button = mediaEdit.querySelector<HTMLButtonElement>('button')
+    if (!button) throw new Error('テスト対象の実行ボタンを取得できません。')
+    for (const checkbox of checkboxes) {
+      if (!checkbox.checked) fireEvent.click(checkbox)
+    }
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      expect(document.querySelector<HTMLTextAreaElement>('#media-modal-alt-42')?.value)
+        .toBe('生成した代替テキスト')
+      expect(mediaEdit.querySelector('[data-acms-ai-media-status]'))
+        .toHaveTextContent('タグ入力欄を取得できませんでした。')
+    })
   })
 })

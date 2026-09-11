@@ -68,9 +68,9 @@ async function generate(event: React.MouseEvent<HTMLButtonElement>, mediaId: num
       throw new Error(responseError(response) ?? '生成結果の形式が正しくありません。')
     }
 
-    // 失敗しやすいタグ連携を先に完了させ、その後に単純なテキスト項目を一括反映する。
-    if (response.fields.tags?.length) await appendTags(modal, response.fields.tags)
+    // タグ連携が失敗しても、正常に生成されたテキスト項目は失わない。
     applyTextFields(mediaId, response.fields, modal)
+    if (response.fields.tags?.length) await appendTags(modal, response.fields.tags)
     setStatus(row, '候補を入力しました。内容を確認し、メディアの更新ボタンで保存してください。')
   } catch (error) {
     setStatus(row, error instanceof Error ? error.message : '画像解析に失敗しました。', true)

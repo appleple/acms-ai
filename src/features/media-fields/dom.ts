@@ -40,12 +40,37 @@ export function applyTextFields(
   }
 }
 
-function tagNames(value: string): string[] {
-  return value.split(',').map((tag) => tag.trim()).filter(Boolean)
+function tagNames(value: string): Set<string> {
+  return new Set(value.split(',').map((tag) => tag.trim()).filter(Boolean))
 }
 
-function wait(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => window.setTimeout(resolve, milliseconds))
+function setReactInputValue(element: HTMLInputElement, value: string): void {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+  if (!setter) {
+    element.value = value
+    return
+  }
+  setter.call(element, value)
+}
+
+async function waitFor(condition: () => boolean, timeout = 2000): Promise<boolean> {
+  const deadline = Date.now() + timeout
+  while (!condition()) {
+    if (Date.now() >= deadline) return false
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 16))
+  }
+  return true
+}
+
+function hasSelectableOption(select: HTMLInputElement): boolean {
+  if (select.getAttribute('aria-expanded') !== 'true') return false
+  const optionId = select.getAttribute('aria-activedescendant')
+  if (optionId && select.ownerDocument.getElementById(optionId)) return true
+
+  // react-select は Apple 系ブラウザでは aria-activedescendant を付与しないため、
+  // 開いた listbox に選択肢が描画されたことを代わりの準備完了条件にする。
+  const listboxId = select.getAttribute('aria-controls')
+  return Boolean(listboxId && select.ownerDocument.getElementById(listboxId)?.querySelector('[role="option"]'))
 }
 
 /**
@@ -59,19 +84,27 @@ export async function appendTags(root: HTMLElement, generatedTags: string[]): Pr
     throw new Error('タグ入力欄を取得できませんでした。')
   }
 
-  const known = new Set(tagNames(hidden.value))
-  for (const tag of generatedTags) {
+  const known = tagNames(hidden.value)
+  const candidates = new Set<string>()
+  for (const generatedTag of generatedTags) {
+    const tag = generatedTag.trim()
+    if (tag !== '') candidates.add(tag)
+  }
+  for (const tag of candidates) {
     if (known.has(tag)) continue
 
     select.focus()
-    select.value = tag
+    setReactInputValue(select, tag)
     select.dispatchEvent(new Event('input', { bubbles: true }))
-    await wait(50)
-    select.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }))
-    select.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true }))
-    await wait(100)
+    select.dispatchEvent(new Event('change', { bubbles: true }))
 
-    if (!tagNames(hidden.value).includes(tag)) {
+    if (!await waitFor(() => hasSelectableOption(select))) {
+      throw new Error(`タグ「${tag}」の候補を選択できませんでした。`)
+    }
+
+    select.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }))
+
+    if (!await waitFor(() => tagNames(hidden.value).has(tag))) {
       throw new Error(`タグ「${tag}」を入力欄に反映できませんでした。`)
     }
     known.add(tag)
