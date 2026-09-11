@@ -86,10 +86,20 @@ export function MediaFields({ item }: FillProps) {
   if (item.media_type !== 'image' || targets.length === 0) return null
 
   return (
-    <table className="acms-admin-media-table-edit" data-acms-ai-media-row="">
+    <table
+      className="acms-admin-media-table-edit acms-admin-margin-top-small"
+      data-acms-ai-media-row=""
+    >
       <tbody>
         <tr>
-          <th>画像からAI生成</th>
+          <th>
+            画像からAI生成
+            <i
+              className="acms-admin-icon-tooltip acms-admin-margin-left-mini js-acms-tooltip-hover"
+              data-acms-position="top"
+              data-acms-tooltip="選択した項目の候補をAIで生成します。生成後は内容を確認し、メディアの更新ボタンで保存してください。"
+            />
+          </th>
           <td>
             <div className="acms-admin-form-checkbox">
               {targets.map((target) => {

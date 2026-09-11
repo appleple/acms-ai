@@ -20,9 +20,15 @@ describe('MediaFields', () => {
       container: mediaEdit,
     })
 
-    const aiTable = mediaEdit.querySelector(':scope > table.acms-admin-media-table-edit[data-acms-ai-media-row]')
+    const aiTable = mediaEdit.querySelector(
+      ':scope > table.acms-admin-media-table-edit.acms-admin-margin-top-small[data-acms-ai-media-row]'
+    )
     expect(aiTable).not.toBeNull()
     expect(aiTable?.querySelector(':scope > tbody > tr > th')).toHaveTextContent('画像からAI生成')
+    const tooltip = aiTable?.querySelector('th > .acms-admin-icon-tooltip.js-acms-tooltip-hover')
+    expect(tooltip).toHaveClass('acms-admin-margin-left-mini')
+    expect(tooltip).toHaveAttribute('data-acms-position', 'top')
+    expect(tooltip).toHaveAttribute('data-acms-tooltip', expect.stringContaining('AIで生成します'))
     expect(mediaEdit.querySelector(':scope > tr')).toBeNull()
     expect(document.querySelector('tr[data-acms-ai-media-row]')).toBeNull()
   })
