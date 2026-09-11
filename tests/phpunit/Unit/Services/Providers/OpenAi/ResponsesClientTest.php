@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Acms\Plugins\AI\Tests\Unit\Services\Providers\OpenAi;
 
+use Acms\Plugins\AI\Services\AI\Contracts\Credentials;
 use Acms\Plugins\AI\Tests\Support\StubResponsesClient;
 use Acms\TestingFramework\TestCase;
 use PHPUnit\Framework\Attributes\Test;
@@ -19,7 +20,7 @@ final class ResponsesClientTest extends TestCase
 {
     private function client(): StubResponsesClient
     {
-        $client = new StubResponsesClient('sk-test-key', 'gpt-5.4-mini');
+        $client = new StubResponsesClient(new Credentials('sk-test-key'), 'gpt-5.4-mini');
         $client->createPayload();
         return $client;
     }

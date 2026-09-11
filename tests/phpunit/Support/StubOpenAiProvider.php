@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Acms\Plugins\AI\Tests\Support;
 
+use Acms\Plugins\AI\Services\AI\Contracts\Credentials;
 use Acms\Plugins\AI\Services\AI\Providers\OpenAi\OpenAiProvider;
 use Acms\Plugins\AI\Services\AI\Providers\OpenAi\ResponsesClient;
 
@@ -16,15 +17,23 @@ use Acms\Plugins\AI\Services\AI\Providers\OpenAi\ResponsesClient;
  */
 final class StubOpenAiProvider extends OpenAiProvider
 {
+    private readonly Credentials $stubCredentials;
+
     /** @var string|false generateText 内で生成する StubResponsesClient が返す応答ボディ */
     public string|false $stubResult = '{}';
 
     /** @var StubResponsesClient|null 直近に生成したスタブクライアント（ペイロード検証用） */
     public ?StubResponsesClient $lastClient = null;
 
+    public function __construct(Credentials $credentials)
+    {
+        parent::__construct($credentials);
+        $this->stubCredentials = $credentials;
+    }
+
     protected function responsesClient(string $model): ResponsesClient
     {
-        $client = new StubResponsesClient('sk-stub', $model);
+        $client = new StubResponsesClient($this->stubCredentials, $model);
         $client->stubResult = $this->stubResult;
         $this->lastClient = $client;
 

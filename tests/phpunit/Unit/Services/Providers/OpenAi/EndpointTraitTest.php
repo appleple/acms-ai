@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Acms\Plugins\AI\Tests\Unit\Services\Providers\OpenAi;
 
+use Acms\Plugins\AI\Services\AI\Contracts\Credentials;
 use Acms\Plugins\AI\Tests\Support\StubResponsesClient;
 use Acms\TestingFramework\TestCase;
 use PHPUnit\Framework\Attributes\Test;
@@ -19,7 +20,7 @@ final class EndpointTraitTest extends TestCase
 {
     private function client(): StubResponsesClient
     {
-        $client = new StubResponsesClient('sk-test-key', 'gpt-5.4');
+        $client = new StubResponsesClient(new Credentials('sk-test-key'), 'gpt-5.4');
         $client->stubResult = '{}';
         return $client;
     }
@@ -136,5 +137,24 @@ final class EndpointTraitTest extends TestCase
         self::assertNotNull($client->capturedHeaders);
         self::assertContains('Content-Type: application/json', $client->capturedHeaders);
         self::assertContains('Authorization: Bearer sk-test-key', $client->capturedHeaders);
+    }
+
+    #[Test]
+    #[TestDox('設定済みの Organization ID / Project ID を Responses API にも渡す')]
+    public function buildHeadersCarryOptionalRoutingIds(): void
+    {
+        $client = new StubResponsesClient(new Credentials('key', [
+            'organizationId' => 'org-test',
+            'projectId' => 'proj-test',
+        ]), 'gpt-5.4');
+        $client->stubResult = '{}';
+        $client->request();
+
+        self::assertSame([
+            'Content-Type: application/json',
+            'Authorization: Bearer key',
+            'OpenAI-Organization: org-test',
+            'OpenAI-Project: proj-test',
+        ], $client->capturedHeaders);
     }
 }

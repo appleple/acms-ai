@@ -1,35 +1,31 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Acms\Plugins\AI\Services\AI\Providers\OpenAi;
+
+use Acms\Plugins\AI\Services\AI\Contracts\Credentials;
 
 trait EndpointTrait
 {
-    /** @var string */
-    protected $apiKey = '';
+    private readonly Credentials $credentials;
 
-    /** @var string */
-    protected $model = '';
+    protected string $model = '';
 
-    /** @var string */
-    protected $endpoint = '';
+    protected string $endpoint = '';
 
     /** @var list<array{role: string, content: array<int, array<string, mixed>>}> */
-    protected $input = [];
+    protected array $input = [];
 
     /** @var string|null */
-    protected $instructions = null;
+    protected ?string $instructions = null;
 
     /** @var string|null */
-    protected $previousResponseId = null;
+    protected ?string $previousResponseId = null;
 
-    /**
-     * @param string $apiKey
-     * @param string $model
-     * @return void
-     */
-    public function __construct(string $apiKey, string $model)
+    public function __construct(Credentials $credentials, string $model)
     {
-        $this->apiKey = $apiKey;
+        $this->credentials = $credentials;
         $this->endpoint = 'https://api.openai.com/v1/responses';
         $this->model = $model;
     }
@@ -84,9 +80,6 @@ trait EndpointTrait
      */
     protected function buildHeaders(): array
     {
-        return [
-            "Content-Type: application/json",
-            "Authorization: Bearer {$this->apiKey}"
-        ];
+        return OpenAiRequestHeaders::fromCredentials($this->credentials);
     }
 }
