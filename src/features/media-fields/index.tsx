@@ -81,41 +81,45 @@ async function generate(event: React.MouseEvent<HTMLButtonElement>, mediaId: num
   }
 }
 
-function MediaFields({ item }: FillProps) {
+export function MediaFields({ item }: FillProps) {
   const targets = enabledTargets()
   if (item.media_type !== 'image' || targets.length === 0) return null
 
   return (
-    <tr data-acms-ai-media-row="">
-      <th>画像からAI生成</th>
-      <td>
-        <div className="acms-admin-form-checkbox">
-          {targets.map((target) => {
-            const id = `acms-ai-media-${target}-${item.media_id}`
-            return (
-              <span key={target} className="acms-admin-margin-right-small">
-                <input
-                  type="checkbox"
-                  id={id}
-                  value={target}
-                  data-acms-ai-media-target=""
-                  defaultChecked={target === 'alt'}
-                />
-                <label htmlFor={id}><i className="acms-admin-ico-checkbox" />{LABELS[target]}</label>
-              </span>
-            )
-          })}
-        </div>
-        <button
-          type="button"
-          className="acms-admin-btn acms-admin-btn-admin acms-admin-margin-top-mini"
-          onClick={(event) => void generate(event, item.media_id)}
-        >
-          選択項目をAI生成
-        </button>
-        <p data-acms-ai-media-status="" aria-live="polite" />
-      </td>
-    </tr>
+    <table className="acms-admin-media-table-edit" data-acms-ai-media-row="">
+      <tbody>
+        <tr>
+          <th>画像からAI生成</th>
+          <td>
+            <div className="acms-admin-form-checkbox">
+              {targets.map((target) => {
+                const id = `acms-ai-media-${target}-${item.media_id}`
+                return (
+                  <span key={target} className="acms-admin-margin-right-small">
+                    <input
+                      type="checkbox"
+                      id={id}
+                      value={target}
+                      data-acms-ai-media-target=""
+                      defaultChecked={target === 'alt'}
+                    />
+                    <label htmlFor={id}><i className="acms-admin-ico-checkbox" />{LABELS[target]}</label>
+                  </span>
+                )
+              })}
+            </div>
+            <button
+              type="button"
+              className="acms-admin-btn acms-admin-btn-admin acms-admin-margin-top-mini"
+              onClick={(event) => void generate(event, item.media_id)}
+            >
+              選択項目をAI生成
+            </button>
+            <p data-acms-ai-media-status="" aria-live="polite" />
+          </td>
+        </tr>
+      </tbody>
+    </table>
   )
 }
 
