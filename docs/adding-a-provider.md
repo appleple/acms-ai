@@ -165,7 +165,9 @@ $registry->register(
   `data-ai-provider-panel="anthropic"` のグループとして追加します。
 - モデル選択（`GET/AI/Admin`）は、プロバイダが `ModelListingProvider` を実装していれば
   `listModels()` の戻り値で自動生成されます。利用可能という理由だけで全モデルを返さず、このプラグインが
-  必須とする機能（構造化出力など）に対応したモデルへ絞ります。「有効表示」（`GET/AI/Config`）は
+  必須とする機能（構造化出力など）に対応したモデルへ絞ります。その後 `ModelListFilter` が
+  `ai_<provider-id>_allowed_models` の運用設定を適用するため、列挙型プロバイダを追加したら
+  `app/config.system.yaml` に空の既定値も追加します。「有効表示」（`GET/AI/Config`）は
   `isConfigured()` で判定します。
 - 接続先がモデル一覧 API を保証しない場合は、存在しない `/models` を推測して呼び出さず
   `ManualModelProvider` を実装します。管理画面はモデル名の手入力へ切り替わるため、利用者向けドキュメントに
