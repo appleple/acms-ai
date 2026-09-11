@@ -58,7 +58,7 @@ class ResponsesClient
     {
         $ch = curl_init();
 
-        curl_setopt_array($ch, [
+        curl_setopt_array($ch, OpenAiCurlOptions::request() + [
             CURLOPT_URL => $this->endpoint,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => $headers,

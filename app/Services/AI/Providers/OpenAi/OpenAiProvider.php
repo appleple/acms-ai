@@ -276,7 +276,7 @@ class OpenAiProvider implements AiProvider, ModelListingProvider
     protected function httpGetJson(string $url, array $headers): string
     {
         $ch = curl_init();
-        curl_setopt_array($ch, [
+        curl_setopt_array($ch, OpenAiCurlOptions::modelList() + [
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => $headers,
