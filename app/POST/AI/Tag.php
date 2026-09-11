@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Acms\Plugins\AI\POST\AI;
 
 use ACMS_POST;
@@ -23,7 +25,7 @@ class Tag extends ACMS_POST
      */
     protected function additionalMessages(): array
     {
-        $tagNameAll = ServiceAI::getTagNameAll();
+        $tagNameAll = ServiceAI::getTagNameAll(BID);
         $tagStr = implode(", ", $tagNameAll);
 
         if ($tagStr === '') {
@@ -45,22 +47,43 @@ class Tag extends ACMS_POST
 
     public function post(): mixed
     {
-        $this->initAiConfig();
-
         $article = $this->Post->get('article');
         $addPrompt = $this->Post->get('addPrompt');
         $alreadyGeneratedTagsRaw = $this->Post->get('alreadyGeneratedTags');
-        $alreadyGeneratedTags = $alreadyGeneratedTagsRaw !== ''
-            ? json_decode($alreadyGeneratedTagsRaw, true)
-            : [];
+        $config = $this->prepareAiRequest();
 
-        $serviceAI = new ServiceAI();
-        $config = $serviceAI->getConfig();
+        $alreadyGeneratedTags = [];
+        if ($alreadyGeneratedTagsRaw !== '') {
+            try {
+                $decodedTags = json_decode($alreadyGeneratedTagsRaw, true, 512, JSON_THROW_ON_ERROR);
+            } catch (\JsonException) {
+                $this->invalidGeneratedTags();
+            }
+
+            if (!is_array($decodedTags) || !array_is_list($decodedTags)) {
+                $this->invalidGeneratedTags();
+            }
+
+            foreach ($decodedTags as $tag) {
+                if (!is_string($tag)) {
+                    $this->invalidGeneratedTags();
+                }
+                $tag = trim($tag);
+                if ($tag !== '') {
+                    $alreadyGeneratedTags[] = $tag;
+                }
+            }
+        }
+
         $settings = new EntryAiSettings($config);
 
         // 「有効」設定はフロントの表示制御に加えて、直接 POST への防御として二重に検査する
         if (!$settings->tagEnabled()) {
-            return $this->errorResponse('タグ生成は管理画面で有効化されていません。');
+            $this->errorResponse(
+                'タグ生成は管理画面で有効化されていません。',
+                403,
+                ['reason' => 'feature_disabled'],
+            );
         }
 
         $customPrompt = $settings->tagPrompt();
@@ -73,7 +96,7 @@ class Tag extends ACMS_POST
             $content .= "\n\nTags set: \"\"\"\n{$addPrompt}\n\"\"\"";
         }
 
-        if (is_array($alreadyGeneratedTags) && $alreadyGeneratedTags !== []) {
+        if ($alreadyGeneratedTags !== []) {
             $tagList = implode(', ', $alreadyGeneratedTags);
             $content .= "\n\nAlready generated tags (do not include these in the new suggestions): \"\"\"\n"
                 . "{$tagList}\n\"\"\"";
@@ -81,13 +104,22 @@ class Tag extends ACMS_POST
 
         $promptMessages = [['role' => 'user', 'content' => $content]];
 
-        return $this->executeAiRequest(
+        $this->executeAiRequest(
             "You are a system that returns tag suggestions as a JSON array. "
             . "Each element must have a \"content\" key with the tag name as value. "
             . "Do not include any tags that are listed under \"Already generated tags\" or \"Tags set\" in the prompt. "
             . "Every suggestion must be unique and not duplicate any previously generated tag.",
             'tag_suggestions',
             $promptMessages
+        );
+    }
+
+    private function invalidGeneratedTags(): never
+    {
+        $this->errorResponse(
+            '生成済みタグの形式が正しくありません。',
+            400,
+            ['reason' => 'invalid_generated_tags'],
         );
     }
 }

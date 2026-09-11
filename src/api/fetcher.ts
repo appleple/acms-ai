@@ -6,7 +6,7 @@ interface PostRequestProps {
       role: string
       content: string
     }[]
-    [key: string]: any
+    [key: string]: unknown
   }
   exec: string
   formToken: string
@@ -25,19 +25,43 @@ const resolveBlogUrl = (baseUrl: string): string => {
   return `${normalized}bid/${bid}/`
 }
 
+interface ErrorPayload {
+  message?: unknown
+  errorCode?: unknown
+}
+
+const parseJsonResponse = async (response: Response): Promise<unknown | null> => {
+  try {
+    return await response.json()
+  } catch {
+    return null
+  }
+}
+
+export const parseErrorMessage = (body: string): string | null => {
+  try {
+    const payload = JSON.parse(body) as ErrorPayload
+    return typeof payload.message === 'string' && payload.message.trim() !== ''
+      ? payload.message.trim()
+      : null
+  } catch {
+    return null
+  }
+}
+
 export const postRequest = async (props: PostRequestProps) => {
   const { url, data, exec, formToken, signal } = props
 
-  const formData =  new FormData();
+  const formData = new FormData()
   if (data.prompt !== undefined) {
     formData.append('prompt', JSON.stringify(data.prompt))
   }
   formData.append('mode', data.mode)
   Object.keys(data).forEach(key => {
     if (key !== 'prompt' && key !== 'mode') {
-      formData.append(key, data[key]);
+      formData.append(key, String(data[key]))
     }
-  });
+  })
   formData.append(exec, 'exec')
   formData.append('formToken', formToken)
 
@@ -45,13 +69,18 @@ export const postRequest = async (props: PostRequestProps) => {
     method: 'POST',
     body: formData,
     signal,
-  });
-  if(!response.ok) {
-    return null;
+  })
+
+  const payload = await parseJsonResponse(response)
+  if (!response.ok) {
+    return payload ?? {
+      message: `サーバーからエラーが返されました。(${response.status})`,
+      errorCode: response.status,
+    }
   }
 
-  return response.json();
-};
+  return payload
+}
 
 interface PostStreamingRequestProps {
   url: string;

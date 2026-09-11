@@ -77,6 +77,10 @@ class ServiceProvider extends ACMS_App
      */
     private function assistantReady()
     {
+        if (!sessionWithContribution(BID)) {
+            return false;
+        }
+
         try {
             $config = (new Services\AI())->getConfig();
             $provider = Services\AI\ProviderRegistry::withDefaults()->resolve($config);

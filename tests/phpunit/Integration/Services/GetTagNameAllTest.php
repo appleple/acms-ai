@@ -29,12 +29,21 @@ final class GetTagNameAllTest extends DatabaseTestCase
         TagSeeder::seed(self::TEST_ENTRY_ID, self::TEST_BLOG_ID, 'PHP', 1);
         TagSeeder::seed(self::TEST_ENTRY_ID, self::TEST_BLOG_ID, 'a-blog cms', 2);
         TagSeeder::seed(self::TEST_ENTRY_ID + 1, self::TEST_BLOG_ID, 'PHP', 1);
-        TagSeeder::seed(self::TEST_ENTRY_ID + 2, self::TEST_BLOG_ID - 1, '別ブログのタグ', 1);
 
         $tags = AI::getTagNameAll(self::TEST_BLOG_ID);
 
         sort($tags);
         self::assertSame(['PHP', 'a-blog cms'], $tags);
+    }
+
+    #[Test]
+    #[TestDox('指定したブログ以外のタグを返さない')]
+    public function excludesTagsFromOtherBlogs(): void
+    {
+        TagSeeder::seed(self::TEST_ENTRY_ID, self::TEST_BLOG_ID, '対象ブログのタグ', 1);
+        TagSeeder::seed(self::TEST_ENTRY_ID + 1, self::TEST_BLOG_ID - 1, '別ブログのタグ', 1);
+
+        self::assertSame(['対象ブログのタグ'], AI::getTagNameAll(self::TEST_BLOG_ID));
     }
 
     #[Test]

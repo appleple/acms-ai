@@ -22,4 +22,12 @@ ai_compat_base_url: "https://api.ai.sakura.ad.jp/v1"
 ai_openai_allowed_models: "gpt-5.6* gpt-5.5* gpt-5.4*"
 ai_anthropic_allowed_models: ""
 ai_gemini_allowed_models: ""
+
+# AI生成POSTの悪用・誤操作による過剰なAPI消費を防ぐ
+# 入力上限はリクエスト内でAIへ渡す文字列の合計バイト数
+ai_request_max_input_bytes: 262144
+# ブログ・ログインユーザー単位。requests を 0 にするとレート制限を無効化
+ai_rate_limit_window_minutes: 1
+ai_rate_limit_requests: 20
+ai_rate_limit_lock_minutes: 5
 #END_AIConfig
