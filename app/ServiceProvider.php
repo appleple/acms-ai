@@ -107,13 +107,12 @@ class ServiceProvider extends ACMS_App
         }
 
         try {
-            $config = (new Services\AI())->getConfig();
+            $serviceAi = new Services\AI();
+            $config = $serviceAi->getConfig();
             $provider = Services\AI\ProviderRegistry::withDefaults()->resolve($config);
-            $visionModel = $config->get('ai_vision_model');
-            $model = $visionModel !== '' ? $visionModel : $config->get('ai_model');
 
             return $config->get('ai_vision_enabled') === 'on'
-                && $model !== ''
+                && $serviceAi->visionModel($config) !== ''
                 && $provider->isConfigured()
                 && $provider->supports(Capability::VisionInput)
                 && $provider->supports(Capability::StructuredOutput);

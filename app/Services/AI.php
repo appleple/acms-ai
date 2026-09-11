@@ -31,6 +31,18 @@ class AI
     }
 
     /**
+     * 画像解析用モデルを解決する。
+     *
+     * 専用モデルが空または空白だけの場合は、通常モデルへフォールバックする。
+     */
+    public function visionModel(Field $config): string
+    {
+        $model = trim($config->get('ai_vision_model'));
+
+        return $model !== '' ? $model : trim($config->get('ai_model'));
+    }
+
+    /**
      * @return list<string> $result タグの配列
      */
     public static function getTagNameAll(int $blogId): array

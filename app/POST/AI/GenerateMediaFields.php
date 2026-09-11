@@ -6,6 +6,7 @@ namespace Acms\Plugins\AI\POST\AI;
 
 use ACMS_POST;
 use Acms\Plugins\AI\POST\AIPostTrait;
+use Acms\Plugins\AI\Services\AI as ServicesAI;
 use Acms\Plugins\AI\Services\AI\Contracts\Capability;
 use Acms\Plugins\AI\Services\AI\Vision\MediaFieldGenerator;
 use Acms\Plugins\AI\Services\AI\Vision\MediaImageLoader;
@@ -43,10 +44,7 @@ final class GenerateMediaFields extends ACMS_POST
             ]);
         }
 
-        $model = trim($config->get('ai_vision_model'));
-        if ($model === '') {
-            $model = $this->model;
-        }
+        $model = (new ServicesAI())->visionModel($config);
         if ($model === '') {
             $this->errorResponse('画像解析に使用するモデルを設定してください。', 400, ['reason' => 'missing_model']);
         }
