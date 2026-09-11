@@ -48,8 +48,9 @@ a-blog cms の AI機能を拡張するアプリです。
 
 ### 準備：利用するプロバイダの認証情報を取得
 
-OpenAI を利用する場合は `https://platform.openai.com/docs/overview` へログインし、
-`Organization ID`、`Project ID`、`API KEY` を取得してください。
+OpenAI を利用する場合は `https://platform.openai.com/api-keys` で `API KEY` を取得してください。
+`Organization ID` と `Project ID` は通常不要です。複数の Organization を利用する場合や、legacy user API key で
+対象を明示する場合だけ設定します。
 
 Anthropic を利用する場合は `https://platform.claude.com/` で API KEY を取得してください。
 
@@ -75,6 +76,7 @@ Bearer トークン、チャットモデル名を入力してください。Base
 
 ```dotenv
 ACMS_AI_OPENAI_API_KEY=sk-...
+# 以下2項目は必要な場合だけ設定
 ACMS_AI_OPENAI_ORGANIZATION_ID=org-...
 ACMS_AI_OPENAI_PROJECT_ID=proj-...
 ACMS_AI_ANTHROPIC_API_KEY=sk-ant-...
@@ -94,19 +96,18 @@ Webサーバーから `.env` へアクセスしたときに必ず `403` また�
 a-blog cms同梱の `.htaccess` にはドットファイルのアクセス拒否がありますが、Nginxなど `.htaccess` を
 使用しない構成ではWebサーバー側に同等の拒否設定が必要です。
 
-#### Organization ID
-`Setting > Organization > General` から取得できます。
+#### Organization ID（任意）
+複数の Organization から対象を明示する場合は、`Setting > Organization > General` から取得できます。
 
-#### Project ID
-`Setting > Project > General` から取得できます。初期では Default Project が作成されていますが、利用するアプリケーション毎に作成することをお勧めします。利用量が Project ごとに確認できます。
+#### Project ID（任意）
+legacy user API key などで対象を明示する場合は、`Setting > Project > General` から取得できます。
 
 #### API KEY
-`Dashboard > API Keys` の `Create new secret Key` からキーが取得できます。この時、利用する `Project ID` を指定します。
-※ User API Keys もありますが、この拡張アプリは対応しておりません。
+`Dashboard > API Keys` の `Create new secret Key` から取得できます。OpenAI の認証で必須なのはこの API KEY です。
 
 ### a-blog cms の管理画面設定
 利用するプロバイダを選択し、準備で取得した認証情報を AI管理画面で入力して保存してください。
-OpenAI は `Organization ID`、`Project ID`、`API KEY`、Anthropic と Google Gemini は `API KEY`、
+OpenAI は `API KEY`（必要な場合のみ `Organization ID` / `Project ID`）、Anthropic と Google Gemini は `API KEY`、
 OpenAI互換は `API KEY` と `Base URL` を使用します。
 
 ![AI拡張アプリの管理画面でキーを入力し保存](images/acms-admin-key.png)

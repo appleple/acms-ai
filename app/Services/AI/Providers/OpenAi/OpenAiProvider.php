@@ -23,7 +23,7 @@ use Field;
  *
  * 認証・モデル一覧（旧 Services\AI::auth 相当）と、プロバイダ非依存の {@see GenerationRequest} を
  * Responses API のペイロードへ変換する処理を内包する。OpenAI 固有のワイヤ形状（input_text/
- * output_text/input_image/text.format/previous_response_id、/v1/models 応答、3 点認証）は
+ * output_text/input_image/text.format/previous_response_id、/v1/models 応答、認証・ルーティングヘッダー）は
  * すべてこのクラス配下（本クラスと {@see ResponsesClient} / {@see StreamingResponsesClient}）に閉じる。
  */
 class OpenAiProvider implements AiProvider, ModelListingProvider
@@ -77,15 +77,14 @@ class OpenAiProvider implements AiProvider, ModelListingProvider
 
     public function isConfigured(): bool
     {
-        return $this->credentials->apiKey() !== ''
-            && $this->credentials->attribute('organizationId') !== ''
-            && $this->credentials->attribute('projectId') !== '';
+        return trim($this->credentials->apiKey()) !== '';
     }
 
     /**
      * OpenAI の /v1/models を叩き、API が返すモデル名を返す。
      * 管理画面へ表示する候補は ModelListFilter が config に基づいて絞り込む。
-     * 認証情報（API キー・Organization ID・Project ID）が未充足なら通信せず null。
+     * API キーが未設定なら通信せず null。Organization ID / Project ID は任意で、
+     * 設定されている場合だけヘッダーへ付与する。
      *
      * @return list<string>|null
      */
@@ -95,18 +94,8 @@ class OpenAiProvider implements AiProvider, ModelListingProvider
             return null;
         }
 
-        $apiKey = $this->credentials->apiKey();
-        $organizationId = $this->credentials->attribute('organizationId');
-        $projectId = $this->credentials->attribute('projectId');
-
-        $headers = [
-            "Content-Type: application/json",
-            "Authorization: Bearer {$apiKey}",
-            "OpenAI-Organization: {$organizationId}",
-            "OpenAI-Project: {$projectId}",
-        ];
-
         try {
+            $headers = OpenAiRequestHeaders::fromCredentials($this->credentials);
             $result = $this->httpGetJson(self::MODELS_ENDPOINT, $headers);
             $decoded = json_decode($result);
             if (json_last_error() !== JSON_ERROR_NONE) {
@@ -320,7 +309,7 @@ class OpenAiProvider implements AiProvider, ModelListingProvider
      */
     protected function responsesClient(string $model): ResponsesClient
     {
-        return new ResponsesClient($this->credentials->apiKey(), $model);
+        return new ResponsesClient($this->credentials, $model);
     }
 
     /**
@@ -328,6 +317,6 @@ class OpenAiProvider implements AiProvider, ModelListingProvider
      */
     protected function streamingClient(string $model): StreamingResponsesClient
     {
-        return new StreamingResponsesClient($this->credentials->apiKey(), $model);
+        return new StreamingResponsesClient($this->credentials, $model);
     }
 }

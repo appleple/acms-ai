@@ -30,31 +30,54 @@ final class AuthTest extends TestCase
         return $provider;
     }
 
-    /**
-     * 3 点認証が揃った状態の既定プロバイダ。
-     */
+    /** API キーと任意のルーティング ID が設定された既定プロバイダ。 */
     private function configured(string $body = '{}', bool $fail = false): FakeOpenAiProvider
     {
         return $this->provider('key', ['organizationId' => 'org', 'projectId' => 'proj'], $body, $fail);
     }
 
     #[Test]
-    #[TestDox('組織 ID・プロジェクト ID・API キーのいずれかが空なら通信せず null を返す')]
-    public function returnsNullWhenAnyCredentialEmpty(): void
+    #[TestDox('API キーが空または空白だけなら通信せず null を返す')]
+    public function returnsNullWhenApiKeyEmpty(): void
     {
         $body = '{"data":[{"id":"gpt-5.4"}]}';
 
         $noKey = $this->provider('', ['organizationId' => 'org', 'projectId' => 'proj'], $body);
-        $noOrg = $this->provider('key', ['organizationId' => '', 'projectId' => 'proj'], $body);
-        $noProject = $this->provider('key', ['organizationId' => 'org', 'projectId' => ''], $body);
+        $blankKey = $this->provider('   ', ['organizationId' => 'org', 'projectId' => 'proj'], $body);
 
         self::assertNull($noKey->listModels());
-        self::assertNull($noOrg->listModels());
-        self::assertNull($noProject->listModels());
-        // 通信は一度も行われない。
+        self::assertNull($blankKey->listModels());
         self::assertNull($noKey->requestedUrl);
-        self::assertNull($noOrg->requestedUrl);
-        self::assertNull($noProject->requestedUrl);
+        self::assertNull($blankKey->requestedUrl);
+    }
+
+    #[Test]
+    #[TestDox('Organization ID / Project ID が空でも API キーがあれば問い合わせる')]
+    public function queriesWithoutOrganizationAndProject(): void
+    {
+        $provider = $this->provider('key', ['organizationId' => '', 'projectId' => ''], '{"data":[{"id":"gpt-5.4"}]}');
+
+        self::assertSame(['gpt-5.4'], $provider->listModels());
+        self::assertSame('https://api.openai.com/v1/models', $provider->requestedUrl);
+        self::assertSame([
+            'Content-Type: application/json',
+            'Authorization: Bearer key',
+        ], $provider->requestedHeaders);
+    }
+
+    #[Test]
+    #[TestDox('設定済みの Organization ID / Project ID はモデル一覧のヘッダーへ付与する')]
+    public function sendsOrganizationAndProjectHeadersWhenSet(): void
+    {
+        $provider = $this->configured('{"data":[]}');
+        $provider->listModels();
+
+        self::assertSame([
+            'Content-Type: application/json',
+            'Authorization: Bearer key',
+            'OpenAI-Organization: org',
+            'OpenAI-Project: proj',
+        ], $provider->requestedHeaders);
     }
 
     #[Test]
