@@ -15,6 +15,8 @@ use Acms\Plugins\AI\Services\AI\Contracts\ModelListingProvider;
 use Acms\Plugins\AI\Services\AI\Contracts\TokenUsage;
 use Acms\Plugins\AI\Services\AI\Logging\ProviderErrorLogContext;
 use Acms\Plugins\AI\Services\AI\EnvCredential;
+use Acms\Plugins\AI\Services\AI\Providers\BoundedResponseBuffer;
+use Acms\Plugins\AI\Services\AI\Providers\ResponseSizeLimits;
 use Acms\Services\Facades\Common;
 use Acms\Services\Facades\Logger;
 use Field;
@@ -161,6 +163,9 @@ class OpenAiProvider implements AiProvider, ModelListingProvider
         }
 
         $text = ResponsesClient::extractText($raw);
+        if ($text !== null) {
+            ResponseSizeLimits::assertGeneratedText($text);
+        }
         $continuation = ($raw instanceof \stdClass && isset($raw->id) && is_string($raw->id))
             ? $raw->id
             : null;
@@ -276,17 +281,19 @@ class OpenAiProvider implements AiProvider, ModelListingProvider
     protected function httpGetJson(string $url, array $headers): string
     {
         $ch = curl_init();
+        $buffer = new BoundedResponseBuffer();
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_RETURNTRANSFER => false,
             CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_WRITEFUNCTION => static fn($_ch, string $bytes): int => $buffer->append($bytes),
         ]);
-        $result = curl_exec($ch);
-        if (!is_string($result)) {
+        curl_exec($ch);
+        if (curl_errno($ch) !== 0) {
             throw new \Exception('cURL Error: ' . curl_error($ch));
         }
 
-        return $result;
+        return $buffer->body();
     }
 
     /**

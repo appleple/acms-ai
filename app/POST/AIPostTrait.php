@@ -10,9 +10,10 @@ use Acms\Services\Facades\Response;
 use Acms\Plugins\AI\Services\AI as ServicesAI;
 use Acms\Plugins\AI\Services\AI\AiRequestInputLimit;
 use Acms\Plugins\AI\Services\AI\AiRequestRateLimiter;
-use Acms\Plugins\AI\Services\AI\StructuredItemsDecoder;
 use Acms\Plugins\AI\Services\AI\Logging\AuditLogSanitizer;
 use Acms\Plugins\AI\Services\AI\ProviderRegistry;
+use Acms\Plugins\AI\Services\AI\Providers\ResponseSizeException;
+use Acms\Plugins\AI\Services\AI\StructuredItemsDecoder;
 use Acms\Plugins\AI\Services\AI\Contracts\AiProvider;
 use Acms\Plugins\AI\Services\AI\Contracts\ContentPart;
 use Acms\Plugins\AI\Services\AI\Contracts\GenerationRequest;
@@ -150,7 +151,15 @@ trait AIPostTrait
         );
         $this->assertGenerationInputWithinLimit($request);
 
-        $result = $this->provider->generateText($request);
+        try {
+            $result = $this->provider->generateText($request);
+        } catch (ResponseSizeException) {
+            $this->errorResponse(
+                'AI応答が許容サイズを超えました。',
+                502,
+                ['reason' => 'response_too_large'],
+            );
+        }
         $text = $result->text;
         if ($text === null || $text === '') {
             $this->errorResponse($result->errorMessage ?? 'データを取得できませんでした。');

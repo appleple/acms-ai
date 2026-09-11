@@ -17,6 +17,8 @@ use Acms\Plugins\AI\Services\AI\Contracts\TokenUsage;
 use Acms\Plugins\AI\Services\AI\Logging\ProviderErrorLogContext;
 use Acms\Plugins\AI\Services\AI\Conversation\ConversationStore;
 use Acms\Plugins\AI\Services\AI\EnvCredential;
+use Acms\Plugins\AI\Services\AI\Providers\BoundedResponseBuffer;
+use Acms\Plugins\AI\Services\AI\Providers\ResponseSizeLimits;
 use Acms\Services\Facades\Logger;
 use Field;
 
@@ -150,6 +152,9 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
         }
 
         $text = $this->extractText($raw);
+        if ($text !== null) {
+            ResponseSizeLimits::assertGeneratedText($text);
+        }
         if ($structured && $text !== null) {
             // 重複出力・コードフェンス・末尾ゴミがあっても最初の完全な JSON だけを返す。
             $text = $this->isolateJson($text);
@@ -233,7 +238,10 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
                 if (!$sawAnyEvent) {
                     $rawBytes .= $bytes;
                 }
-                $parser->feed($bytes, function (StreamEvent $event) use ($onEvent, &$assistantText, &$sawAnyEvent, &$sawTerminalEvent, $request, $messages): void {
+                $parser->feed($bytes, function (StreamEvent $event) use ($onEvent, &$assistantText, &$rawBytes, &$sawAnyEvent, &$sawTerminalEvent, $request, $messages): void {
+                    if (!$sawAnyEvent) {
+                        $rawBytes = '';
+                    }
                     $sawAnyEvent = true;
                     if ($event->type === StreamEvent::TYPE_DELTA) {
                         $assistantText .= $event->text ?? '';
@@ -645,20 +653,22 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
     protected function httpPostJson(string $url, array $headers, string $body): string
     {
         $ch = curl_init();
+        $buffer = new BoundedResponseBuffer();
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_RETURNTRANSFER => false,
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_POSTFIELDS => $body,
+            CURLOPT_WRITEFUNCTION => static fn($_ch, string $bytes): int => $buffer->append($bytes),
             CURLOPT_CONNECTTIMEOUT => self::CONNECT_TIMEOUT,
             CURLOPT_TIMEOUT => self::REQUEST_TIMEOUT,
         ]);
-        $result = curl_exec($ch);
-        if (!is_string($result)) {
+        curl_exec($ch);
+        if (curl_errno($ch) !== 0) {
             throw new \Exception('cURL Error: ' . curl_error($ch));
         }
 
-        return $result;
+        return $buffer->body();
     }
 
     /**

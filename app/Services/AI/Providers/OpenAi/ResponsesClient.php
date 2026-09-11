@@ -2,6 +2,7 @@
 
 namespace Acms\Plugins\AI\Services\AI\Providers\OpenAi;
 
+use Acms\Plugins\AI\Services\AI\Providers\BoundedResponseBuffer;
 use Acms\Services\Facades\Common;
 use Acms\Services\Facades\Logger;
 
@@ -57,20 +58,22 @@ class ResponsesClient
     public function exec(string $json, array $headers): string|false
     {
         $ch = curl_init();
+        $buffer = new BoundedResponseBuffer();
 
         curl_setopt_array($ch, [
             CURLOPT_URL => $this->endpoint,
-            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_RETURNTRANSFER => false,
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_POSTFIELDS => $json,
+            CURLOPT_WRITEFUNCTION => static fn($_ch, string $bytes): int => $buffer->append($bytes),
         ]);
-        $result = curl_exec($ch);
+        curl_exec($ch);
 
         if (curl_errno($ch) !== 0) {
             $error = curl_error($ch);
             throw new \Exception("cURL Error: " . $error);
         }
-        return is_string($result) ? $result : false;
+        return $buffer->body();
     }
 
     public function request(): mixed

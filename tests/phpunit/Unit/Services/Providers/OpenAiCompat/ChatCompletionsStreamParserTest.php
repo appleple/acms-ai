@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Acms\Plugins\AI\Tests\Unit\Services\Providers\OpenAiCompat;
 
 use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
+use Acms\Plugins\AI\Services\AI\Providers\BoundedSseStream;
 use Acms\Plugins\AI\Services\AI\Providers\OpenAiCompat\ChatCompletionsStreamParser;
+use Acms\Plugins\AI\Services\AI\Providers\ResponseSizeException;
+use Acms\Plugins\AI\Services\AI\Providers\ResponseSizeLimits;
 use Acms\TestingFramework\TestCase;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestDox;
@@ -114,5 +117,21 @@ final class ChatCompletionsStreamParserTest extends TestCase
         ]);
 
         self::assertSame([], $events);
+    }
+
+    #[Test]
+    #[TestDox('生成本文の共通バイト上限を超えるdeltaを拒否する')]
+    public function rejectsOversizedGeneratedText(): void
+    {
+        $parser = new ChatCompletionsStreamParser(
+            new BoundedSseStream(new ResponseSizeLimits(1024, 512, 3, 10))
+        );
+
+        $this->expectException(ResponseSizeException::class);
+        $parser->feed(
+            'data: {"choices":[{"delta":{"content":"あい"}}]}' . "\n\n",
+            static function (StreamEvent $_event): void {
+            },
+        );
     }
 }

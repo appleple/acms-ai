@@ -17,6 +17,8 @@ use Acms\Plugins\AI\Services\AI\Contracts\TokenUsage;
 use Acms\Plugins\AI\Services\AI\Logging\ProviderErrorLogContext;
 use Acms\Plugins\AI\Services\AI\Conversation\ConversationStore;
 use Acms\Plugins\AI\Services\AI\EnvCredential;
+use Acms\Plugins\AI\Services\AI\Providers\BoundedResponseBuffer;
+use Acms\Plugins\AI\Services\AI\Providers\ResponseSizeLimits;
 use Acms\Services\Facades\Common;
 use Acms\Services\Facades\Logger;
 use Field;
@@ -155,6 +157,9 @@ class GeminiProvider implements AiProvider, ModelListingProvider
         }
 
         $text = $this->extractText($raw);
+        if ($text !== null) {
+            ResponseSizeLimits::assertGeneratedText($text);
+        }
         $finishReason = $this->finishReason($raw);
         $responseError = GeminiErrorMessage::fromResponse($raw);
 
@@ -216,7 +221,10 @@ class GeminiProvider implements AiProvider, ModelListingProvider
                 if (!$sawAnyEvent) {
                     $rawBytes .= $bytes;
                 }
-                $parser->feed($bytes, function (StreamEvent $event) use ($onEvent, &$assistantText, &$sawAnyEvent, &$sawTerminalEvent, $request, $messages): void {
+                $parser->feed($bytes, function (StreamEvent $event) use ($onEvent, &$assistantText, &$rawBytes, &$sawAnyEvent, &$sawTerminalEvent, $request, $messages): void {
+                    if (!$sawAnyEvent) {
+                        $rawBytes = '';
+                    }
                     $sawAnyEvent = true;
                     if ($event->type === StreamEvent::TYPE_DELTA) {
                         $assistantText .= $event->text ?? '';
@@ -516,19 +524,21 @@ class GeminiProvider implements AiProvider, ModelListingProvider
     protected function httpGetJson(string $url, array $headers): string
     {
         $ch = curl_init();
+        $buffer = new BoundedResponseBuffer();
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_RETURNTRANSFER => false,
             CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_WRITEFUNCTION => static fn($_ch, string $bytes): int => $buffer->append($bytes),
             CURLOPT_CONNECTTIMEOUT => self::CONNECT_TIMEOUT,
             CURLOPT_TIMEOUT => self::MODEL_LIST_TIMEOUT,
         ]);
-        $result = curl_exec($ch);
-        if (!is_string($result)) {
+        curl_exec($ch);
+        if (curl_errno($ch) !== 0) {
             throw new \Exception('cURL Error: ' . curl_error($ch));
         }
 
-        return $result;
+        return $buffer->body();
     }
 
     /**
@@ -542,20 +552,22 @@ class GeminiProvider implements AiProvider, ModelListingProvider
     protected function httpPostJson(string $url, array $headers, string $body): string
     {
         $ch = curl_init();
+        $buffer = new BoundedResponseBuffer();
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_RETURNTRANSFER => false,
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_POSTFIELDS => $body,
+            CURLOPT_WRITEFUNCTION => static fn($_ch, string $bytes): int => $buffer->append($bytes),
             CURLOPT_CONNECTTIMEOUT => self::CONNECT_TIMEOUT,
             CURLOPT_TIMEOUT => self::REQUEST_TIMEOUT,
         ]);
-        $result = curl_exec($ch);
-        if (!is_string($result)) {
+        curl_exec($ch);
+        if (curl_errno($ch) !== 0) {
             throw new \Exception('cURL Error: ' . curl_error($ch));
         }
 
-        return $result;
+        return $buffer->body();
     }
 
     /**

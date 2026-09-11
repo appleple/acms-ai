@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Acms\Plugins\AI\Services\AI\Providers\OpenAi;
 
 use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
+use Acms\Plugins\AI\Services\AI\Providers\BoundedSseStream;
 
 /**
  * OpenAI Responses API の SSE ストリームを中立の {@see StreamEvent} 列へデコードする。
@@ -15,7 +16,9 @@ use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
  */
 final class ResponsesStreamParser
 {
-    private string $buffer = '';
+    public function __construct(private readonly BoundedSseStream $stream = new BoundedSseStream())
+    {
+    }
 
     /**
      * 受信バイト列を与えるたびに、完成した SSE 行を解析して StreamEvent を $onEvent へ渡す。
@@ -24,13 +27,7 @@ final class ResponsesStreamParser
      */
     public function feed(string $bytes, callable $onEvent): void
     {
-        $this->buffer .= $bytes;
-        $lines = explode("\n", $this->buffer);
-        // explode は必ず 1 要素以上を返すため array_pop は string。末尾は未完了行（次チャンクへ
-        // 続く可能性）なので持ち越し、完成行だけを解析する。
-        $this->buffer = array_pop($lines);
-
-        foreach ($lines as $line) {
+        foreach ($this->stream->push($bytes) as $line) {
             $this->parseLine(rtrim($line, "\r"), $onEvent);
         }
     }
@@ -56,17 +53,24 @@ final class ResponsesStreamParser
         switch ($event->type) {
             case 'response.output_text.delta':
                 if (isset($event->delta) && is_string($event->delta)) {
-                    $onEvent(StreamEvent::delta($event->delta));
+                    $this->emit(StreamEvent::delta($event->delta), $onEvent);
                 }
                 break;
             case 'response.completed':
-                $onEvent(StreamEvent::completed($this->responseId($event)));
+                $this->emit(StreamEvent::completed($this->responseId($event)), $onEvent);
                 break;
             case 'error':
                 // OpenAI 固有の code/type を利用者向けメッセージへ写す（生成側と同一の変換点）。
-                $onEvent(StreamEvent::error(OpenAiErrorMessage::fromError($event)));
+                $this->emit(StreamEvent::error(OpenAiErrorMessage::fromError($event)), $onEvent);
                 break;
         }
+    }
+
+    /** @param callable(StreamEvent): void $onEvent */
+    private function emit(StreamEvent $event, callable $onEvent): void
+    {
+        $this->stream->assertEvent($event);
+        $onEvent($event);
     }
 
     private function responseId(\stdClass $event): ?string
