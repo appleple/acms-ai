@@ -38,14 +38,14 @@ final class GeminiProviderTest extends TestCase
     }
 
     #[Test]
-    #[TestDox('テキスト生成・構造化出力・ストリーミングに対応し、URL画像入力は提供しない')]
+    #[TestDox('テキスト生成・構造化出力・信頼済み画像入力・ストリーミングに対応する')]
     public function supportsAllCapabilities(): void
     {
         $provider = $this->provider();
 
         self::assertTrue($provider->supports(Capability::TextGeneration));
         self::assertTrue($provider->supports(Capability::StructuredOutput));
-        self::assertFalse($provider->supports(Capability::VisionInput));
+        self::assertTrue($provider->supports(Capability::VisionInput));
         self::assertTrue($provider->supports(Capability::Streaming));
     }
 
@@ -168,6 +168,24 @@ final class GeminiProviderTest extends TestCase
             'gemini-2.5-flash',
             [Message::user(ContentPart::text('説明して'), ContentPart::image('https://example.com/cat.png'))],
         ));
+    }
+
+    #[Test]
+    #[TestDox('信頼済み画像データは inlineData へ変換する')]
+    public function imageDataPartBecomesInlineData(): void
+    {
+        $provider = $this->provider();
+        $provider->stubPostResult = '{"candidates":[{"content":{"parts":[{"text":"猫"}]}}]}';
+
+        $provider->generateText(new GenerationRequest(
+            'gemini-2.5-flash',
+            [Message::user(ContentPart::text('説明して'), ContentPart::imageData('image/png', 'YWJj'))],
+        ));
+
+        self::assertSame(
+            ['inlineData' => ['mimeType' => 'image/png', 'data' => 'YWJj']],
+            $provider->capturedPayload()['contents'][0]['parts'][1]
+        );
     }
 
     #[Test]

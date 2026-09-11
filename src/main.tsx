@@ -5,6 +5,7 @@ import { render } from './utils/react'
 import { DispatchLiteEditorChatDrawer } from './dispatch/dispatch-lite-editor-chat-drawer'
 import { defineAcmsAiAssistantButton } from './elements/acms-ai-assistant-button'
 import { buildEntryAiSlots, readEntryAiEnabledState } from './features/entry-ai/dom'
+import { registerMediaFields } from './features/media-fields'
 import './elements/acms-ai-assistant-button.css'
 
 // カスタム要素はできるだけ早く登録する（どの管理画面でも <acms-ai-assistant-button> を使えるように）
@@ -30,6 +31,7 @@ if (acmsAIRoot) {
 
 // ライトエディタのAIアシスタントボタンは、ライトエディタ設定がある画面でのみ追加する
 window.ACMS.Ready(() => {
+  registerMediaFields()
   if (window.ACMS?.Config?.LiteEditorConf?.btnOptions) {
     DispatchLiteEditorChatDrawer()
   }

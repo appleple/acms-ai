@@ -1,7 +1,7 @@
 <!--
   全管理画面共通ローダー（admin-main インジェクトポイントに常時注入）。
-  ページ内に <acms-ai-assistant-button> がある場合だけ、本体バンドル(acms-ai.js)を
-  遅延ロードする。これによりエントリー編集以外の管理画面でも Web Component を使える。
+  ページ内に <acms-ai-assistant-button> またはメディアAIのマーカーがある場合だけ、
+  本体バンドル(acms-ai.js)を遅延ロードする。
   プロバイダ未設定(authorized=false)のときは ServiceProvider 側で注入自体を行わない。
   エントリー編集で admin-entry-field 側が既にバンドルを読み込む場合は、二重ロードを避ける。
 
@@ -15,7 +15,7 @@
 (function () {
   const JS_URL = '%{AI_JS}';
   const CSS_URL = '%{AI_CSS}';
-  const BUTTON_SELECTOR = 'acms-ai-assistant-button';
+  const BUNDLE_TRIGGER_SELECTOR = 'acms-ai-assistant-button, #js-acms-ai-media';
 
   function bundleAlreadyPresent() {
     // 既に読み込み済み or 読み込み予約済みなら true
@@ -27,24 +27,24 @@
     );
   }
 
-  function nodeContainsAssistantButton(node) {
+  function nodeContainsBundleTrigger(node) {
     if (node.nodeType !== 1) {
       return false;
     }
-    return node.matches(BUTTON_SELECTOR) || !!node.querySelector(BUTTON_SELECTOR);
+    return node.matches(BUNDLE_TRIGGER_SELECTOR) || !!node.querySelector(BUNDLE_TRIGGER_SELECTOR);
   }
 
-  function recordsContainAssistantButton(records) {
+  function recordsContainBundleTrigger(records) {
     return records.some(function (record) {
-      return Array.from(record.addedNodes).some(nodeContainsAssistantButton);
+      return Array.from(record.addedNodes).some(nodeContainsBundleTrigger);
     });
   }
 
-  function loadBundle(buttonPresent) {
+  function loadBundle(triggerPresent) {
     if (bundleAlreadyPresent()) {
       return true; // 二重ロード防止（エントリー編集など）
     }
-    if (!buttonPresent) {
+    if (!triggerPresent) {
       return false; // 現時点では未検出。遅延挿入を監視する
     }
     if (CSS_URL) {
@@ -71,7 +71,7 @@
     const observationRoot = document.getElementById('acms-admin-main')
       || document.body
       || document.documentElement;
-    if (!observationRoot || loadBundle(nodeContainsAssistantButton(observationRoot))) {
+    if (!observationRoot || loadBundle(nodeContainsBundleTrigger(observationRoot))) {
       return;
     }
 
@@ -81,7 +81,7 @@
       return;
     }
     const observer = new MutationObserver(function (records) {
-      if (recordsContainAssistantButton(records) && loadBundle(true)) {
+      if (recordsContainBundleTrigger(records) && loadBundle(true)) {
         observer.disconnect();
       }
     });

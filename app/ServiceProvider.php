@@ -6,6 +6,7 @@ use ACMS_App;
 use Storage;
 use Acms\Services\Common\HookFactory;
 use Acms\Services\Common\InjectTemplate;
+use Acms\Plugins\AI\Services\AI\Contracts\Capability;
 
 class ServiceProvider extends ACMS_App
 {
@@ -59,8 +60,15 @@ class ServiceProvider extends ACMS_App
         // 全管理画面共通ローダー。<acms-ai-assistant-button> がある画面だけ本体バンドルを
         // 遅延ロードし、エントリー編集以外の管理画面でも AI アシスタントボタンを使えるようにする。
         // 認証情報・モデルが未設定なら注入しない（判定は PHP 側に閉じる）。
-        if ($this->assistantReady()) {
+        $assistantReady = $this->assistantReady();
+        $mediaVisionReady = $this->mediaVisionReady();
+        if ($assistantReady || $mediaVisionReady) {
             $inject->add('admin-main', PLUGIN_DIR . 'AI/template/admin/loader.html');
+        }
+        if ($mediaVisionReady) {
+            // CMS 標準の media.edit-modal.fields Fill にバンドル側から登録する。
+            // 巨大なインライン JS や DOM 全体の MutationObserver は使わない。
+            $inject->add('admin-main', PLUGIN_DIR . 'AI/template/admin/media/bootstrap.html');
         }
 
         if (ADMIN === 'app_' . $this->menu) {
@@ -86,6 +94,29 @@ class ServiceProvider extends ACMS_App
             $provider = Services\AI\ProviderRegistry::withDefaults()->resolve($config);
 
             return $provider->isConfigured() && $config->get('ai_model') !== '';
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /** メディア編集モーダルの画像解析が利用できるか。 */
+    private function mediaVisionReady(): bool
+    {
+        if (!sessionWithContribution(BID)) {
+            return false;
+        }
+
+        try {
+            $config = (new Services\AI())->getConfig();
+            $provider = Services\AI\ProviderRegistry::withDefaults()->resolve($config);
+            $visionModel = $config->get('ai_vision_model');
+            $model = $visionModel !== '' ? $visionModel : $config->get('ai_model');
+
+            return $config->get('ai_vision_enabled') === 'on'
+                && $model !== ''
+                && $provider->isConfigured()
+                && $provider->supports(Capability::VisionInput)
+                && $provider->supports(Capability::StructuredOutput);
         } catch (\Throwable $e) {
             return false;
         }

@@ -137,6 +137,21 @@ final class OpenAiProviderTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('信頼済み画像データは data URL の input_image へ変換する')]
+    public function generateTextMapsImageDataParts(): void
+    {
+        $provider = new StubOpenAiProvider($this->creds());
+        $provider->stubResult = '{"output":[{"type":"message","content":[{"type":"output_text","text":"desc"}]}]}';
+
+        $provider->generateText(new GenerationRequest('gpt-5.4', [
+            Message::user(ContentPart::imageData('image/png', 'YWJj')),
+        ]));
+
+        $content = $this->capturedPayload($provider)['input'][0]['content'];
+        self::assertSame(['type' => 'input_image', 'image_url' => 'data:image/png;base64,YWJj'], $content[0]);
+    }
+
+    #[Test]
     #[TestDox('本文が取得できないと text は null になる')]
     public function generateTextReturnsNullTextWhenNoOutput(): void
     {

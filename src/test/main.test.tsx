@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const render = vi.fn()
 const dispatchLiteEditor = vi.fn()
 const defineAssistantButton = vi.fn()
+const registerMediaFields = vi.fn()
 
 vi.mock('../utils/react', () => ({ render }))
 vi.mock('../dispatch/dispatch-lite-editor-chat-drawer', () => ({
@@ -11,6 +12,7 @@ vi.mock('../dispatch/dispatch-lite-editor-chat-drawer', () => ({
 vi.mock('../elements/acms-ai-assistant-button', () => ({
   defineAcmsAiAssistantButton: defineAssistantButton,
 }))
+vi.mock('../features/media-fields', () => ({ registerMediaFields }))
 
 function setAcms(liteEditor = false): void {
   window.ACMS = {
@@ -36,6 +38,7 @@ describe('main entry point', () => {
     await import('../main')
 
     expect(defineAssistantButton).toHaveBeenCalledOnce()
+    expect(registerMediaFields).toHaveBeenCalledOnce()
     expect(render).not.toHaveBeenCalled()
     expect(dispatchLiteEditor).not.toHaveBeenCalled()
   })
