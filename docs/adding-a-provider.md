@@ -148,9 +148,12 @@ HTTP 出力（SSE 整形・echo/flush）は消費側（`app/POST/AI/Chat.php`）
 ```php
 $registry->register(
     AnthropicProvider::ID,
-    static fn(Field $config): AiProvider => AnthropicProvider::fromConfig($config)
+    static fn(Field $config): AiProvider => AnthropicProvider::fromConfig($config),
+    'Anthropic (Claude)'
 );
 ```
+
+第3引数の表示名は、管理画面のプロバイダ選択肢と設定状況に共通で使われます。
 
 ### 6. config と管理画面
 
@@ -158,7 +161,8 @@ $registry->register(
   `<input type="hidden" name="config[]" value="...">` で宣言します。
 - API キーはテンプレートの `value` に再表示しません。`CredentialFieldFilter::SECRET_KEYS` へ追加し、
   空欄なら既存値を維持、入力時だけ差し替え、削除は明示チェックで行う write-only 方式にします。
-- プロバイダ選択セレクト（`name="ai_provider"`）に `<option value="anthropic">Anthropic</option>` を追加します。
+- プロバイダ選択肢はレジストリから自動生成されます。プロバイダ固有の認証欄は
+  `data-ai-provider-panel="anthropic"` のグループとして追加します。
 - モデル選択（`GET/AI/Admin`）は、プロバイダが `ModelListingProvider` を実装していれば
   `listModels()` の戻り値で自動生成されます。利用可能という理由だけで全モデルを返さず、このプラグインが
   必須とする機能（構造化出力など）に対応したモデルへ絞ります。「有効表示」（`GET/AI/Config`）は

@@ -94,6 +94,39 @@ final class ProviderRegistryTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('definitions は登録済みプロバイダのIDと表示名を登録順で返す')]
+    public function definitionsReturnProviderMetadataInRegistrationOrder(): void
+    {
+        self::assertSame(
+            [
+                ['id' => 'openai', 'label' => 'OpenAI'],
+                ['id' => 'anthropic', 'label' => 'Anthropic (Claude)'],
+                ['id' => 'gemini', 'label' => 'Google (Gemini)'],
+                ['id' => 'compat', 'label' => 'OpenAI互換（さくらのAI Engine など）'],
+            ],
+            ProviderRegistry::withDefaults()->definitions()
+        );
+    }
+
+    #[Test]
+    #[TestDox('resolveById は指定IDをフォールバックせず解決する')]
+    public function resolveByIdReturnsSpecifiedProvider(): void
+    {
+        $provider = ProviderRegistry::withDefaults()->resolveById('gemini', $this->config());
+
+        self::assertInstanceOf(GeminiProvider::class, $provider);
+    }
+
+    #[Test]
+    #[TestDox('resolveById は未登録IDで例外を投げる')]
+    public function resolveByIdRejectsUnknownProvider(): void
+    {
+        $this->expectException(\RuntimeException::class);
+
+        ProviderRegistry::withDefaults()->resolveById('unknown-xyz', $this->config());
+    }
+
+    #[Test]
     #[TestDox('register で追加したプロバイダを解決できる')]
     public function customRegistrationResolves(): void
     {
@@ -101,9 +134,10 @@ final class ProviderRegistryTest extends TestCase
         $stub = new OpenAiProvider(
             new \Acms\Plugins\AI\Services\AI\Contracts\Credentials('sk', ['organizationId' => 'o', 'projectId' => 'p'])
         );
-        $registry->register('stub', static fn(Field $config): AiProvider => $stub);
+        $registry->register('stub', static fn(Field $config): AiProvider => $stub, 'Stub Provider');
 
         self::assertTrue($registry->has('stub'));
+        self::assertSame([['id' => 'stub', 'label' => 'Stub Provider']], $registry->definitions());
         self::assertSame($stub, $registry->resolve($this->config(['ai_provider' => 'stub'])));
     }
 }

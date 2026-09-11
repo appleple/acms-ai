@@ -42,6 +42,7 @@
 
       <!-- ================= API設定タブ ================= -->
       <div class="acms-admin-tabs-panel" id="ai-keys">
+    <!-- BEGIN_MODULE AI_ProviderStatus -->
     <h2 class="acms-admin-admin-title2"><!-- T -->認証<!-- /T --></h2>
 
     <table class="acms-admin-table-admin-edit">
@@ -51,19 +52,41 @@
           <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="利用する AI プロバイダを選択してください。"></i>
         </th>
         <td>
-          <select name="ai_provider" class="acms-admin-form-width-full">
-            <option value="openai" <!-- BEGIN_IF [{ai_provider}/eq/openai] -->selected<!-- END_IF -->>OpenAI</option>
-            <option value="anthropic" <!-- BEGIN_IF [{ai_provider}/eq/anthropic] -->selected<!-- END_IF -->>Anthropic (Claude)</option>
-            <option value="gemini" <!-- BEGIN_IF [{ai_provider}/eq/gemini] -->selected<!-- END_IF -->>Google (Gemini)</option>
-            <option value="compat" <!-- BEGIN_IF [{ai_provider}/eq/compat] -->selected<!-- END_IF -->>OpenAI互換（さくらのAI Engine など）</option>
+          <select
+            id="js-ai-provider"
+            name="ai_provider"
+            class="acms-admin-form-width-full"
+            data-saved-provider="{selected_provider_id}">
+            <!-- BEGIN provider_option:loop -->
+            <option
+              value="{provider_id}"
+              <!-- BEGIN_IF [{provider_selected}/eq/true] -->selected<!-- END_IF -->>
+              {provider_label}
+            </option>
+            <!-- END provider_option:loop -->
           </select>
           <input type="hidden" name="config[]" value="ai_provider" />
+          <p class="acms-admin-margin-top-mini" aria-label="プロバイダ設定状況">
+            <!-- BEGIN provider_status:loop -->
+            <!-- BEGIN_IF [{provider_configured}/eq/true] -->
+            <span class="acms-admin-label acms-admin-label-success">{provider_label}: <!-- T -->設定済み<!-- /T --></span>
+            <!-- ELSE -->
+            <span class="acms-admin-label">{provider_label}: <!-- T -->未設定<!-- /T --></span>
+            <!-- END_IF -->
+            <!-- END provider_status:loop -->
+          </p>
         </td>
       </tr>
+    </table>
+    <!-- END_MODULE AI_ProviderStatus -->
+
+    <div data-ai-provider-panel="openai">
+      <h3 class="acms-admin-admin-title3">OpenAI</h3>
+      <table class="acms-admin-table-admin-edit">
       <tr>
         <th>
-          <!-- T -->OpenAI Organization ID<!-- /T -->
-          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="ChatGPT API で取得する Organization ID を入力してください。"></i>
+          <!-- T -->Organization ID<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI API の Organization ID（通常は不要）。.env の ACMS_AI_OPENAI_ORGANIZATION_ID でも設定できます。"></i>
         </th>
         <td>
           <!-- BEGIN_IF [%{AI_OPENAI_ORGANIZATION_ID_FROM_ENV}/eq/1] -->
@@ -85,8 +108,8 @@
       </tr>
       <tr>
         <th>
-          <!-- T -->OpenAI Project ID<!-- /T -->
-          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="ChatGPT API で取得する Project ID を入力してください。"></i>
+          <!-- T -->Project ID<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI API の Project ID（通常は不要）。.env の ACMS_AI_OPENAI_PROJECT_ID でも設定できます。"></i>
         </th>
         <td>
           <!-- BEGIN_IF [%{AI_OPENAI_PROJECT_ID_FROM_ENV}/eq/1] -->
@@ -108,8 +131,8 @@
       </tr>
       <tr>
         <th>
-          <!-- T -->OpenAI API KEY<!-- /T -->
-          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="ChatGPT API で取得する API KEY を入力してください。"></i>
+          <!-- T -->API KEY<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI Platform で取得する API KEY を入力してください。.env の ACMS_AI_OPENAI_API_KEY でも設定できます。"></i>
         </th>
         <td>
           <!-- BEGIN_IF [%{AI_OPENAI_API_KEY_FROM_ENV}/eq/1] -->
@@ -146,10 +169,16 @@
           <!-- END_IF -->
         </td>
       </tr>
+      </table>
+    </div>
+
+    <div data-ai-provider-panel="anthropic">
+      <h3 class="acms-admin-admin-title3">Anthropic (Claude)</h3>
+      <table class="acms-admin-table-admin-edit">
       <tr>
         <th>
-          <!-- T -->Anthropic API KEY<!-- /T -->
-          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="Anthropic Console で取得する API KEY を入力してください。"></i>
+          <!-- T -->API KEY<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="Anthropic Console で取得する API KEY を入力してください。.env の ACMS_AI_ANTHROPIC_API_KEY でも設定できます。"></i>
         </th>
         <td>
           <!-- BEGIN_IF [%{AI_ANTHROPIC_API_KEY_FROM_ENV}/eq/1] -->
@@ -186,10 +215,16 @@
           <!-- END_IF -->
         </td>
       </tr>
+      </table>
+    </div>
+
+    <div data-ai-provider-panel="gemini">
+      <h3 class="acms-admin-admin-title3">Google (Gemini)</h3>
+      <table class="acms-admin-table-admin-edit">
       <tr>
         <th>
-          <!-- T -->Gemini API KEY<!-- /T -->
-          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="Google AI Studio で取得する API KEY を入力してください。"></i>
+          <!-- T -->API KEY<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="Google AI Studio で取得する API KEY を入力してください。.env の ACMS_AI_GEMINI_API_KEY でも設定できます。"></i>
         </th>
         <td>
           <!-- BEGIN_IF [%{AI_GEMINI_API_KEY_FROM_ENV}/eq/1] -->
@@ -226,10 +261,16 @@
           <!-- END_IF -->
         </td>
       </tr>
+      </table>
+    </div>
+
+    <div data-ai-provider-panel="compat">
+      <h3 class="acms-admin-admin-title3"><!-- T -->OpenAI互換（さくらのAI Engine など）<!-- /T --></h3>
+      <table class="acms-admin-table-admin-edit">
       <tr>
         <th>
-          <!-- T -->OpenAI互換 API KEY<!-- /T -->
-          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI互換エンドポイント（さくらのAI Engine など）の API KEY を入力してください。"></i>
+          <!-- T -->API KEY<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI互換エンドポイント（さくらのAI Engine など）の API KEY を入力してください。.env の ACMS_AI_COMPAT_API_KEY でも設定できます。"></i>
         </th>
         <td>
           <!-- BEGIN_IF [%{AI_COMPAT_API_KEY_FROM_ENV}/eq/1] -->
@@ -268,8 +309,8 @@
       </tr>
       <tr>
         <th>
-          <!-- T -->OpenAI互換 Base URL<!-- /T -->
-          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI互換エンドポイント（例: https://api.ai.sakura.ad.jp/v1）を入力してください。空欄では例のURLを使用します。"></i>
+          <!-- T -->Base URL<!-- /T -->
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI互換エンドポイントの Base URL。空欄の場合はさくらのAI Engine（https://api.ai.sakura.ad.jp/v1）を使用します。"></i>
         </th>
         <td>
           <input
@@ -283,7 +324,11 @@
           <input type="hidden" name="config[]" value="ai_compat_base_url" />
         </td>
       </tr>
+      </table>
+    </div>
 
+    <div data-ai-model-settings>
+    <table class="acms-admin-table-admin-edit">
       <tr>
         <th>
           <!-- T -->モデル<!-- /T -->
@@ -292,7 +337,7 @@
         <td>
           <!-- BEGIN_MODULE AI_Admin -->
           <!-- BEGIN_IF [{configured}/eq/false] -->
-          <p>選択中のプロバイダの認証情報を保存してください。</p>
+          <p>認証情報を入力して保存すると、モデルを選択できるようになります。</p>
           <!-- ELSE -->
           <!-- BEGIN_IF [{manualModel}/eq/true] -->
           <input
@@ -304,7 +349,6 @@
             autocomplete="off"
           />
           <p class="acms-admin-text-helper">接続先で利用可能なチャットモデル名を入力してください。</p>
-          <input type="hidden" name="config[]" value="ai_model" />
           <!-- ELSE -->
           <!-- BEGIN_IF [{authorized}/eq/false] -->
           <p>認証に失敗または、API KEY に使用できるモデルがない可能性があります。</p>
@@ -319,14 +363,19 @@
             </option>
             <!-- END model:loop -->
           </select>
+          <!-- END_IF -->
+          <!-- END_IF -->
+          <!-- END_IF -->
           <input type="hidden" name="config[]" value="ai_model" />
-          <!-- END_IF -->
-          <!-- END_IF -->
-          <!-- END_IF -->
           <!-- END_MODULE AI_Admin -->
         </td>
       </tr>
     </table>
+    </div>
+    <p data-ai-provider-change-message class="acms-admin-alert acms-admin-alert-info" aria-live="polite" hidden>
+      選択したプロバイダを保存すると、そのプロバイダで利用可能なモデルを選択できます。
+      保存時に、変更前のプロバイダのモデル設定はクリアされます。
+    </p>
       </div>
 
       <!-- ================= プロンプト設定タブ ================= -->
@@ -386,3 +435,41 @@
   </form>
 </section>
 <!-- END_MODULE Admin_Config -->
+
+<!--
+  BEGIN_MODULE 内では Template::render() が JavaScript の波括弧をテンプレート変数として
+  解釈するため、プロバイダ切り替え処理はモジュールの外に置く。
+-->
+<script>
+(() => {
+  const setupProviderSettings = () => {
+    const select = document.getElementById('js-ai-provider');
+    const modelSettings = document.querySelector('[data-ai-model-settings]');
+    const changeMessage = document.querySelector('[data-ai-provider-change-message]');
+
+    if (!(select instanceof HTMLSelectElement) || !modelSettings || !changeMessage) {
+      return;
+    }
+
+    const providerPanels = document.querySelectorAll('[data-ai-provider-panel]');
+    const applySelection = () => {
+      providerPanels.forEach((panel) => {
+        panel.hidden = panel.getAttribute('data-ai-provider-panel') !== select.value;
+      });
+
+      const providerChanged = select.value !== select.dataset.savedProvider;
+      modelSettings.hidden = providerChanged;
+      changeMessage.hidden = !providerChanged;
+    };
+
+    select.addEventListener('change', applySelection);
+    applySelection();
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupProviderSettings);
+  } else {
+    setupProviderSettings();
+  }
+})();
+</script>

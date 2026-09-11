@@ -25,17 +25,39 @@ final class ProviderRegistry
     /** @var array<string, callable(Field): AiProvider> */
     private array $factories = [];
 
+    /** @var array<string, string> */
+    private array $labels = [];
+
     /**
      * @param callable(Field): AiProvider $factory config を受け取りプロバイダを生成する
      */
-    public function register(string $id, callable $factory): void
+    public function register(string $id, callable $factory, ?string $label = null): void
     {
         $this->factories[$id] = $factory;
+        $this->labels[$id] = $label ?? $id;
     }
 
     public function has(string $id): bool
     {
         return isset($this->factories[$id]);
+    }
+
+    /**
+     * 登録済みプロバイダの表示用メタデータを登録順で返す。
+     *
+     * @return list<array{id: string, label: string}>
+     */
+    public function definitions(): array
+    {
+        $definitions = [];
+        foreach (array_keys($this->factories) as $id) {
+            $definitions[] = [
+                'id' => $id,
+                'label' => $this->labels[$id],
+            ];
+        }
+
+        return $definitions;
     }
 
     /**
@@ -48,6 +70,15 @@ final class ProviderRegistry
         if ($id === '' || !isset($this->factories[$id])) {
             $id = self::DEFAULT_PROVIDER;
         }
+
+        return $this->resolveById($id, $config);
+    }
+
+    /**
+     * 指定した id のプロバイダを、フォールバックせずに生成する。
+     */
+    public function resolveById(string $id, Field $config): AiProvider
+    {
         if (!isset($this->factories[$id])) {
             throw new RuntimeException("No AI provider registered for id: {$id}");
         }
@@ -64,19 +95,23 @@ final class ProviderRegistry
         $registry = new self();
         $registry->register(
             self::DEFAULT_PROVIDER,
-            static fn(Field $config): AiProvider => OpenAiProvider::fromConfig($config)
+            static fn(Field $config): AiProvider => OpenAiProvider::fromConfig($config),
+            'OpenAI'
         );
         $registry->register(
             AnthropicProvider::ID,
-            static fn(Field $config): AiProvider => AnthropicProvider::fromConfig($config)
+            static fn(Field $config): AiProvider => AnthropicProvider::fromConfig($config),
+            'Anthropic (Claude)'
         );
         $registry->register(
             GeminiProvider::ID,
-            static fn(Field $config): AiProvider => GeminiProvider::fromConfig($config)
+            static fn(Field $config): AiProvider => GeminiProvider::fromConfig($config),
+            'Google (Gemini)'
         );
         $registry->register(
             OpenAiCompatProvider::ID,
-            static fn(Field $config): AiProvider => OpenAiCompatProvider::fromConfig($config)
+            static fn(Field $config): AiProvider => OpenAiCompatProvider::fromConfig($config),
+            'OpenAI互換（さくらのAI Engine など）'
         );
 
         return $registry;
