@@ -8,7 +8,7 @@ namespace Acms\Plugins\AI\Services\AI\Providers\OpenAiCompat;
  * OpenAI 互換エンドポイントのエラー応答（{ code, type, message }）を利用者向けの
  * 日本語メッセージへ写す。
  *
- * ワイヤは OpenAI 形式だが接続先は任意（さくらのAI Engine・ローカル LLM 等）のため、
+ * ワイヤは OpenAI 形式だが接続先は任意（さくらのAI Engine・セルフホスト環境等）のため、
  * 文言は特定ベンダに寄せない。生成・ストリーミング双方から使う単一の変換点。
  * 判別できないものは汎用メッセージへフォールバックする。
  */
