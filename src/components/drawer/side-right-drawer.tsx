@@ -16,7 +16,7 @@ interface MessageItemProps {
   isCollapsed: boolean | undefined
   onToggle: (id: string) => void
   onCopy: ((content?: string) => void) | undefined
-  onInsert: ((content?: string) => void) | undefined
+  onInsert: ((content?: string) => boolean | void) | undefined
   isLoading: boolean
 }
 
@@ -30,7 +30,7 @@ const MessageItem = memo(({ msg, isCollapsed, onToggle, onCopy, onInsert, isLoad
     setTimeout(() => copyTooltipRef.current?.close(), 1500)
   }, [onCopy, msg.content, msg.id])
   const handleInsert = useCallback(() => {
-    onInsert?.(msg.content)
+    if (onInsert?.(msg.content) === false) return
     insertTooltipRef.current?.open({ anchorSelect: `[data-tooltip-id="insert-tooltip-${msg.id}"]` })
     setTimeout(() => insertTooltipRef.current?.close(), 1500)
   }, [onInsert, msg.content, msg.id])
@@ -141,7 +141,7 @@ interface SideRightDrawerProps {
   errorMessage?: string | null
   onClose: () => void
   onSendMessage: (content: string) => void
-  onInsert?: (content?: string) => void
+  onInsert?: (content?: string) => boolean | void
   onCopy?: (content?: string) => void
   description?: string
   initialPrompt?: string
