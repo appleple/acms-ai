@@ -3,6 +3,7 @@
 namespace Acms\Plugins\AI\Services\AI\Providers\OpenAi;
 
 use Acms\Plugins\AI\Services\AI\Providers\BoundedResponseBuffer;
+use Acms\Plugins\AI\Services\AI\Providers\ResponseSizeException;
 use Acms\Services\Facades\Common;
 use Acms\Services\Facades\Logger;
 
@@ -109,6 +110,8 @@ class ResponsesClient
             }
             $parse = json_decode($result);
             return $parse;
+        } catch (ResponseSizeException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Logger::error('【AI plugin】 OpenAI API リクエストに失敗しました', Common::exceptionArray($e));
             return null;

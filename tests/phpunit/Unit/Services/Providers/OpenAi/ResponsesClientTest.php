@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Acms\Plugins\AI\Tests\Unit\Services\Providers\OpenAi;
 
 use Acms\Plugins\AI\Services\AI\Contracts\Credentials;
+use Acms\Plugins\AI\Services\AI\Providers\ResponseSizeException;
 use Acms\Plugins\AI\Tests\Support\StubResponsesClient;
 use Acms\TestingFramework\TestCase;
 use PHPUnit\Framework\Attributes\Test;
@@ -120,5 +121,16 @@ final class ResponsesClientTest extends TestCase
         $client->throwOnExec = true;
 
         self::assertNull($client->request());
+    }
+
+    #[Test]
+    #[TestDox('応答サイズ超過は上位のHTTPエラー変換へ渡すため再送出する')]
+    public function requestRethrowsResponseSizeException(): void
+    {
+        $client = $this->client();
+        $client->throwResponseSizeOnExec = true;
+
+        $this->expectException(ResponseSizeException::class);
+        $client->request();
     }
 }

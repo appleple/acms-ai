@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Acms\Plugins\AI\Tests\Support;
 
 use Acms\Plugins\AI\Services\AI\Providers\OpenAi\ResponsesClient;
+use Acms\Plugins\AI\Services\AI\Providers\ResponseSizeException;
 
 /**
  * ResponsesClient のテスト用ダブル。
@@ -28,6 +29,9 @@ final class StubResponsesClient extends ResponsesClient
     /** @var bool true なら exec() で例外を投げ、request() の catch 経路を検証する */
     public bool $throwOnExec = false;
 
+    /** @var bool true なら exec() で応答サイズ超過例外を投げる */
+    public bool $throwResponseSizeOnExec = false;
+
     /**
      * @param list<string> $headers
      */
@@ -35,6 +39,9 @@ final class StubResponsesClient extends ResponsesClient
     {
         $this->capturedJson = $json;
         $this->capturedHeaders = $headers;
+        if ($this->throwResponseSizeOnExec) {
+            throw new ResponseSizeException();
+        }
         if ($this->throwOnExec) {
             throw new \Exception('cURL Error: simulated transport failure');
         }
