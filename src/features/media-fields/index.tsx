@@ -12,10 +12,10 @@ interface FillProps {
 
 const LABELS = {
   file_name: 'ファイル名',
+  tags: 'タグ',
   caption: 'キャプション',
   alt: '代替テキスト',
   memo: 'メモ',
-  tags: 'タグ',
 } as const
 
 type Target = keyof typeof LABELS

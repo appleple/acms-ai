@@ -24,20 +24,7 @@ class StreamingResponsesClient
      */
     public function stream(callable $onEvent): void
     {
-        $postData = [
-            "model" => $this->model,
-            "input" => $this->input,
-            "stream" => true,
-            "store" => true
-        ];
-
-        if ($this->instructions !== null) {
-            $postData['instructions'] = $this->instructions;
-        }
-
-        if ($this->previousResponseId !== null) {
-            $postData['previous_response_id'] = $this->previousResponseId;
-        }
+        $postData = $this->buildRequestPayload();
 
         $json = json_encode($postData);
 
@@ -61,5 +48,31 @@ class StreamingResponsesClient
             $error = curl_error($ch);
             throw new \Exception("cURL Error: " . $error);
         }
+    }
+
+    /**
+     * チャットは完了イベントの response ID を次の previous_response_id として使うため、
+     * 応答を保存する。単発生成の保存方針とは意図的に分離する。
+     *
+     * @return array<string, mixed>
+     */
+    protected function buildRequestPayload(): array
+    {
+        $postData = [
+            "model" => $this->model,
+            "input" => $this->input,
+            "stream" => true,
+            "store" => true
+        ];
+
+        if ($this->instructions !== null) {
+            $postData['instructions'] = $this->instructions;
+        }
+
+        if ($this->previousResponseId !== null) {
+            $postData['previous_response_id'] = $this->previousResponseId;
+        }
+
+        return $postData;
     }
 }
