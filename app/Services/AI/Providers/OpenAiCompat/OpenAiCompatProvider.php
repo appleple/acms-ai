@@ -642,11 +642,15 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
             CURLOPT_TIMEOUT => self::REQUEST_TIMEOUT,
             CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
             CURLOPT_FOLLOWLOCATION => false,
+            // プロキシ側のDNS解決で検査済みIPの固定を迂回されないよう、環境変数のプロキシを無効化する。
+            CURLOPT_PROXY => '',
         ];
         if ($resolve !== []) {
             $options[CURLOPT_RESOLVE] = $resolve;
         }
-        curl_setopt_array($ch, $options);
+        if (!curl_setopt_array($ch, $options)) {
+            throw new \RuntimeException('安全なcURLオプションを設定できませんでした。');
+        }
         $result = curl_exec($ch);
         if (!is_string($result)) {
             throw new \Exception('cURL Error: ' . curl_error($ch));
@@ -684,11 +688,15 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
             CURLOPT_LOW_SPEED_TIME => self::STREAM_LOW_SPEED_TIME,
             CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
             CURLOPT_FOLLOWLOCATION => false,
+            // プロキシ側のDNS解決で検査済みIPの固定を迂回されないよう、環境変数のプロキシを無効化する。
+            CURLOPT_PROXY => '',
         ];
         if ($resolve !== []) {
             $options[CURLOPT_RESOLVE] = $resolve;
         }
-        curl_setopt_array($ch, $options);
+        if (!curl_setopt_array($ch, $options)) {
+            throw new \RuntimeException('安全なcURLオプションを設定できませんでした。');
+        }
         curl_exec($ch);
 
         if (curl_errno($ch) !== 0) {
