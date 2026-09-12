@@ -31,7 +31,7 @@ class StreamingResponsesClient
         $ch = curl_init();
         $parser = new ResponsesStreamParser();
 
-        curl_setopt_array($ch, [
+        curl_setopt_array($ch, OpenAiCurlOptions::stream() + [
             CURLOPT_URL => $this->endpoint,
             CURLOPT_RETURNTRANSFER => false,
             CURLOPT_HTTPHEADER => $this->buildHeaders(),
