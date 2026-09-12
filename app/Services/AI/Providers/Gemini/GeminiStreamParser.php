@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Acms\Plugins\AI\Services\AI\Providers\Gemini;
 
 use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
+use Acms\Plugins\AI\Services\AI\Providers\BoundedSseStream;
 
 /**
  * Gemini streamGenerateContent（alt=sse）の SSE ストリームを中立の {@see StreamEvent} 列へデコードする。
@@ -20,8 +21,11 @@ use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
  */
 final class GeminiStreamParser
 {
-    private string $buffer = '';
     private bool $terminated = false;
+
+    public function __construct(private readonly BoundedSseStream $stream = new BoundedSseStream())
+    {
+    }
 
     /**
      * 受信バイト列を与えるたびに、完成した SSE 行を解析して StreamEvent を $onEvent へ渡す。
@@ -30,15 +34,10 @@ final class GeminiStreamParser
      */
     public function feed(string $bytes, callable $onEvent): void
     {
+        $lines = $this->stream->push($bytes);
         if ($this->terminated) {
             return;
         }
-
-        $this->buffer .= $bytes;
-        $lines = explode("\n", $this->buffer);
-        // explode は必ず 1 要素以上を返すため array_pop は string。末尾は未完了行（次チャンクへ
-        // 続く可能性）なので持ち越し、完成行だけを解析する。
-        $this->buffer = array_pop($lines);
 
         foreach ($lines as $line) {
             $this->parseLine(rtrim($line, "\r"), $onEvent);
@@ -70,14 +69,14 @@ final class GeminiStreamParser
         // ストリーム途中でもエラーがチャンクとして届くことがある。
         if (isset($chunk->error)) {
             $this->terminated = true;
-            $onEvent(StreamEvent::error(GeminiErrorMessage::fromError($chunk->error)));
+            $this->emit(StreamEvent::error(GeminiErrorMessage::fromError($chunk->error)), $onEvent);
             return;
         }
 
         $responseError = GeminiErrorMessage::fromResponse($chunk);
         if ($responseError !== null) {
             $this->terminated = true;
-            $onEvent(StreamEvent::error($responseError));
+            $this->emit(StreamEvent::error($responseError), $onEvent);
             return;
         }
 
@@ -87,13 +86,20 @@ final class GeminiStreamParser
         }
 
         foreach ($this->textParts($candidate) as $text) {
-            $onEvent(StreamEvent::delta($text));
+            $this->emit(StreamEvent::delta($text), $onEvent);
         }
 
         if (isset($candidate->finishReason) && $candidate->finishReason === 'STOP') {
             $this->terminated = true;
-            $onEvent(StreamEvent::completed(null));
+            $this->emit(StreamEvent::completed(null), $onEvent);
         }
+    }
+
+    /** @param callable(StreamEvent): void $onEvent */
+    private function emit(StreamEvent $event, callable $onEvent): void
+    {
+        $this->stream->assertEvent($event);
+        $onEvent($event);
     }
 
     private function firstCandidate(\stdClass $chunk): ?\stdClass

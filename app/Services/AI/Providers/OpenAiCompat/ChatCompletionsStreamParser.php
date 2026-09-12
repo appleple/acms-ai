@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Acms\Plugins\AI\Services\AI\Providers\OpenAiCompat;
 
 use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
+use Acms\Plugins\AI\Services\AI\Providers\BoundedSseStream;
 
 /**
  * Chat Completions（stream=true）の SSE ストリームを中立の {@see StreamEvent} 列へデコードする。
@@ -18,10 +19,12 @@ use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
  */
 final class ChatCompletionsStreamParser
 {
-    private string $buffer = '';
-
     /** completed / error を受け取ったか（終端後のイベント発行防止用）。 */
     private bool $terminated = false;
+
+    public function __construct(private readonly BoundedSseStream $stream = new BoundedSseStream())
+    {
+    }
 
     /**
      * 受信バイト列を与えるたびに、完成した SSE 行を解析して StreamEvent を $onEvent へ渡す。
@@ -30,13 +33,7 @@ final class ChatCompletionsStreamParser
      */
     public function feed(string $bytes, callable $onEvent): void
     {
-        $this->buffer .= $bytes;
-        $lines = explode("\n", $this->buffer);
-        // explode は必ず 1 要素以上を返すため array_pop は string。末尾は未完了行（次チャンクへ
-        // 続く可能性）なので持ち越し、完成行だけを解析する。
-        $this->buffer = array_pop($lines);
-
-        foreach ($lines as $line) {
+        foreach ($this->stream->push($bytes) as $line) {
             $this->parseLine(rtrim($line, "\r"), $onEvent);
         }
     }
@@ -58,7 +55,7 @@ final class ChatCompletionsStreamParser
         }
         if ($payload === '[DONE]') {
             $this->terminated = true;
-            $onEvent(StreamEvent::completed(null));
+            $this->emit(StreamEvent::completed(null), $onEvent);
             return;
         }
 
@@ -70,14 +67,21 @@ final class ChatCompletionsStreamParser
         // ストリーム途中でもエラーがチャンクとして届くことがある。
         if (isset($chunk->error)) {
             $this->terminated = true;
-            $onEvent(StreamEvent::error(OpenAiCompatErrorMessage::fromError($chunk->error)));
+            $this->emit(StreamEvent::error(OpenAiCompatErrorMessage::fromError($chunk->error)), $onEvent);
             return;
         }
 
         $text = $this->deltaContent($chunk);
         if ($text !== null && $text !== '') {
-            $onEvent(StreamEvent::delta($text));
+            $this->emit(StreamEvent::delta($text), $onEvent);
         }
+    }
+
+    /** @param callable(StreamEvent): void $onEvent */
+    private function emit(StreamEvent $event, callable $onEvent): void
+    {
+        $this->stream->assertEvent($event);
+        $onEvent($event);
     }
 
     /**

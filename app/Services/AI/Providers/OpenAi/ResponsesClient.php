@@ -2,6 +2,8 @@
 
 namespace Acms\Plugins\AI\Services\AI\Providers\OpenAi;
 
+use Acms\Plugins\AI\Services\AI\Providers\BoundedResponseBuffer;
+use Acms\Plugins\AI\Services\AI\Providers\ResponseSizeException;
 use Acms\Plugins\AI\Services\AI\Logging\ProviderErrorLogContext;
 use Acms\Services\Facades\Logger;
 
@@ -57,21 +59,23 @@ class ResponsesClient
     public function exec(string $json, array $headers): string|false
     {
         $ch = curl_init();
+        $buffer = new BoundedResponseBuffer();
 
         curl_setopt_array($ch, OpenAiCurlOptions::request() + [
             CURLOPT_URL => $this->endpoint,
-            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_RETURNTRANSFER => false,
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_POSTFIELDS => $json,
+            CURLOPT_WRITEFUNCTION => static fn($_ch, string $bytes): int => $buffer->append($bytes),
         ]);
-        $result = curl_exec($ch);
+        curl_exec($ch);
 
         if (curl_errno($ch) !== 0) {
             $errorCode = curl_errno($ch);
             $error = curl_error($ch);
             throw new \Exception("cURL Error: " . $error, $errorCode);
         }
-        return is_string($result) ? $result : false;
+        return $buffer->body();
     }
 
     public function request(): mixed
@@ -109,6 +113,8 @@ class ResponsesClient
             }
             $parse = json_decode($result);
             return $parse;
+        } catch (ResponseSizeException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Logger::error(
                 '【AI plugin】 OpenAI API リクエストに失敗しました',

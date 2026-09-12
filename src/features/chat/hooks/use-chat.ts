@@ -1,5 +1,10 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { parseErrorMessage, postStreamingRequest } from '../../../api/fetcher'
+import {
+  DEFAULT_STREAM_SIZE_LIMITS,
+  StreamSizeError,
+  type StreamSizeLimits,
+} from '../stream-size-limits'
 
 export interface ChatMessage {
   id: string
@@ -52,20 +57,33 @@ interface SSEEvent {
  * サーバ側でデコード済みで、ここではその中立形式だけを解釈する。
  * `completed` で accumulatedText をリセットし、残余テキストを返す。
  */
-async function processSSEStream(
+export async function processSSEStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   onDelta: (accumulatedText: string) => void,
   onCompleted: (text: string, responseId: string | undefined) => void,
   onError: (message: string) => void,
+  limits: StreamSizeLimits = DEFAULT_STREAM_SIZE_LIMITS,
 ): Promise<string> {
   const decoder = new TextDecoder()
+  const encoder = new TextEncoder()
   let buffer = ''
   let accumulatedText = ''
+  let receivedBytes = 0
+  let pendingLineBytes = 0
+  let generatedTextBytes = 0
+  let eventCount = 0
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const { done, value } = await reader.read()
     if (done) break
+
+    receivedBytes += value.byteLength
+    if (receivedBytes > limits.responseBytes) throw new StreamSizeError()
+    for (const byte of value) {
+      pendingLineBytes = byte === 0x0a ? 0 : pendingLineBytes + 1
+      if (pendingLineBytes > limits.lineBytes) throw new StreamSizeError()
+    }
 
     buffer += decoder.decode(value, { stream: true })
     const lines = buffer.split('\n')
@@ -78,13 +96,18 @@ async function processSSEStream(
 
       try {
         const event = JSON.parse(jsonStr) as SSEEvent
+        eventCount += 1
+        if (eventCount > limits.events) throw new StreamSizeError()
 
         if (event.type === 'error') {
           onError(event.message ?? 'エラーが発生しました。')
+          await reader.cancel().catch(() => undefined)
           return accumulatedText
         }
 
         if (event.type === 'delta' && typeof event.text === 'string') {
+          generatedTextBytes += encoder.encode(event.text).byteLength
+          if (generatedTextBytes > limits.generatedTextBytes) throw new StreamSizeError()
           accumulatedText += event.text
           onDelta(accumulatedText)
         }
@@ -94,7 +117,8 @@ async function processSSEStream(
           accumulatedText = ''
           onCompleted(completed, event.continuationToken)
         }
-      } catch {
+      } catch (error) {
+        if (error instanceof StreamSizeError) throw error
         // Skip malformed JSON
       }
     }
@@ -214,8 +238,13 @@ export function useChat({ onError, chatId, initialContent, silent }: UseChatOpti
         }
         setStreamingContent('')
       } catch (e) {
+        await reader.cancel().catch(() => undefined)
         console.error('Stream read error:', e)
-        onError?.('ストリーミング中にエラーが発生しました。')
+        onError?.(
+          e instanceof StreamSizeError
+            ? e.message
+            : 'ストリーミング中にエラーが発生しました。'
+        )
       } finally {
         setIsLoading(false)
       }

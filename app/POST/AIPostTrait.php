@@ -11,9 +11,10 @@ use Acms\Plugins\AI\Services\AI as ServicesAI;
 use Acms\Plugins\AI\Services\AI\AiRequestInputLimit;
 use Acms\Plugins\AI\Services\AI\AiRequestInputTooLargeException;
 use Acms\Plugins\AI\Services\AI\AiRequestRateLimiter;
-use Acms\Plugins\AI\Services\AI\StructuredItemsDecoder;
 use Acms\Plugins\AI\Services\AI\Logging\AuditLogSanitizer;
 use Acms\Plugins\AI\Services\AI\ProviderRegistry;
+use Acms\Plugins\AI\Services\AI\Providers\ResponseSizeException;
+use Acms\Plugins\AI\Services\AI\StructuredItemsDecoder;
 use Acms\Plugins\AI\Services\AI\Contracts\AiProvider;
 use Acms\Plugins\AI\Services\AI\Contracts\ContentPart;
 use Acms\Plugins\AI\Services\AI\Contracts\GenerationRequest;
@@ -135,6 +136,12 @@ trait AIPostTrait
 
         try {
             $result = $this->provider->generateText($request);
+        } catch (ResponseSizeException) {
+            $this->errorResponse(
+                'AI応答が許容サイズを超えました。',
+                502,
+                ['reason' => 'response_too_large'],
+            );
         } catch (AiRequestInputTooLargeException) {
             $this->errorResponse(
                 'AI に送信する入力が大きすぎます。本文または入力内容を短くしてください。',

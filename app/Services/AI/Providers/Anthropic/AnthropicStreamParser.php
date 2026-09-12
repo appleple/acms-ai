@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Acms\Plugins\AI\Services\AI\Providers\Anthropic;
 
 use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
+use Acms\Plugins\AI\Services\AI\Providers\BoundedSseStream;
 
 /**
  * Anthropic Messages API の SSE ストリームを中立の {@see StreamEvent} 列へデコードする。
@@ -22,7 +23,9 @@ use Acms\Plugins\AI\Services\AI\Contracts\StreamEvent;
  */
 final class AnthropicStreamParser
 {
-    private string $buffer = '';
+    public function __construct(private readonly BoundedSseStream $stream = new BoundedSseStream())
+    {
+    }
 
     /**
      * 受信バイト列を与えるたびに、完成した SSE 行を解析して StreamEvent を $onEvent へ渡す。
@@ -31,13 +34,7 @@ final class AnthropicStreamParser
      */
     public function feed(string $bytes, callable $onEvent): void
     {
-        $this->buffer .= $bytes;
-        $lines = explode("\n", $this->buffer);
-        // explode は必ず 1 要素以上を返すため array_pop は string。末尾は未完了行（次チャンクへ
-        // 続く可能性）なので持ち越し、完成行だけを解析する。
-        $this->buffer = array_pop($lines);
-
-        foreach ($lines as $line) {
+        foreach ($this->stream->push($bytes) as $line) {
             $this->parseLine(rtrim($line, "\r"), $onEvent);
         }
     }
@@ -64,17 +61,24 @@ final class AnthropicStreamParser
             case 'content_block_delta':
                 $text = $this->deltaText($event);
                 if ($text !== null) {
-                    $onEvent(StreamEvent::delta($text));
+                    $this->emit(StreamEvent::delta($text), $onEvent);
                 }
                 break;
             case 'message_stop':
-                $onEvent(StreamEvent::completed(null));
+                $this->emit(StreamEvent::completed(null), $onEvent);
                 break;
             case 'error':
                 // Anthropic 固有のエラー type を利用者向けメッセージへ写す（生成側と同一の変換点）。
-                $onEvent(StreamEvent::error(AnthropicErrorMessage::fromError($event->error ?? null)));
+                $this->emit(StreamEvent::error(AnthropicErrorMessage::fromError($event->error ?? null)), $onEvent);
                 break;
         }
+    }
+
+    /** @param callable(StreamEvent): void $onEvent */
+    private function emit(StreamEvent $event, callable $onEvent): void
+    {
+        $this->stream->assertEvent($event);
+        $onEvent($event);
     }
 
     /**
