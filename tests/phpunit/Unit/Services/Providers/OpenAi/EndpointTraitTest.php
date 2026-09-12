@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Acms\Plugins\AI\Tests\Unit\Services\Providers\OpenAi;
 
 use Acms\Plugins\AI\Services\AI\Contracts\Credentials;
+use Acms\Plugins\AI\Services\AI\Providers\OpenAi\StreamingResponsesClient;
 use Acms\Plugins\AI\Tests\Support\StubResponsesClient;
 use Acms\TestingFramework\TestCase;
 use PHPUnit\Framework\Attributes\Test;
@@ -26,7 +27,7 @@ final class EndpointTraitTest extends TestCase
     }
 
     #[Test]
-    #[TestDox('createPayload 後の request はモデル・store・空 input を含む')]
+    #[TestDox('単発生成の request は store=false とモデル・空 input を含む')]
     public function payloadCarriesModelAndStore(): void
     {
         $client = $this->client();
@@ -35,8 +36,28 @@ final class EndpointTraitTest extends TestCase
 
         $payload = $client->capturedPayload();
         self::assertSame('gpt-5.4', $payload['model']);
-        self::assertTrue($payload['store']);
+        self::assertFalse($payload['store']);
         self::assertSame([], $payload['input']);
+    }
+
+    #[Test]
+    #[TestDox('ストリーミングチャットは会話継続のため store=true を送る')]
+    public function streamingChatStoresResponseForContinuation(): void
+    {
+        $client = new class (new Credentials('sk-test-key'), 'gpt-5.4') extends StreamingResponsesClient {
+            /** @return array<string, mixed> */
+            public function exposedRequestPayload(): array
+            {
+                return $this->buildRequestPayload();
+            }
+        };
+        $client->createPayload();
+        $client->setPreviousResponseId('resp_previous');
+
+        $payload = $client->exposedRequestPayload();
+        self::assertTrue($payload['stream']);
+        self::assertTrue($payload['store']);
+        self::assertSame('resp_previous', $payload['previous_response_id']);
     }
 
     #[Test]
