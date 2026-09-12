@@ -282,7 +282,7 @@ class OpenAiProvider implements AiProvider, ModelListingProvider
     {
         $ch = curl_init();
         $buffer = new BoundedResponseBuffer();
-        curl_setopt_array($ch, [
+        curl_setopt_array($ch, OpenAiCurlOptions::modelList() + [
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => false,
             CURLOPT_HTTPHEADER => $headers,

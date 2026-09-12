@@ -45,4 +45,20 @@ final class ProviderErrorLogContext
 
         return $context;
     }
+
+    /**
+     * 例外のメッセージ・トレース・引数を含めず、安全な診断情報だけを返す。
+     *
+     * 外部APIの通信例外は、呼び出し元のスタック引数に入力本文や認証ヘッダーを
+     * 含むことがあるため {@see \Throwable::getTrace()} をログへ渡さない。
+     *
+     * @return array{exception_type: class-string<\Throwable>, exception_code: int}
+     */
+    public static function fromThrowable(\Throwable $error): array
+    {
+        return [
+            'exception_type' => $error::class,
+            'exception_code' => $error->getCode(),
+        ];
+    }
 }
