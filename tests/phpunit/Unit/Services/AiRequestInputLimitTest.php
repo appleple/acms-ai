@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Acms\Plugins\AI\Tests\Unit\Services;
 
 use Acms\Plugins\AI\Services\AI\AiRequestInputLimit;
+use Acms\Plugins\AI\Services\AI\Contracts\ContentPart;
+use Acms\Plugins\AI\Services\AI\Contracts\GenerationRequest;
+use Acms\Plugins\AI\Services\AI\Contracts\Message;
 use Acms\TestingFramework\TestCase;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestDox;
@@ -38,5 +41,20 @@ final class AiRequestInputLimitTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
 
         new AiRequestInputLimit(0);
+    }
+
+    #[Test]
+    #[TestDox('リクエストのinstructions・継続ID・メッセージを同じバイト予算で合計する')]
+    public function countsAllRequestStrings(): void
+    {
+        $request = new GenerationRequest(
+            'model',
+            [Message::user(ContentPart::text('日'))],
+            '本',
+            continuationToken: 'id',
+        );
+
+        self::assertTrue((new AiRequestInputLimit(8))->acceptsRequest($request));
+        self::assertFalse((new AiRequestInputLimit(7))->acceptsRequest($request));
     }
 }

@@ -9,6 +9,7 @@ use Acms\Services\Facades\Logger;
 use Acms\Services\Facades\Response;
 use Acms\Plugins\AI\Services\AI as ServicesAI;
 use Acms\Plugins\AI\Services\AI\AiRequestInputLimit;
+use Acms\Plugins\AI\Services\AI\AiRequestInputTooLargeException;
 use Acms\Plugins\AI\Services\AI\AiRequestRateLimiter;
 use Acms\Plugins\AI\Services\AI\StructuredItemsDecoder;
 use Acms\Plugins\AI\Services\AI\Logging\AuditLogSanitizer;
@@ -96,25 +97,7 @@ trait AIPostTrait
 
     protected function assertGenerationInputWithinLimit(GenerationRequest $request): void
     {
-        $values = [];
-        if ($request->instructions !== null) {
-            $values[] = $request->instructions;
-        }
-        if ($request->continuationToken !== null) {
-            $values[] = $request->continuationToken;
-        }
-        foreach ($request->messages as $message) {
-            foreach ($message->parts as $part) {
-                // バイナリは MediaImageLoader の専用上限で検査済み。
-                // base64 をテキスト入力上限へ重複計上すると、正常な画像が拒否される。
-                if ($part->type === ContentPart::TYPE_IMAGE_DATA) {
-                    continue;
-                }
-                $values[] = $part->value;
-            }
-        }
-
-        if (!AiRequestInputLimit::fromConfig()->accepts(...$values)) {
+        if (!AiRequestInputLimit::fromConfig()->acceptsRequest($request)) {
             $this->errorResponse(
                 'AI に送信する入力が大きすぎます。本文または入力内容を短くしてください。',
                 413,
@@ -150,7 +133,15 @@ trait AIPostTrait
         );
         $this->assertGenerationInputWithinLimit($request);
 
-        $result = $this->provider->generateText($request);
+        try {
+            $result = $this->provider->generateText($request);
+        } catch (AiRequestInputTooLargeException) {
+            $this->errorResponse(
+                'AI に送信する入力が大きすぎます。本文または入力内容を短くしてください。',
+                413,
+                ['reason' => 'input_too_large'],
+            );
+        }
         $text = $result->text;
         if ($text === null || $text === '') {
             $this->errorResponse($result->errorMessage ?? 'データを取得できませんでした。');
