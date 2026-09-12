@@ -43,6 +43,35 @@ describe('MediaFields', () => {
     expect(document.querySelector('tr[data-acms-ai-media-row]')).toBeNull()
   })
 
+  it.each([
+    {
+      enabled: ['file_name', 'tags', 'caption', 'alt', 'memo'],
+      expected: ['ファイル名', 'タグ', 'キャプション', '代替テキスト', 'メモ'],
+    },
+    {
+      enabled: ['file_name', 'caption', 'memo'],
+      expected: ['ファイル名', 'キャプション', 'メモ'],
+    },
+  ])('有効な生成対象をメディアフィールド順に表示する', ({ enabled, expected }) => {
+    const marker = document.getElementById('js-acms-ai-media')
+    const mediaEdit = document.getElementById('media-edit')
+    if (!marker || !mediaEdit) throw new Error('テスト用の要素を取得できません。')
+
+    marker.removeAttribute('data-alt-enabled')
+    for (const target of enabled) {
+      const dataKey = target === 'file_name' ? 'fileNameEnabled' : `${target}Enabled`
+      marker.dataset[dataKey] = 'on'
+    }
+
+    render(<MediaFields item={{ media_id: 42, media_type: 'image' }} />, {
+      container: mediaEdit,
+    })
+
+    const labels = Array.from(mediaEdit.querySelectorAll<HTMLLabelElement>('label'))
+      .map((label) => label.textContent)
+    expect(labels).toEqual(expected)
+  })
+
   it('新しいテーブルルートを起点に選択エラーを表示する', () => {
     const mediaEdit = document.getElementById('media-edit')
     if (!mediaEdit) throw new Error('テスト用のメディア編集領域を取得できません。')
