@@ -12,7 +12,7 @@ a-blog cms の AI機能を拡張するアプリです。
 
 ## 動作環境
 
-- a-blog cms: Ver. 3.2.x (3.3+ not tested yet)
+- a-blog cms: Ver. 3.2.29以降の3.2.x (3.3+ not tested yet)
 - PHP: 8.1 – 8.5 (8.6+ not tested yet)
 - a-blog cms for Professional or Enterprise のみ（現状スタンダードライセンスでの利用はライセンス違反となります）
 
@@ -65,6 +65,31 @@ ai_rate_limit_lock_minutes: 5
 監査ログには、送信した記事本文・プロンプト・チャット入力・メディア画像に加えて、AIが返した応答本文や外部APIの
 エラーメッセージも記録しません。解析失敗時は、プロバイダ・モデル・応答サイズ・失敗種別など、
 内容を復元できない診断用メタデータだけを記録します。
+
+### a-blog cms 3.2.28以前から更新する場合
+
+a-blog cms 3.2.28以前では、AI設定の保存時に4種類のAPIキーが監査ログのcontextへ平文で記録される
+本体側の問題があります。本拡張は3.2.29未満への新規インストールとAI設定の保存を拒否します。
+影響版で一度でもAI設定を保存した環境は、次の順序で対応してください。
+
+1. a-blog cmsを3.2.29以降の3.2系最新版へ更新します。
+2. OpenAI、Anthropic、Gemini、OpenAI互換のうち、保存したすべてのAPIキーを各提供元で失効・再発行します。
+3. DBをバックアップしてから、テーブル接頭辞を環境に合わせた次のSQLで影響行のIDと日時だけを確認します。
+   `audit_log_context` 自体は秘密値を再表示するためSELECTしないでください。
+
+```sql
+SELECT audit_log_id, audit_log_datetime, audit_log_message
+FROM acms_audit_log
+WHERE audit_log_context LIKE '%"ai_api_key"%'
+   OR audit_log_context LIKE '%"ai_anthropic_api_key"%'
+   OR audit_log_context LIKE '%"ai_gemini_api_key"%'
+   OR audit_log_context LIKE '%"ai_compat_api_key"%'
+ORDER BY audit_log_id DESC;
+```
+
+4. 組織の監査ログ保持方針に従い、確認したIDだけを削除対象として管理者と判断します。DBバックアップ、
+   レプリカ、外部保管済みログにも同じ値が残り得るため、それぞれの保管期限・アクセス権を確認します。
+   バックアップを保持する場合でも、旧キーを失効済みにすることが必須です。
 
 OpenAI利用時、タイトル・タグ・メディア項目などの単発生成は Responses API に `store: false` を送り、
 後から取得できる application state として応答を保存しません。AIアシスタントのチャットは会話継続に

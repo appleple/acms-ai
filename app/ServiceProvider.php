@@ -38,7 +38,7 @@ class ServiceProvider extends ACMS_App
     /**
      * @var string
      */
-    public $desc = 'ChatGPTを利用したAI機能が使えます。';
+    public $desc = 'AI機能を利用できます（a-blog cms 3.2.29以降）。';
 
     /**
      * サービスの初期処理
@@ -128,7 +128,7 @@ class ServiceProvider extends ACMS_App
      */
     public function checkRequirements()
     {
-        return true;
+        return Services\CmsVersionRequirement::currentIsSatisfied();
     }
 
     /**
