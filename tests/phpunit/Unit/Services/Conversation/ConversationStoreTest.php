@@ -134,20 +134,25 @@ final class ConversationStoreTest extends TestCase
     }
 
     #[Test]
-    #[TestDox('保存JSONが入力上限を超える場合は古いメッセージから削る')]
+    #[TestDox('保存JSONが入力上限を超える場合は古い会話ターンから削る')]
     public function capsSerializedHistoryBytesFromTheOldest(): void
     {
         $store = new FakeConversationStore(new AiRequestInputLimit(100));
         $token = $store->save(null, [
-            Message::user(ContentPart::text(str_repeat('a', 60))),
-            Message::assistant(ContentPart::text(str_repeat('b', 60))),
+            Message::user(ContentPart::text(str_repeat('a', 20))),
+            Message::assistant(ContentPart::text(str_repeat('b', 20))),
+            Message::user(ContentPart::text(str_repeat('c', 20))),
+            Message::assistant(ContentPart::text(str_repeat('d', 20))),
         ]);
 
         $encoded = $store->storage['ai_conversation_' . $token];
         self::assertLessThanOrEqual(100, strlen($encoded));
         $history = $store->load($token);
-        self::assertCount(1, $history);
-        self::assertSame(str_repeat('b', 60), $history[0]->parts[0]->value);
+        self::assertCount(2, $history);
+        self::assertSame(Message::ROLE_USER, $history[0]->role);
+        self::assertSame(str_repeat('c', 20), $history[0]->parts[0]->value);
+        self::assertSame(Message::ROLE_ASSISTANT, $history[1]->role);
+        self::assertSame(str_repeat('d', 20), $history[1]->parts[0]->value);
     }
 
     #[Test]

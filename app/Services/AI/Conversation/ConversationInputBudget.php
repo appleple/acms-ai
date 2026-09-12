@@ -28,14 +28,31 @@ final class ConversationInputBudget
             throw new AiRequestInputTooLargeException();
         }
 
+        $history = $this->withoutLeadingAssistant($history);
         while ($history !== []) {
             $messages = [...$history, ...$request->messages];
             if ($this->limit->acceptsRequest($request, $messages, false)) {
                 return $messages;
             }
             array_shift($history);
+            $history = $this->withoutLeadingAssistant($history);
         }
 
         return $request->messages;
+    }
+
+    /**
+     * user を削った後に assistant だけを残さず、会話ターンの境界まで進める。
+     *
+     * @param list<Message> $history
+     * @return list<Message>
+     */
+    private function withoutLeadingAssistant(array $history): array
+    {
+        while ($history !== [] && $history[0]->role === Message::ROLE_ASSISTANT) {
+            array_shift($history);
+        }
+
+        return $history;
     }
 }

@@ -273,10 +273,12 @@ final class GeminiProviderTest extends TestCase
     #[TestDox('復元後の全入力が上限を超える場合は古い履歴から削って送信する')]
     public function trimsRestoredHistoryToInputBudget(): void
     {
-        $store = new FakeConversationStore(new AiRequestInputLimit(120));
+        $store = new FakeConversationStore(new AiRequestInputLimit(160));
         $token = $store->save(null, [
-            Message::user(ContentPart::text(str_repeat('o', 20))),
-            Message::assistant(ContentPart::text(str_repeat('n', 20))),
+            Message::user(ContentPart::text(str_repeat('o', 10))),
+            Message::assistant(ContentPart::text(str_repeat('p', 10))),
+            Message::user(ContentPart::text(str_repeat('n', 10))),
+            Message::assistant(ContentPart::text(str_repeat('a', 10))),
         ]);
         $provider = $this->provider($store);
         $provider->stubPostResult = '{"candidates":[{"content":{"parts":[{"text":"ok"}]}}]}';
@@ -284,14 +286,15 @@ final class GeminiProviderTest extends TestCase
         $provider->generateText(new GenerationRequest(
             'gemini-2.5-flash',
             [Message::user(ContentPart::text(str_repeat('c', 40)))],
-            str_repeat('i', 50),
+            str_repeat('i', 100),
             continuationToken: $token,
         ));
 
         $contents = $provider->capturedPayload()['contents'];
-        self::assertCount(2, $contents);
-        self::assertSame(str_repeat('n', 20), $contents[0]['parts'][0]['text']);
-        self::assertSame(str_repeat('c', 40), $contents[1]['parts'][0]['text']);
+        self::assertCount(3, $contents);
+        self::assertSame(str_repeat('n', 10), $contents[0]['parts'][0]['text']);
+        self::assertSame(str_repeat('a', 10), $contents[1]['parts'][0]['text']);
+        self::assertSame(str_repeat('c', 40), $contents[2]['parts'][0]['text']);
     }
 
     #[Test]

@@ -295,10 +295,12 @@ final class AnthropicProviderTest extends TestCase
     #[TestDox('復元後の全入力が上限を超える場合は古い履歴から削って送信する')]
     public function trimsRestoredHistoryToInputBudget(): void
     {
-        $store = new FakeConversationStore(new AiRequestInputLimit(120));
+        $store = new FakeConversationStore(new AiRequestInputLimit(160));
         $token = $store->save(null, [
-            Message::user(ContentPart::text(str_repeat('o', 20))),
-            Message::assistant(ContentPart::text(str_repeat('n', 20))),
+            Message::user(ContentPart::text(str_repeat('o', 10))),
+            Message::assistant(ContentPart::text(str_repeat('p', 10))),
+            Message::user(ContentPart::text(str_repeat('n', 10))),
+            Message::assistant(ContentPart::text(str_repeat('a', 10))),
         ]);
         $provider = $this->provider($store);
         $provider->stubPostResult = '{"content":[{"type":"text","text":"ok"}]}';
@@ -306,14 +308,15 @@ final class AnthropicProviderTest extends TestCase
         $provider->generateText(new GenerationRequest(
             'claude-sonnet-5',
             [Message::user(ContentPart::text(str_repeat('c', 40)))],
-            str_repeat('i', 50),
+            str_repeat('i', 100),
             continuationToken: $token,
         ));
 
         $messages = $provider->capturedPayload()['messages'];
-        self::assertCount(2, $messages);
-        self::assertSame(str_repeat('n', 20), $messages[0]['content'][0]['text']);
-        self::assertSame(str_repeat('c', 40), $messages[1]['content'][0]['text']);
+        self::assertCount(3, $messages);
+        self::assertSame(str_repeat('n', 10), $messages[0]['content'][0]['text']);
+        self::assertSame(str_repeat('a', 10), $messages[1]['content'][0]['text']);
+        self::assertSame(str_repeat('c', 40), $messages[2]['content'][0]['text']);
     }
 
     #[Test]

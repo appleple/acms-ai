@@ -113,6 +113,7 @@ class ConversationStore
             $entries[] = ['role' => $message->role, 'text' => $text];
         }
         $entries = array_slice($entries, -self::MAX_MESSAGES);
+        $entries = self::withoutLeadingAssistant($entries);
 
         while (true) {
             $encoded = json_encode($entries, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -127,6 +128,7 @@ class ConversationStore
                 return $token;
             }
             array_shift($entries);
+            $entries = self::withoutLeadingAssistant($entries);
         }
         $this->cachePut(self::KEY_PREFIX . $token, $encoded, self::LIFETIME);
 
@@ -146,6 +148,21 @@ class ConversationStore
         }
 
         return implode("\n", $texts);
+    }
+
+    /**
+     * user を削った後に assistant だけを残さず、会話ターンの境界まで進める。
+     *
+     * @param list<array{role: string, text: string}> $entries
+     * @return list<array{role: string, text: string}>
+     */
+    private static function withoutLeadingAssistant(array $entries): array
+    {
+        while ($entries !== [] && $entries[0]['role'] === Message::ROLE_ASSISTANT) {
+            array_shift($entries);
+        }
+
+        return $entries;
     }
 
     /**

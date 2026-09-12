@@ -19,8 +19,8 @@ use PHPUnit\Framework\Attributes\TestDox;
 final class ConversationInputBudgetTest extends TestCase
 {
     #[Test]
-    #[TestDox('今回入力を保持し、日本語をバイト数で数えて古い履歴から切り捨てる')]
-    public function trimsOldestHistoryOnUtf8Boundary(): void
+    #[TestDox('今回入力を保持し、日本語をバイト数で数えて古い会話ターンから切り捨てる')]
+    public function trimsOldestTurnOnUtf8Boundary(): void
     {
         $request = new GenerationRequest(
             'model',
@@ -34,9 +34,8 @@ final class ConversationInputBudgetTest extends TestCase
 
         $messages = (new ConversationInputBudget(new AiRequestInputLimit(9)))->fit($request, $history);
 
-        self::assertCount(2, $messages);
-        self::assertSame('新', $messages[0]->parts[0]->value);
-        self::assertSame('問', $messages[1]->parts[0]->value);
+        self::assertCount(1, $messages);
+        self::assertSame('問', $messages[0]->parts[0]->value);
     }
 
     #[Test]
@@ -46,15 +45,17 @@ final class ConversationInputBudgetTest extends TestCase
         $limit = new AiRequestInputLimit(64);
         $request = new GenerationRequest('model', [Message::user(ContentPart::text(str_repeat('c', 16)))], 'system');
         $history = [];
-        for ($index = 0; $index < 24; $index++) {
-            $history[] = Message::user(ContentPart::text(str_repeat((string) ($index % 10), 16)));
+        for ($index = 0; $index < 12; $index++) {
+            $suffix = str_pad((string) $index, 15, '0', STR_PAD_LEFT);
+            $history[] = Message::user(ContentPart::text('u' . $suffix));
+            $history[] = Message::assistant(ContentPart::text('a' . $suffix));
         }
 
         $messages = (new ConversationInputBudget($limit))->fit($request, $history);
 
         self::assertTrue($limit->acceptsRequest($request, $messages, false));
-        self::assertSame(str_repeat('2', 16), $messages[0]->parts[0]->value);
-        self::assertSame(str_repeat('3', 16), $messages[1]->parts[0]->value);
+        self::assertSame('u000000000000011', $messages[0]->parts[0]->value);
+        self::assertSame('a000000000000011', $messages[1]->parts[0]->value);
         self::assertSame(str_repeat('c', 16), $messages[2]->parts[0]->value);
     }
 

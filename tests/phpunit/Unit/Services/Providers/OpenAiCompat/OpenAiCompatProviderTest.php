@@ -343,10 +343,12 @@ final class OpenAiCompatProviderTest extends TestCase
     #[TestDox('復元後の全入力が上限を超える場合は古い履歴から削って送信する')]
     public function trimsRestoredHistoryToInputBudget(): void
     {
-        $store = new FakeConversationStore(new AiRequestInputLimit(120));
+        $store = new FakeConversationStore(new AiRequestInputLimit(160));
         $token = $store->save(null, [
-            Message::user(ContentPart::text(str_repeat('o', 20))),
-            Message::assistant(ContentPart::text(str_repeat('n', 20))),
+            Message::user(ContentPart::text(str_repeat('o', 10))),
+            Message::assistant(ContentPart::text(str_repeat('p', 10))),
+            Message::user(ContentPart::text(str_repeat('n', 10))),
+            Message::assistant(ContentPart::text(str_repeat('a', 10))),
         ]);
         $provider = $this->provider($store);
         $provider->stubPostResults = ['{"choices":[{"message":{"content":"ok"}}]}'];
@@ -354,15 +356,16 @@ final class OpenAiCompatProviderTest extends TestCase
         $provider->generateText(new GenerationRequest(
             'gpt-oss-120b',
             [Message::user(ContentPart::text(str_repeat('c', 40)))],
-            str_repeat('i', 50),
+            str_repeat('i', 100),
             continuationToken: $token,
         ));
 
         $messages = $provider->capturedPayload()['messages'];
-        self::assertCount(3, $messages);
+        self::assertCount(4, $messages);
         self::assertSame('system', $messages[0]['role']);
-        self::assertSame(str_repeat('n', 20), $messages[1]['content']);
-        self::assertSame(str_repeat('c', 40), $messages[2]['content']);
+        self::assertSame(str_repeat('n', 10), $messages[1]['content']);
+        self::assertSame(str_repeat('a', 10), $messages[2]['content']);
+        self::assertSame(str_repeat('c', 40), $messages[3]['content']);
     }
 
     #[Test]
