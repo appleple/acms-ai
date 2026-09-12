@@ -58,4 +58,23 @@ final class ProviderErrorLogContextTest extends TestCase
             ProviderErrorLogContext::from((object) ['code' => 429])
         );
     }
+
+    #[Test]
+    #[TestDox('通信例外はメッセージやスタック引数を除き型とコードだけを残す')]
+    public function throwableContextDoesNotContainSensitiveValues(): void
+    {
+        $error = new \RuntimeException(
+            'request failed: sk-secret-key {"input":"secret prompt"}',
+            CURLE_OPERATION_TIMEDOUT
+        );
+
+        $context = ProviderErrorLogContext::fromThrowable($error);
+
+        self::assertSame([
+            'exception_type' => \RuntimeException::class,
+            'exception_code' => CURLE_OPERATION_TIMEDOUT,
+        ], $context);
+        self::assertStringNotContainsString('sk-secret-key', json_encode($context, JSON_THROW_ON_ERROR));
+        self::assertStringNotContainsString('secret prompt', json_encode($context, JSON_THROW_ON_ERROR));
+    }
 }

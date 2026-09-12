@@ -2,7 +2,7 @@
 
 namespace Acms\Plugins\AI\Services\AI\Providers\OpenAi;
 
-use Acms\Services\Facades\Common;
+use Acms\Plugins\AI\Services\AI\Logging\ProviderErrorLogContext;
 use Acms\Services\Facades\Logger;
 
 class ResponsesClient
@@ -67,8 +67,9 @@ class ResponsesClient
         $result = curl_exec($ch);
 
         if (curl_errno($ch) !== 0) {
+            $errorCode = curl_errno($ch);
             $error = curl_error($ch);
-            throw new \Exception("cURL Error: " . $error);
+            throw new \Exception("cURL Error: " . $error, $errorCode);
         }
         return is_string($result) ? $result : false;
     }
@@ -107,7 +108,10 @@ class ResponsesClient
             $parse = json_decode($result);
             return $parse;
         } catch (\Exception $e) {
-            Logger::error('【AI plugin】 OpenAI API リクエストに失敗しました', Common::exceptionArray($e));
+            Logger::error(
+                '【AI plugin】 OpenAI API リクエストに失敗しました',
+                ProviderErrorLogContext::fromThrowable($e)
+            );
             return null;
         }
     }
