@@ -20,6 +20,18 @@ function normalizeNewlines(value: string): string {
   return value.replace(/\r\n|\r/g, '\n')
 }
 
+/**
+ * AI 応答は外部入力として扱い、LiteEditor の HTML テンプレートへ渡す前に
+ * テキストとしてエスケープする。LiteEditor の update() は data.value をそのまま
+ * innerHTML へ描画するため、ここでタグを無効化しないとイベント属性も実行される。
+ */
+function escapeHtmlText(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 function normalizeInitialContent(value: string): string {
   return normalizeNewlines(brToNewline(value))
     .replace(/&nbsp;/gi, ' ')
@@ -80,22 +92,22 @@ export function insertToLiteEditor(liteEditor: LiteEditorLike | null | undefined
   if (!liteEditor || !content) return
 
   const source = getLiteEditorSource(liteEditor)
-  const rawContent = normalizeNewlines(content)
-  const normalized = newlineToBr(content)
+  const escapedContent = escapeHtmlText(normalizeNewlines(content))
+  const normalized = newlineToBr(escapedContent)
   const isSourceMode = liteEditor.data.showSource === true && source !== null
 
   liteEditor.stopStack = true
 
   if (isSourceMode) {
-    const editableValue = liteEditor.makeEditableHtml?.(rawContent) ?? normalized
+    const editableValue = liteEditor.makeEditableHtml?.(escapedContent) ?? normalized
 
     liteEditor.data.value = editableValue
-    liteEditor.data.formatedValue = rawContent
+    liteEditor.data.formatedValue = escapedContent
     syncLiteEditorStack(liteEditor, editableValue)
     liteEditor.update?.()
 
     const renderedSource = getLiteEditorSource(liteEditor) ?? source
-    setTextareaValue(renderedSource, rawContent)
+    setTextareaValue(renderedSource, escapedContent)
     renderedSource.style.height = `${renderedSource.scrollHeight}px`
     dispatchTextareaChange(renderedSource, true)
     return

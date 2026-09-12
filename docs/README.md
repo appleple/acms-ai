@@ -66,6 +66,12 @@ ai_rate_limit_lock_minutes: 5
 エラーメッセージも記録しません。解析失敗時は、プロバイダ・モデル・応答サイズ・失敗種別など、
 内容を復元できない診断用メタデータだけを記録します。
 
+OpenAI利用時、タイトル・タグ・メディア項目などの単発生成は Responses API に `store: false` を送り、
+後から取得できる application state として応答を保存しません。AIアシスタントのチャットは会話継続に
+`previous_response_id` を使うため `store: true` を送り、OpenAI側で少なくとも30日間保持されます。
+これは通常契約の abuse monitoring による保持とは別です。Zero Data Retention が適用されたプロジェクトでは
+`store` が `false` に強制されるため、この方式のチャット継続は利用できない場合があります。
+
 ## インストール方法
 
 拡張アプリをダウンロード後、zip ファイルを解凍して `extension/plugins/` に設置します。
@@ -94,8 +100,10 @@ Google Gemini を利用する場合は `https://ai.google.dev/gemini-api/docs/ap
 
 その他の OpenAI 互換サービスでは、サービスが案内する Chat Completions の `/v1` 相当の Base URL、
 Bearer トークン、チャットモデル名を入力してください。Base URL に入力した接続先へ記事本文や
-チャット内容が送信されるため、信頼できる接続先だけを指定してください。HTTPS を必須とし、ローカル
-開発用の `localhost` / ループバックだけ HTTP を許可します。
+チャット内容が送信されるため、信頼できる接続先だけを指定してください。Base URL は公開ネットワークへ
+解決される HTTPS URL だけを指定できます。ループバック、プライベートIP、
+リンクローカル等の内部アドレスは、HTTPSの場合も拒否します。検査済みの接続先へ直接通信するため、
+環境変数で設定された HTTP(S) プロキシは使用しません。
 
 ### 2. 認証情報を `.env` で管理する（推奨）
 

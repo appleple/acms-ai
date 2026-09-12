@@ -25,7 +25,7 @@ use Field;
 /**
  * OpenAI 互換エンドポイント（Chat Completions）向けの {@see AiProvider} 実装。
  *
- * base URL を差し替えて、さくらのAI Engine やローカル LLM などの OpenAI 互換 API を利用する。
+ * base URL を差し替えて、さくらのAI Engine やセルフホスト環境などの OpenAI 互換 API を利用する。
  * 純正 OpenAI（Responses API）とは別プロバイダとして扱う。互換ワイヤの形状
  * （Bearer 認証、messages/choices、response_format、SSE の [DONE] 終端）は
  * すべてこのクラス配下（本クラスと {@see ChatCompletionsStreamParser} /
@@ -64,12 +64,15 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
     private const STREAM_LOW_SPEED_TIME = 120;
 
     private readonly string $baseUrl;
+    private readonly OutboundEndpointGuard $endpointGuard;
 
     public function __construct(
         private readonly Credentials $credentials,
         private readonly ?ConversationStore $conversations = null,
+        ?OutboundEndpointGuard $endpointGuard = null,
     ) {
         $this->baseUrl = $this->normalizeBaseUrl($this->credentials->attribute(self::ATTR_BASE_URL));
+        $this->endpointGuard = $endpointGuard ?? new OutboundEndpointGuard();
     }
 
     /**
@@ -535,7 +538,7 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
 
     /**
      * base URL の正規化と安全性検証。
-     * https 以外（ループバック除く）・認証情報入り URL・不正な形式は受け付けず、空文字を返して
+     * https 以外・認証情報入り URL・不正な形式は受け付けず、空文字を返して
      * isConfigured() を false にする（理由はログへ残し、管理者が気づけるようにする）。
      */
     private function normalizeBaseUrl(string $baseUrl): string
@@ -560,28 +563,12 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
         }
 
         $scheme = strtolower($parts['scheme']);
-        $host = $parts['host'];
-        if (!in_array($scheme, ['http', 'https'], true)) {
-            Logger::warning('【AI plugin】 OpenAI互換エンドポイントは http/https のみ指定できます', ['baseUrl' => $baseUrl]);
-            return '';
-        }
-        if ($scheme !== 'https' && !$this->isLoopbackHost($host)) {
-            // 平文 HTTP は API キーが漏えいするため、ローカル開発（ループバック）以外は拒否する。
+        if ($scheme !== 'https') {
             Logger::warning('【AI plugin】 OpenAI互換エンドポイントは https を指定してください', ['baseUrl' => $baseUrl]);
             return '';
         }
 
         return $baseUrl;
-    }
-
-    private function isLoopbackHost(string $host): bool
-    {
-        $host = strtolower(trim($host, '[]'));
-        if ($host === 'localhost' || $host === '::1') {
-            return true;
-        }
-
-        return str_starts_with($host, '127.');
     }
 
     /**
@@ -652,9 +639,10 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
      */
     protected function httpPostJson(string $url, array $headers, string $body): string
     {
+        $resolve = $this->endpointGuard->resolveForCurl($url);
         $ch = curl_init();
         $buffer = new BoundedResponseBuffer();
-        curl_setopt_array($ch, [
+        $options = [
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => false,
             CURLOPT_HTTPHEADER => $headers,
@@ -662,7 +650,17 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
             CURLOPT_WRITEFUNCTION => static fn($_ch, string $bytes): int => $buffer->append($bytes),
             CURLOPT_CONNECTTIMEOUT => self::CONNECT_TIMEOUT,
             CURLOPT_TIMEOUT => self::REQUEST_TIMEOUT,
-        ]);
+            CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
+            CURLOPT_FOLLOWLOCATION => false,
+            // プロキシ側のDNS解決で検査済みIPの固定を迂回されないよう、環境変数のプロキシを無効化する。
+            CURLOPT_PROXY => '',
+        ];
+        if ($resolve !== []) {
+            $options[CURLOPT_RESOLVE] = $resolve;
+        }
+        if (!curl_setopt_array($ch, $options)) {
+            throw new \RuntimeException('安全なcURLオプションを設定できませんでした。');
+        }
         curl_exec($ch);
         if (curl_errno($ch) !== 0) {
             throw new \Exception('cURL Error: ' . curl_error($ch));
@@ -683,8 +681,9 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
      */
     protected function httpPostStream(string $url, array $headers, string $body, callable $onBytes): void
     {
+        $resolve = $this->endpointGuard->resolveForCurl($url);
         $ch = curl_init();
-        curl_setopt_array($ch, [
+        $options = [
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => false,
             CURLOPT_HTTPHEADER => $headers,
@@ -697,7 +696,17 @@ class OpenAiCompatProvider implements AiProvider, ManualModelProvider
             // 総時間ではなく応答停止を検出し、長い生成は許容しながら無期限ハングを防ぐ。
             CURLOPT_LOW_SPEED_LIMIT => self::STREAM_LOW_SPEED_LIMIT,
             CURLOPT_LOW_SPEED_TIME => self::STREAM_LOW_SPEED_TIME,
-        ]);
+            CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
+            CURLOPT_FOLLOWLOCATION => false,
+            // プロキシ側のDNS解決で検査済みIPの固定を迂回されないよう、環境変数のプロキシを無効化する。
+            CURLOPT_PROXY => '',
+        ];
+        if ($resolve !== []) {
+            $options[CURLOPT_RESOLVE] = $resolve;
+        }
+        if (!curl_setopt_array($ch, $options)) {
+            throw new \RuntimeException('安全なcURLオプションを設定できませんでした。');
+        }
         curl_exec($ch);
 
         if (curl_errno($ch) !== 0) {

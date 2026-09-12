@@ -170,6 +170,10 @@
         </td>
       </tr>
       </table>
+      <p class="acms-admin-text-helper">
+        タイトル・タグ・メディア項目などの単発生成は、OpenAIに後から取得可能な応答として保存しません。
+        AIアシスタントのチャットは会話継続のため応答を保存し、OpenAI側で少なくとも30日間保持されます。
+      </p>
     </div>
 
     <div data-ai-provider-panel="anthropic">
@@ -310,7 +314,7 @@
       <tr>
         <th>
           <!-- T -->Base URL<!-- /T -->
-          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI互換エンドポイントの Base URL。空欄の場合はさくらのAI Engine（https://api.ai.sakura.ad.jp/v1）を使用します。"></i>
+          <i class="acms-admin-icon-tooltip js-acms-tooltip js-acms-tooltip-hover" data-acms-tooltip="OpenAI互換エンドポイントの公開HTTPS Base URL。ループバック・内部IPは指定できません。空欄の場合はさくらのAI Engine（https://api.ai.sakura.ad.jp/v1）を使用します。"></i>
         </th>
         <td>
           <input

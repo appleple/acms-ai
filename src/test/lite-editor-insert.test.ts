@@ -163,6 +163,39 @@ describe('LiteEditor AI assistant insertion', () => {
     expect(editor.stack).toEqual(['old value', '修正後<br />本文'])
     expect(onChange).toHaveBeenCalledOnce()
   })
+
+  it.each([
+    ['img onerror', '<img src="/not-found" onerror="document.body.dataset.xss=\'1\'">'],
+    ['svg onload', '<svg onload="document.body.dataset.xss=\'1\'"></svg>'],
+    ['iframe', '<iframe srcdoc="<script>document.body.dataset.xss=\'1\'</script>"></iframe>'],
+    ['javascript URL', '<a href="javascript:document.body.dataset.xss=\'1\'">link</a>'],
+  ])('リッチ表示中はAI応答の %s をタグではなくテキストとして挿入する', (_case, payload) => {
+    const { editor, source, editable } = makeLiteEditor({
+      showSource: false,
+      editableHtml: '元の本文',
+    })
+
+    insertToLiteEditor(editor, payload)
+
+    expect(editable.children).toHaveLength(0)
+    expect(editable.textContent).toBe(payload)
+    expect(editor.data.value).not.toContain('<')
+    expect(source.value).not.toContain('<')
+  })
+
+  it('source表示中もAI応答をエスケープして非表示の編集DOMで実行させない', () => {
+    const payload = '<img src="/not-found" onerror="document.body.dataset.xss=\'1\'">\n次の行'
+    const { editor, source, editable } = makeLiteEditor({
+      showSource: true,
+      sourceValue: '元の本文',
+    })
+
+    insertToLiteEditor(editor, payload)
+
+    expect(source.value).toBe('&lt;img src="/not-found" onerror="document.body.dataset.xss=\'1\'"&gt;\n次の行')
+    expect(editable.querySelector('img')).toBeNull()
+    expect(editable.textContent).toBe('<img src="/not-found" onerror="document.body.dataset.xss=\'1\'">次の行')
+  })
 })
 
 describe('plain textarea AI assistant insertion', () => {

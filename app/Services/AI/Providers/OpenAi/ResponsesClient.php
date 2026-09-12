@@ -82,7 +82,9 @@ class ResponsesClient
         $postData = [
             "model" => $this->model,
             "input" => $this->input,
-            "store" => true
+            // タイトル・タグ・メディア項目などの単発生成は後続リクエストから参照しない。
+            // Responses API の既定値は true のため、application state を残さないよう明示する。
+            "store" => false
         ];
 
         if ($this->instructions !== null) {
