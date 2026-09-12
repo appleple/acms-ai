@@ -22,19 +22,43 @@ final class MediaImageLoader
     /** @var list<string> */
     private const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
+    /** @var \Closure(int, int): bool */
+    private readonly \Closure $isBlogInScope;
+
+    /**
+     * @param (\Closure(int, int): bool)|null $isBlogInScope テスト用のブログスコープ判定シーム
+     */
+    public function __construct(?\Closure $isBlogInScope = null)
+    {
+        $this->isBlogInScope = $isBlogInScope
+            ?? static fn (int $mediaBlogId, int $requestBlogId): bool => isBlogAncestor(
+                $mediaBlogId,
+                $requestBlogId,
+                true,
+            );
+    }
+
     public function load(int $mediaId): ContentPart
     {
         if ($mediaId <= 0) {
             throw new \RuntimeException('メディアが指定されていません。');
-        }
-        if (!Media::validate(BID) || !Media::canEdit($mediaId)) {
-            throw new \RuntimeException('このメディアを編集する権限がありません。');
         }
 
         $media = Media::getMedia($mediaId);
         if ($media === null) {
             throw new \RuntimeException('指定されたメディアが見つかりません。');
         }
+
+        $mediaBlogId = $media['bid'];
+        if (
+            $mediaBlogId <= 0
+            || !($this->isBlogInScope)($mediaBlogId, BID)
+            || !Media::validate($mediaBlogId)
+            || !Media::canEdit($mediaId)
+        ) {
+            throw new \RuntimeException('このメディアを編集する権限がありません。');
+        }
+
         if ($media['type'] !== 'image') {
             throw new \RuntimeException('画像メディアだけを解析できます。');
         }
