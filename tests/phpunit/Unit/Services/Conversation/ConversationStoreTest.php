@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Acms\Plugins\AI\Tests\Unit\Services\Conversation;
 
+use Acms\Plugins\AI\Services\AI\AiRequestInputLimit;
 use Acms\Plugins\AI\Services\AI\Contracts\ContentPart;
 use Acms\Plugins\AI\Services\AI\Contracts\Message;
 use Acms\Plugins\AI\Tests\Support\FakeConversationStore;
@@ -130,5 +131,38 @@ final class ConversationStoreTest extends TestCase
 
         self::assertNotSame([], $store->lifetimes);
         self::assertGreaterThan(0, $store->lifetimes[0]);
+    }
+
+    #[Test]
+    #[TestDox('保存JSONが入力上限を超える場合は古い会話ターンから削る')]
+    public function capsSerializedHistoryBytesFromTheOldest(): void
+    {
+        $store = new FakeConversationStore(new AiRequestInputLimit(100));
+        $token = $store->save(null, [
+            Message::user(ContentPart::text(str_repeat('a', 20))),
+            Message::assistant(ContentPart::text(str_repeat('b', 20))),
+            Message::user(ContentPart::text(str_repeat('c', 20))),
+            Message::assistant(ContentPart::text(str_repeat('d', 20))),
+        ]);
+
+        $encoded = $store->storage['ai_conversation_' . $token];
+        self::assertLessThanOrEqual(100, strlen($encoded));
+        $history = $store->load($token);
+        self::assertCount(2, $history);
+        self::assertSame(Message::ROLE_USER, $history[0]->role);
+        self::assertSame(str_repeat('c', 20), $history[0]->parts[0]->value);
+        self::assertSame(Message::ROLE_ASSISTANT, $history[1]->role);
+        self::assertSame(str_repeat('d', 20), $history[1]->parts[0]->value);
+    }
+
+    #[Test]
+    #[TestDox('上限を超える旧形式キャッシュはJSON解析前に履歴なしとして扱う')]
+    public function rejectsOversizedLegacyCache(): void
+    {
+        $store = new FakeConversationStore(new AiRequestInputLimit(10));
+        $token = str_repeat('a', 32);
+        $store->storage['ai_conversation_' . $token] = str_repeat('x', 11);
+
+        self::assertSame([], $store->load($token));
     }
 }

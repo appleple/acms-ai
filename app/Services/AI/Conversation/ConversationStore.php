@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Acms\Plugins\AI\Services\AI\Conversation;
 
+use Acms\Plugins\AI\Services\AI\AiRequestInputLimit;
 use Acms\Plugins\AI\Services\AI\Contracts\ContentPart;
+use Acms\Plugins\AI\Services\AI\Contracts\GenerationRequest;
 use Acms\Plugins\AI\Services\AI\Contracts\Message;
 use Acms\Services\Facades\Cache;
 
@@ -30,6 +32,13 @@ class ConversationStore
     /** 保持する最大メッセージ数。古いものから切り捨て、ペイロードの肥大を防ぐ。 */
     private const MAX_MESSAGES = 24;
 
+    private readonly AiRequestInputLimit $inputLimit;
+
+    public function __construct(?AiRequestInputLimit $inputLimit = null)
+    {
+        $this->inputLimit = $inputLimit ?? AiRequestInputLimit::fromConfig();
+    }
+
     /**
      * 継続トークンから会話履歴を復元する。未知のトークン・破損データは空履歴として扱う。
      *
@@ -41,7 +50,7 @@ class ConversationStore
             return [];
         }
         $raw = $this->cacheGet(self::KEY_PREFIX . $token);
-        if (!is_string($raw)) {
+        if (!is_string($raw) || !$this->inputLimit->accepts($raw)) {
             return [];
         }
         $decoded = json_decode($raw, true);
@@ -68,6 +77,21 @@ class ConversationStore
     }
 
     /**
+     * 継続履歴と今回のメッセージを結合し、古い履歴から削って外向き入力上限へ収める。
+     *
+     * @return list<Message>
+     */
+    public function messagesForRequest(GenerationRequest $request): array
+    {
+        $history = [];
+        if ($request->continuationToken !== null && $request->continuationToken !== '') {
+            $history = $this->load($request->continuationToken);
+        }
+
+        return (new ConversationInputBudget($this->inputLimit))->fit($request, $history);
+    }
+
+    /**
      * 会話履歴を保存し、次リクエストで使う継続トークンを返す。
      * トークンが未発行（null）・不正形式ならこちらで新規発行する（クライアント由来の値を
      * そのままキャッシュキーへ使わないための防御でもある）。
@@ -89,11 +113,22 @@ class ConversationStore
             $entries[] = ['role' => $message->role, 'text' => $text];
         }
         $entries = array_slice($entries, -self::MAX_MESSAGES);
+        $entries = self::withoutLeadingAssistant($entries);
 
-        $encoded = json_encode($entries, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        if ($encoded === false) {
-            // 保存できなくても生成自体は成功している。履歴なし（単発）として振る舞う。
-            return $token;
+        while (true) {
+            $encoded = json_encode($entries, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            if ($encoded === false) {
+                // 保存できなくても生成自体は成功している。履歴なし（単発）として振る舞う。
+                return $token;
+            }
+            if ($this->inputLimit->accepts($encoded)) {
+                break;
+            }
+            if ($entries === []) {
+                return $token;
+            }
+            array_shift($entries);
+            $entries = self::withoutLeadingAssistant($entries);
         }
         $this->cachePut(self::KEY_PREFIX . $token, $encoded, self::LIFETIME);
 
@@ -113,6 +148,21 @@ class ConversationStore
         }
 
         return implode("\n", $texts);
+    }
+
+    /**
+     * user を削った後に assistant だけを残さず、会話ターンの境界まで進める。
+     *
+     * @param list<array{role: string, text: string}> $entries
+     * @return list<array{role: string, text: string}>
+     */
+    private static function withoutLeadingAssistant(array $entries): array
+    {
+        while ($entries !== [] && $entries[0]['role'] === Message::ROLE_ASSISTANT) {
+            array_shift($entries);
+        }
+
+        return $entries;
     }
 
     /**
