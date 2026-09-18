@@ -1,6 +1,6 @@
 <!--
   全管理画面共通ローダー（admin-main インジェクトポイントに常時注入）。
-  ページ内に <acms-ai-assistant-button> またはメディアAIのマーカーがある場合だけ、
+  ページ内に <acms-ai-assistant-button>、ブロックエディター、またはメディアAIのマーカーがある場合だけ、
   本体バンドル(acms-ai.js)を遅延ロードする。
   プロバイダ未設定(authorized=false)のときは ServiceProvider 側で注入自体を行わない。
   エントリー編集で admin-entry-field 側が既にバンドルを読み込む場合は、二重ロードを避ける。
@@ -15,7 +15,7 @@
 (function () {
   const JS_URL = '%{AI_JS}';
   const CSS_URL = '%{AI_CSS}';
-  const BUNDLE_TRIGGER_SELECTOR = 'acms-ai-assistant-button, #js-acms-ai-media';
+  const BUNDLE_TRIGGER_SELECTOR = 'acms-ai-assistant-button, acms-block-editor, .js-block-editor, #js-acms-ai-media';
 
   function bundleAlreadyPresent() {
     // 既に読み込み済み or 読み込み予約済みなら true
