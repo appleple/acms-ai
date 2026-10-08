@@ -11,7 +11,7 @@ interface ChatSessionProps {
   initialPrompt?: string
   description?: string
   isOpen: boolean
-  onInsert?: (content: string) => void
+  onInsert?: (content: string) => string | void
 }
 
 /**
@@ -47,7 +47,14 @@ const ChatSession = memo(({
   }, [sendMessage])
 
   const handleInsert = useCallback((content?: string) => {
-    if (content) onInsert?.(content)
+    if (!content) return false
+    const insertionError = onInsert?.(content)
+    if (insertionError) {
+      setErrorMessage(insertionError)
+      return false
+    }
+    setErrorMessage(null)
+    return true
   }, [onInsert])
 
   const handleCopy = useCallback(async (content?: string) => {
@@ -94,7 +101,7 @@ interface Props {
    * 修正後テキストの挿入先への書き込み処理。
    * 省略時は挿入ボタンを表示しない。
    */
-  onInsert?: (content: string) => void
+  onInsert?: (content: string) => string | void
 }
 
 /**

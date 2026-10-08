@@ -1,0 +1,13 @@
+.acms-ai-block-editor-assistant-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.acms-ai-block-editor-assistant-button .material-symbols-outlined {
+  font-size: 18px;
+}
