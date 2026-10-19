@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ChatDrawer from '../features/chat/components/chat-drawer'
 import { useChat, type UseChatOptions } from '../features/chat/hooks/use-chat'
@@ -42,5 +42,22 @@ describe('ChatDrawer', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent('Anthropic のクレジット残高が不足しています。')
     consoleError.mockRestore()
+  })
+
+  it('挿入先が変更されていた場合は成功表示せずドロワー内に理由を表示する', () => {
+    vi.mocked(useChat).mockReturnValue({
+      messages: [{ id: 'correction-1', role: 'assistant', type: 'correction', content: '修正案' }],
+      streamingContent: '',
+      isLoading: false,
+      sendMessage: vi.fn(),
+      lastAssistantContent: '修正案',
+    })
+    const onInsert = vi.fn(() => '対象範囲が変更されています。')
+    render(<ChatDrawer chatKey="test-chat" onInsert={onInsert} />)
+
+    fireEvent.click(screen.getByRole('button', { name: '挿入' }))
+
+    expect(onInsert).toHaveBeenCalledWith('修正案')
+    expect(screen.getByRole('alert')).toHaveTextContent('対象範囲が変更されています。')
   })
 })

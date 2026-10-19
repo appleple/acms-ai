@@ -52,6 +52,13 @@ function appendMediaMarker(parent: ParentNode = document.body): HTMLElement {
   return marker
 }
 
+function appendBlockEditor(parent: ParentNode = document.body, legacy = false): HTMLElement {
+  const editor = document.createElement(legacy ? 'div' : 'acms-block-editor')
+  if (legacy) editor.className = 'js-block-editor'
+  parent.appendChild(editor)
+  return editor
+}
+
 describe('admin assistant loader', () => {
   beforeEach(() => {
     document.head.innerHTML = ''
@@ -115,6 +122,14 @@ describe('admin assistant loader', () => {
     expect(document.querySelector<HTMLScriptElement>('script[data-acms-ai-bundle]')).not.toBeNull()
   })
 
+  it.each([false, true])('ブロックエディター%sがある場合もバンドルを読み込む', (legacy) => {
+    appendBlockEditor(appendAdminMain(), legacy)
+
+    executeLoader()
+
+    expect(document.querySelector<HTMLScriptElement>('script[data-acms-ai-bundle]')).not.toBeNull()
+  })
+
   it('既存のバンドルがある場合は二重に読み込まない', () => {
     const existing = document.createElement('script')
     existing.src = JS_URL
@@ -156,6 +171,16 @@ describe('admin assistant loader', () => {
 
     expect(document.querySelectorAll('script[data-acms-ai-bundle]')).toHaveLength(1)
     expect(document.querySelectorAll(`link[href="${CSS_URL}"]`)).toHaveLength(1)
+    expect(observerInstances[0].disconnect).toHaveBeenCalledOnce()
+  })
+
+  it('後から追加されたブロックエディターも検出する', () => {
+    const adminMain = appendAdminMain()
+    executeLoader()
+    const editor = appendBlockEditor(adminMain)
+    notify(observerInstances[0], addedNodesRecord(editor))
+
+    expect(document.querySelectorAll('script[data-acms-ai-bundle]')).toHaveLength(1)
     expect(observerInstances[0].disconnect).toHaveBeenCalledOnce()
   })
 
